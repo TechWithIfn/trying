@@ -231,7 +231,7 @@ function aspectRatioStyle(width?: number | null, height?: number | null, fallbac
   return { aspectRatio: fallback };
 }
 
-function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, onResolution }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
+function VideoPlayer({ src, fallbackSrc, poster, mediaType, width, height, onDurationChange, onResolution }: { src: string; fallbackSrc?: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -242,7 +242,12 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [mediaError, setMediaError] = useState(false);
-  const retryCountRef = useRef(0);
+  // Loading state: true until the element reports usable data (loadedmetadata
+  // covers the poster frame; canplay/loadeddata cover playback readiness).
+  const [loading, setLoading] = useState(true);
+  // One bounded fallback only: the direct media URL first, then the backend
+  // proxy URL. Never retries forever, never loops between sources.
+  const triedFallbackRef = useRef(false);
   const [currentSrc, setCurrentSrc] = useState(src);
 
   useEffect(() => {
@@ -251,6 +256,9 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onTime = () => setCurrent(v.currentTime);
+    const onLoadStart = () => {
+      setLoading(true);
+    };
     const onMeta = () => {
       const nextDuration = Number.isFinite(v.duration) && v.duration >= 0 ? v.duration : 0;
       setDuration(nextDuration);
@@ -258,7 +266,9 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
       if (v.videoWidth > 0 && v.videoHeight > 0) {
         onResolution?.(v.videoWidth, v.videoHeight);
       }
+      setLoading(false);
     };
+    const onReady = () => setLoading(false);
     const onEnd = () => {
       v.pause();
       setPlaying(false);
@@ -270,30 +280,41 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
           console.debug("[Downloadit Preview]", {
             mediaType: mediaType ?? "unknown",
             streamHost: new URL(currentSrc).hostname,
+            viaFallback: triedFallbackRef.current,
           });
         } catch {
           /* ignore logging failures */
         }
       }
-      if (retryCountRef.current < 1) {
-        retryCountRef.current++;
-        const bust = currentSrc.includes("?") ? "&" : "?";
-        setCurrentSrc(`${currentSrc}${bust}_retry=${Date.now()}`);
+      // Single bounded fallback: direct URL failed → try the backend proxy
+      // once. A second failure is genuine → show the unavailable state.
+      if (!triedFallbackRef.current && fallbackSrc && fallbackSrc !== currentSrc) {
+        triedFallbackRef.current = true;
+        setCurrentSrc(fallbackSrc);
       } else {
+        setLoading(false);
         setMediaError(true);
       }
     };
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
     v.addEventListener("timeupdate", onTime);
+    v.addEventListener("loadstart", onLoadStart);
     v.addEventListener("loadedmetadata", onMeta);
+    v.addEventListener("loadeddata", onReady);
+    v.addEventListener("canplay", onReady);
     v.addEventListener("ended", onEnd);
     v.addEventListener("error", onError);
+    // `abort` accompanies source switches/unmounts and carries no failure
+    // signal on its own, so it never triggers the fallback or error state.
     return () => {
       v.removeEventListener("play", onPlay);
       v.removeEventListener("pause", onPause);
       v.removeEventListener("timeupdate", onTime);
+      v.removeEventListener("loadstart", onLoadStart);
       v.removeEventListener("loadedmetadata", onMeta);
+      v.removeEventListener("loadeddata", onReady);
+      v.removeEventListener("canplay", onReady);
       v.removeEventListener("ended", onEnd);
       v.removeEventListener("error", onError);
     };
@@ -376,7 +397,16 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
           onClick={togglePlay}
         />
 
-        {!playing && (
+        {loading && !mediaError && (
+          <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+            <svg className="h-8 w-8 animate-spin text-white/60" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+              <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+            </svg>
+          </div>
+        )}
+
+        {!loading && !playing && (
           <button
             type="button"
             onClick={(event) => {
@@ -885,10 +915,17 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
 
   // Preview source selection from the actual API shape (media.url): a video
   // item always previews through <VideoPlayer> and is never rendered as an
-  // image. The URL must be a playable http(s) value — otherwise the shared
-  // "Preview unavailable" tile is shown instead of mounting a broken player.
+  // image. Two-tier source with one bounded fallback: the resolved direct
+  // media URL first (native CDN range support, no proxy latency), then the
+  // existing safe backend proxy (same backend + encoding as Download, with
+  // server-side stale-URL recovery). The URL must be a playable http(s)
+  // value — otherwise the shared "Preview unavailable" tile is shown instead
+  // of mounting a broken player. No cookies/session ever leave the client on
+  // the direct path; SSRF validation still guards the proxy path.
   const isVideoItem = currentMedia?.type === "video";
-  const playableVideoSrc = isVideoItem && isPlayableVideoUrl(currentMedia?.url) ? streamSrc : "";
+  const mediaUrl = currentMedia?.url ?? "";
+  const directVideoSrc = isVideoItem && isPlayableVideoUrl(mediaUrl) ? mediaUrl : "";
+  const proxyVideoSrc = directVideoSrc ? streamSrc : "";
   const rawPoster = currentMedia?.thumbnail ?? undefined;
   const validPoster = isValidImagePoster(rawPoster) ? rawPoster : undefined;
 
@@ -1082,18 +1119,19 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 {audioUrl && <AudioPlayer src={audioUrl} onDurationChange={(d) => setAudioDuration(d)} />}
               </>
             ) : !currentMedia ? null : isVideoItem ? (
-              playableVideoSrc ? (
-                // NOTE: keying by the full proxied source intentionally remounts
+              directVideoSrc ? (
+                // NOTE: keying by the direct media URL intentionally remounts
                 // per source. That resets playing/time/mute/error state for the
                 // new video AND unmounts the old <video> element, which stops
                 // its decode — so the previous video can never keep playing (or
-                // play simultaneously) after a slide switch, a URL refresh, a
-                // new search, or leaving the preview. A stale/expired signed
-                // URL therefore can never linger and wrongly report
-                // "Preview unavailable" for a valid video.
+                // play simultaneously) after a slide switch, a new search, or
+                // leaving the preview. A stale/expired signed URL therefore
+                // can never linger and wrongly report "Preview unavailable"
+                // for a valid video.
                 <VideoPlayer
-                  key={playableVideoSrc}
-                  src={playableVideoSrc}
+                  key={directVideoSrc}
+                  src={directVideoSrc}
+                  fallbackSrc={proxyVideoSrc || undefined}
                   poster={validPoster}
                   mediaType={currentMedia.type}
                   width={currentMedia.width}
