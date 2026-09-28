@@ -1,25 +1,38 @@
+export const PRODUCTION_API_BASE = "https://backend-chi-orpin-90.vercel.app";
+const LOCAL_API_BASE = "http://localhost:3001";
+
+function pointsAtLocalhost(value: string): boolean {
+  return /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])([:/]|$)/i.test(value);
+}
+
 export function getApiBase(): string {
   const configured = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
-  // Build-time NEXT_PUBLIC_* may be missing or still point at localhost in a
-  // deployed bundle (local .env is never deployed). Calling the viewer's own
-  // localhost from downloadit.pro always fails, so fail over to same-origin
-  // (works when the host proxies /api) and warn loudly instead of silently
-  // hitting a dead localhost.
+  // Explicit non-localhost env always wins (allows staging / custom backends).
+  if (configured && !pointsAtLocalhost(configured)) {
+    return configured;
+  }
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
-    const pointsAtLocalhost = /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])/i.test(configured);
-    if (!configured || (!isLocalHost && pointsAtLocalhost)) {
-      if (!isLocalHost && pointsAtLocalhost) {
-        console.warn(
-          "[Downloadit] NEXT_PUBLIC_API_BASE_URL points at localhost on a production host; using same-origin /api instead. Rebuild with the production backend URL."
-        );
-      }
-      return "";
+    // Local dev keeps using localhost (from env or default).
+    if (isLocalHost) {
+      return configured || LOCAL_API_BASE;
     }
-    return configured;
+    // Production host: a localhost build-time value (local .env is never
+    // deployed) would resolve to the viewer's own machine and fail. The
+    // frontend has no /api routes — the backend lives on a separate domain —
+    // so fall back to the production backend instead of same-origin.
+    if (pointsAtLocalhost(configured)) {
+      console.warn(
+        "[Downloadit] NEXT_PUBLIC_API_BASE_URL points at localhost on a production host; using production backend instead."
+      );
+    }
+    return PRODUCTION_API_BASE;
   }
-  return (configured || "http://localhost:3001").replace(/\/+$/, "");
+  if (process.env.NODE_ENV === "production") {
+    return PRODUCTION_API_BASE;
+  }
+  return (configured || LOCAL_API_BASE).replace(/\/+$/, "");
 }
 
 export interface MediaItem {
