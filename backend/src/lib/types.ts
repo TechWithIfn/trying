@@ -72,6 +72,22 @@ export interface ResolveDiagnostics {
   normalizedMediaCount?: number;
   normalizedMediaTypes?: string[];
   totalDurationMs?: number;
+  /** Post-validation video counts for the final assembly stage. */
+  validVideoCandidateCount?: number;
+  rejectedCandidateCount?: number;
+  /**
+   * Top rejection reasons with counts (e.g. { "probe-failed": 12,
+   * "expired-or-forbidden": 8 }). Keys are machine-readable reason slugs
+   * only — never URLs, queries, or secrets.
+   */
+  rejectionReasons?: Record<string, number>;
+  /** Where the returned video was first captured (e.g. network-video-response). */
+  selectedCandidateSource?: string | null;
+  /** Hostname of the returned media URL (no query, no tokens). */
+  selectedMediaHost?: string | null;
+  /** Candidates proven by an active probe vs trusted network capture. */
+  verifiedByProbeCount?: number;
+  trustedCaptureCount?: number;
 }
 
 export interface ResolveErrorResponse {

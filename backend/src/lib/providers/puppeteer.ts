@@ -130,11 +130,45 @@ const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 const IG_APP_ID = "936619743392459";
 
+export type CandidateSource =
+  | "network-video-response"
+  | "api-json"
+  | "video-graph"
+  | "dom"
+  | "rendered-html"
+  | "prefetch-og"
+  | "prefetch-embed"
+  | "embed-html";
+
 export interface ExtractedMedia {
   url: string;
   type: "video" | "image";
   width: number | null;
   height: number | null;
+  /**
+   * Where this candidate was first captured. The network layer's own
+   * video response (`network-video-response`) is the authoritative
+   * media-type signal: it means Chromium already received video bytes
+   * (resourceType "media" or a video/* content-type, HTTP 200/206) for
+   * this exact URL, so the final assembly may trust it even when a
+   * follow-up server-side probe cannot re-fetch the bytes.
+   */
+  source?: CandidateSource;
+  /** Response Content-Type observed at capture time (lowercased, may include params). */
+  capturedContentType?: string | null;
+  /** Puppeteer resourceType observed at capture time (e.g. "media"). */
+  capturedResourceType?: string | null;
+  /** HTTP status observed at capture time (200/206 for a real delivery). */
+  capturedStatus?: number | null;
+}
+
+/** Log-safe hostname (no query, no tokens, no cookies). Null when unparsable. */
+function hostnameOf(raw: string): string | null {
+  try {
+    return new URL(raw).hostname.toLowerCase() || null;
+  } catch {
+    return null;
+  }
 }
 
 function unescapeInstagramString(s: string): string {
@@ -846,6 +880,67 @@ function isTrustedCdnUrl(raw: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Machine-readable reason a candidate was dropped during normalization
+ * (before any network probe). Used ONLY for safe diagnostic tallies —
+ * never includes the URL, query, or any secret.
+ */
+export type NormalizationRejection =
+  | "invalid-url"
+  | "non-http-url"
+  | "credential-url"
+  | "localhost-or-private-url"
+  | "duplicate";
+
+export function classifyNormalizationRejection(raw: unknown): NormalizationRejection {
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > 8192) return "invalid-url";
+  const trimmed = raw.trim();
+  if (/^(javascript|data|blob|file|ftp|ws):/i.test(trimmed)) return "non-http-url";
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    // Bare blob:/data: forms that fail URL parsing are still non-http.
+    if (/^(blob|data|javascript):/i.test(trimmed)) return "non-http-url";
+    return "invalid-url";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "non-http-url";
+  if (parsed.username || parsed.password) return "credential-url";
+  if (isPrivateOrReservedHost(parsed.hostname.toLowerCase())) return "localhost-or-private-url";
+  return "invalid-url";
+}
+
+/**
+ * A network-captured candidate is trusted when Chromium itself already
+ * received video bytes for this exact URL: trusted CDN https host, HTTP
+ * 200/206 delivery, and the authoritative signal is a video/* response
+ * Content-Type or a "media" resource type. The signed query string is
+ * preserved exactly (the URL is returned untouched) — only the host was
+ * ever inspected.
+ *
+ * This deliberately does NOT require ".mp4" anywhere in the URL: Instagram
+ * serves many playable renditions with extension-less paths, and the
+ * response Content-Type / resource type is the authoritative media-type
+ * signal, not the pathname.
+ */
+export function isTrustedNetworkCapture(item: ExtractedMedia): boolean {
+  if (item.source !== "network-video-response") return false;
+  if (item.capturedStatus !== 200 && item.capturedStatus !== 206) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(item.url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  if (!isCdnMediaHost(parsed.hostname)) return false;
+  if (isPrivateOrReservedHost(parsed.hostname.toLowerCase())) return false;
+  const ct = (item.capturedContentType || "").toLowerCase();
+  if (ct.startsWith("video/")) return true;
+  if (item.capturedResourceType === "media") return true;
+  return false;
 }
 
 /**
@@ -2120,7 +2215,7 @@ export class PuppeteerProvider extends BaseProvider {
                 const media = extractMediaFromJson(text);
                 for (const item of media) {
                   const exists = interceptedMedia.some((m) => m.url === item.url);
-                  if (!exists) interceptedMedia.push(item);
+                  if (!exists) interceptedMedia.push({ ...item, source: "api-json" });
                 }
                 // Structured pass: complete ordered children with real
                 // per-slide dimensions plus pagination state.
@@ -2128,7 +2223,7 @@ export class PuppeteerProvider extends BaseProvider {
                 for (const item of sidecar.items) {
                   const exists = interceptedMedia.some((m) => m.url === item.url);
                   if (!exists) {
-                    interceptedMedia.push(item);
+                    interceptedMedia.push({ ...item, source: "api-json" });
                   } else if (item.width && item.height) {
                     // Upgrade the regex-found entry with real dimensions.
                     const prev = interceptedMedia.find((m) => m.url === item.url);
@@ -2190,11 +2285,18 @@ export class PuppeteerProvider extends BaseProvider {
                 !interceptedMedia.some((m) => m.url === resUrl)
               ) {
                 capturedCdnMediaUrlCount++;
+                // Preserve the signed query string EXACTLY (resUrl untouched):
+                // only the host/content-type/resource-type/status are recorded
+                // as the authoritative media-type signal for final assembly.
                 interceptedMedia.push({
                   url: resUrl,
                   type: ctLower.startsWith("video/") || resourceType === "media" ? "video" : "image",
                   width: null,
                   height: null,
+                  source: "network-video-response",
+                  capturedContentType: ctLower.slice(0, 80) || null,
+                  capturedResourceType: resourceType || null,
+                  capturedStatus: statusCode,
                 });
               }
             }
@@ -2235,7 +2337,12 @@ export class PuppeteerProvider extends BaseProvider {
         .catch(() => {});
       timings.dataWaitMs = Date.now() - waitStart;
 
-      // Helper: extract video candidates from current page DOM & scripts
+      // Helper: extract video candidates from current page DOM & scripts.
+      // The HTML <video> element is NOT required to expose the final URL:
+      // the network layer may already have captured the valid video
+      // response (source "network-video-response"), which the assembly
+      // stage treats as authoritative. DOM hits are tagged "dom" /
+      // "video-graph" so the selected source stays diagnosable.
       const extractVideoCandidatesFromPage = async (): Promise<ExtractedMedia[]> => {
         const found: ExtractedMedia[] = [];
         try {
@@ -2244,7 +2351,7 @@ export class PuppeteerProvider extends BaseProvider {
             if (Array.isArray(pageData.domVideos)) {
               for (const src of pageData.domVideos) {
                 if (typeof src === "string" && src.startsWith("http") && this.validateMediaUrl(src)) {
-                  found.push({ url: src, type: "video", width: null, height: null });
+                  found.push({ url: src, type: "video", width: null, height: null, source: "dom" });
                 }
               }
             }
@@ -2254,7 +2361,7 @@ export class PuppeteerProvider extends BaseProvider {
                   const media = extractMediaFromJson(snippet);
                   for (const item of media) {
                     if (item.type === "video" && this.validateMediaUrl(item.url)) {
-                      found.push(item);
+                      found.push({ ...item, source: "video-graph" });
                     }
                   }
                 }
@@ -2277,11 +2384,18 @@ export class PuppeteerProvider extends BaseProvider {
       // Safe stage diagnostics for failure responses: scalars/counts/stage
       // names only — never cookies, keys, or signed URLs. Lets a production
       // VIDEO_SOURCE_NOT_FOUND name its exact internal stage without log
-      // access. `normalized` overrides the zero defaults at the assembly
-      // throw site, where post-validation counts exist.
+      // access. `assembly` carries post-validation counts plus the top
+      // per-candidate rejection reasons at the assembly throw site.
       const failureDiagnostics = (
         stage: string,
-        normalized?: { count: number; types: string[] }
+        normalized?: { count: number; types: string[] },
+        assembly?: {
+          validVideoCount?: number;
+          rejectedCount?: number;
+          rejectionReasons?: Record<string, number>;
+          verifiedByProbe?: number;
+          trustedCapture?: number;
+        }
       ): ResolveDiagnostics => ({
         provider: "puppeteer",
         runtime: isServerlessRuntime() ? "serverless" : "local",
@@ -2302,12 +2416,29 @@ export class PuppeteerProvider extends BaseProvider {
         ],
         normalizedMediaCount: normalized?.count ?? 0,
         normalizedMediaTypes: normalized?.types ?? [],
+        validVideoCandidateCount: assembly?.validVideoCount ?? 0,
+        rejectedCandidateCount: assembly?.rejectedCount ?? 0,
+        rejectionReasons: assembly?.rejectionReasons ?? {},
+        verifiedByProbeCount: assembly?.verifiedByProbe ?? 0,
+        trustedCaptureCount: assembly?.trustedCapture ?? 0,
+        selectedCandidateSource: null,
+        selectedMediaHost: null,
         totalDurationMs: Date.now() - startTime,
       });
 
-      const videoFailure = (stage: string, normalized?: { count: number; types: string[] }): AppError => {
+      const videoFailure = (
+        stage: string,
+        normalized?: { count: number; types: string[] },
+        assembly?: {
+          validVideoCount?: number;
+          rejectedCount?: number;
+          rejectionReasons?: Record<string, number>;
+          verifiedByProbe?: number;
+          trustedCapture?: number;
+        }
+      ): AppError => {
         const err = createError("VIDEO_SOURCE_NOT_FOUND");
-        return new AppError(err.code, err.message, err.statusCode, failureDiagnostics(stage, normalized));
+        return new AppError(err.code, err.message, err.statusCode, failureDiagnostics(stage, normalized, assembly));
       };
 
       // 1. Initial media inspection from page DOM & scripts
@@ -2400,14 +2531,14 @@ export class PuppeteerProvider extends BaseProvider {
         if (fetchMeta.ogVideo && this.validateMediaUrl(fetchMeta.ogVideo)) {
           if (!interceptedMedia.some((m) => m.url === fetchMeta.ogVideo)) {
             logger.info("Using og:video from prefetch as browser-fallback candidate", { url });
-            interceptedMedia.push({ url: fetchMeta.ogVideo!, type: "video", width: null, height: null });
+            interceptedMedia.push({ url: fetchMeta.ogVideo!, type: "video", width: null, height: null, source: "prefetch-og" });
           }
         }
         for (const item of fetchMeta.embeddedMedia) {
           if (item.type === "video" && this.validateMediaUrl(item.url)) {
             if (!interceptedMedia.some((m) => m.url === item.url)) {
               logger.info("Using embedded video from prefetch as browser-fallback candidate", { url });
-              interceptedMedia.push(item);
+              interceptedMedia.push({ ...item, source: "prefetch-embed" });
             }
           }
         }
@@ -2554,39 +2685,63 @@ export class PuppeteerProvider extends BaseProvider {
         // Page content not available
       }
 
-      // Combine all sources
+      // Combine all sources. First-seen provenance wins, except a later
+      // network-video-response upgrades a weaker earlier source (the network
+      // delivery is the authoritative signal). Exact-URL duplicates are
+      // dropped and counted — the signed query string is part of the identity,
+      // so distinct signatures are never collapsed.
       const allMedia: ExtractedMedia[] = [];
       const seenUrls = new Set<string>();
+      const normalizationRejections: Record<string, number> = {};
+      let duplicateCount = 0;
 
       const addUnique = (item: ExtractedMedia) => {
         if (isStory && isLikelyStaticInstagramAssetUrl(item.url)) return;
         if (isStory && item.type === "image" && isLikelyProfileImageUrl(item.url)) return;
-        if (!seenUrls.has(item.url)) {
-          seenUrls.add(item.url);
-          allMedia.push(item);
+        if (seenUrls.has(item.url)) {
+          duplicateCount++;
+          normalizationRejections["duplicate"] = (normalizationRejections["duplicate"] ?? 0) + 1;
+          const prev = allMedia.find((m) => m.url === item.url);
+          if (
+            prev &&
+            prev.source !== "network-video-response" &&
+            item.source === "network-video-response"
+          ) {
+            prev.source = item.source;
+            prev.capturedContentType = item.capturedContentType;
+            prev.capturedResourceType = item.capturedResourceType;
+            prev.capturedStatus = item.capturedStatus;
+            if (item.width && item.height && (!prev.width || !prev.height)) {
+              prev.width = item.width;
+              prev.height = item.height;
+            }
+          }
+          return;
         }
+        seenUrls.add(item.url);
+        allMedia.push(item);
       };
 
       for (const item of interceptedMedia) addUnique(item);
-      for (const item of pagedMedia) addUnique(item);
-      for (const item of renderedHtmlMedia) addUnique(item);
+      for (const item of pagedMedia) addUnique({ ...item, source: item.source ?? "api-json" });
+      for (const item of renderedHtmlMedia) addUnique({ ...item, source: item.source ?? "rendered-html" });
 
       for (const src of domResult.videos) {
-        addUnique({ url: src, type: "video", width: null, height: null });
+        addUnique({ url: src, type: "video", width: null, height: null, source: "dom" });
       }
       for (const src of domResult.images) {
-        addUnique({ url: src, type: "image", width: null, height: null });
+        addUnique({ url: src, type: "image", width: null, height: null, source: "dom" });
       }
 
       // Server-side metadata may already hold a trusted video URL (og:video
       // or embedded page JSON). Seed it first so video posts are covered
       // even when the browser pass finds nothing new.
       if (fetchMeta.ogVideo && !seenUrls.has(fetchMeta.ogVideo)) {
-        addUnique({ url: fetchMeta.ogVideo, type: "video", width: null, height: null });
+        addUnique({ url: fetchMeta.ogVideo, type: "video", width: null, height: null, source: "prefetch-og" });
       }
       if (fetchMeta.ogImage && !seenUrls.has(fetchMeta.ogImage)) {
         if (!isStory || !isLikelyProfileImageUrl(fetchMeta.ogImage)) {
-          addUnique({ url: fetchMeta.ogImage, type: "image", width: null, height: null });
+          addUnique({ url: fetchMeta.ogImage, type: "image", width: null, height: null, source: "prefetch-og" });
         }
       }
 
@@ -2603,9 +2758,13 @@ export class PuppeteerProvider extends BaseProvider {
       const contentType = this.detectContentType(url);
 
       // Validate and filter. Reel/video pages must never degrade to a poster
-      // or profile image when no playable video was exposed.
+      // or profile image when no playable video was exposed. Every drop is
+      // tallied by machine-readable reason (never the URL) for production
+      // diagnostics.
       const validMedia: MediaItem[] = [];
+      const originByUrl = new Map<string, ExtractedMedia>();
       for (const item of allMedia) {
+        originByUrl.set(item.url, item);
         if (this.validateMediaUrl(item.url)) {
           validMedia.push({
             url: item.url,
@@ -2621,35 +2780,86 @@ export class PuppeteerProvider extends BaseProvider {
                 : null,
             format: item.type === "video" ? "mp4" : null,
           });
+        } else {
+          const reason = classifyNormalizationRejection(item.url);
+          normalizationRejections[reason] = (normalizationRejections[reason] ?? 0) + 1;
         }
       }
 
       // Reel/video pages accept ONLY verified playable video candidates:
       // an image/thumbnail/HTML URL must never become the video source.
-      // Verification tallies (reason counts + CDN hosts, never signed URLs)
-      // explain exactly why candidates were dropped.
+      //
+      // Two-tier acceptance (best first, never arbitrary):
+      //   1. Probe-verified: the bounded ranged-GET confirms video/*, an MP4
+      //      container header, and a non-degenerate size. Largest first.
+      //   2. Trusted network capture: Chromium already received video bytes
+      //      for this exact URL (resourceType "media" or video/*, HTTP
+      //      200/206, trusted CDN host). Used ONLY when no probe passes —
+      //      serverless egress can fail a re-probe for a URL the browser
+      //      demonstrably delivered. The URL (with its signed query) is
+      //      returned exactly as captured.
+      //
+      // Safety is unchanged: javascript:/data:/blob:/localhost/private/
+      // non-http(s)/credentialed URLs never carry a trusted-capture source
+      // and still fail validation; duplicates were already removed above.
       const verifyTally: Record<string, number> = {};
+      const rejectionReasons: Record<string, number> = { ...normalizationRejections };
       let playableMedia: MediaItem[] = validMedia;
+      let verifiedByProbeCount = 0;
+      let trustedCaptureCount = 0;
+      // Provenance of the finally selected video (source + host only).
+      let selectedCandidateSource: string | null = null;
       if (contentType === "REEL" || contentType === "VIDEO") {
         const videoCandidates = validMedia.filter((item) => item.type === "video");
-        const verified = await Promise.all(
+        const probePassed: Array<{ item: MediaItem; size: number }> = [];
+        const captureFallback: Array<{ item: MediaItem; origin: ExtractedMedia }> = [];
+        await Promise.all(
           videoCandidates.map(async (item) => {
             const check = await verifyVideoCandidate(item.url);
             verifyTally[check.reason] = (verifyTally[check.reason] ?? 0) + 1;
-            return check.ok ? { item, size: check.contentLength ?? 0 } : null;
+            if (check.ok) {
+              probePassed.push({ item, size: check.contentLength ?? 0 });
+              return;
+            }
+            const origin = originByUrl.get(item.url);
+            if (origin && isTrustedNetworkCapture(origin)) {
+              captureFallback.push({ item, origin });
+              return;
+            }
+            // Rejected by both tiers: record WHY (probe reason slug).
+            rejectionReasons[check.reason] = (rejectionReasons[check.reason] ?? 0) + 1;
           })
         );
-        // Instagram publishes several renditions of the same Reel, including
-        // placeholder/stub ones. Every candidate is now proven playable, so
-        // the largest is the real video: lead with it instead of whichever
-        // URL the page happened to list first.
-        playableMedia = verified
-          .filter((entry): entry is { item: MediaItem; size: number } => entry !== null)
-          .sort((a, b) => b.size - a.size)
-          .map((entry) => entry.item);
+        probePassed.sort((a, b) => b.size - a.size);
+        verifiedByProbeCount = probePassed.length;
+        trustedCaptureCount = probePassed.length === 0 ? captureFallback.length : 0;
+        if (probePassed.length > 0) {
+          playableMedia = probePassed.map((entry) => entry.item);
+          const firstOrigin = originByUrl.get(playableMedia[0].url);
+          selectedCandidateSource = firstOrigin?.source ?? "probe-verified";
+        } else if (captureFallback.length > 0) {
+          // Discovery order preserved within the fallback tier.
+          playableMedia = captureFallback.map((entry) => entry.item);
+          selectedCandidateSource = captureFallback[0].origin.source ?? "network-video-response";
+          logger.info("Puppeteer assembly using trusted network capture (probe passed 0)", {
+            contentType,
+            captureFallbackCount: captureFallback.length,
+            verifyTally,
+            captureHost: hostnameOf(captureFallback[0].item.url),
+            captureContentType: captureFallback[0].origin.capturedContentType ?? null,
+            captureResourceType: captureFallback[0].origin.capturedResourceType ?? null,
+          });
+        } else {
+          playableMedia = [];
+          selectedCandidateSource = null;
+        }
+      } else if (validMedia.length > 0) {
+        const firstOrigin = originByUrl.get(validMedia[0]?.url ?? "");
+        selectedCandidateSource = firstOrigin?.source ?? null;
       }
 
       if (playableMedia.length === 0) {
+        const rejectedVideoCount = validMedia.filter((item) => item.type === "video").length;
         logger.error("Puppeteer NO_MEDIA_FOUND", {
           url: url.slice(0, 100),
           contentType,
@@ -2663,10 +2873,17 @@ export class PuppeteerProvider extends BaseProvider {
           challenge: fetchMeta.hasChallenge,
           ogVideoPresence: Boolean(fetchMeta.ogVideo),
           embeddedMediaCount: fetchMeta.embeddedMedia.length,
-          videoCandidateCount: validMedia.filter((item) => item.type === "video").length,
+          videoCandidateCount: rejectedVideoCount,
+          validVideoCandidateCount: rejectedVideoCount,
+          rejectedCandidateCount: rejectedVideoCount,
           interceptedMediaCount: interceptedMedia.length,
           cdnMediaCount: capturedCdnMediaUrlCount,
           verifyTally,
+          rejectionReasons,
+          normalizationRejections,
+          duplicateCount,
+          verifiedByProbeCount,
+          trustedCaptureCount,
           hasSession: isInstagramSessionConfigured(),
           domVideoCount: domResult.videos.length,
           domImageCount: domResult.images.length,
@@ -2695,10 +2912,20 @@ export class PuppeteerProvider extends BaseProvider {
           throw createError("AUDIO_NO_SOURCE");
         }
         if (noVideoKind === "REEL" || noVideoKind === "VIDEO") {
-          throw videoFailure("assembly-no-playable-video", {
-            count: validMedia.length,
-            types: [...new Set(validMedia.map((m) => m.type))],
-          });
+          throw videoFailure(
+            "assembly-no-playable-video",
+            {
+              count: validMedia.length,
+              types: [...new Set(validMedia.map((m) => m.type))],
+            },
+            {
+              validVideoCount: validMedia.filter((m) => m.type === "video").length,
+              rejectedCount: validMedia.filter((m) => m.type === "video").length,
+              rejectionReasons,
+              verifiedByProbe: verifiedByProbeCount,
+              trustedCapture: trustedCaptureCount,
+            }
+          );
         }
         if (noVideoKind === "STORY") {
           logger.warn("STORY_SOURCE_UNAVAILABLE", {
@@ -2767,6 +2994,15 @@ export class PuppeteerProvider extends BaseProvider {
         finalCount: orderedMedia.length,
         hasVideo: validMedia.some((m) => m.type === "video"),
         selectedType: orderedMedia[0]?.type ?? null,
+        // Production assembly diagnostics: how the playable video was proven
+        // and where it came from. Host only — never query, tokens, or cookies.
+        validVideoCandidateCount: validMedia.filter((m) => m.type === "video").length,
+        verifiedByProbeCount,
+        trustedCaptureCount,
+        rejectionReasons,
+        selectedCandidateSource,
+        selectedMediaHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
+        verifyTally,
         duration: Date.now() - startTime,
         // Timing diagnostics: where the time actually went, so a slow resolve
         // is attributed instead of guessed.
