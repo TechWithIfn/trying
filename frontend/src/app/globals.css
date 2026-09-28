@@ -1,0 +1,1037 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f5f4fa;
+  --bg-elevated: #ffffff;
+  --fg: #14141c;
+  --fg-muted: #5b5b6e;
+  /* #6e6d80 is the lightest gray passing WCAG 1.4.3 (4.5:1) on both white
+     cards (5.05) and the page background (4.61). Do not lighten. */
+  --fg-subtle: #6e6d80;
+  --border: rgba(20, 20, 40, 0.08);
+  --border-light: #f0eeeb;
+  --card: #ffffff;
+  --card-hover: #fefefe;
+  --primary: #7c4df5;
+  --primary-hover: #6a3de0;
+  /* Small text on tinted surfaces must use --primary-strong (#6a3de0 passes
+     4.5:1 on the primary tint, white, and page bg). --primary itself stays
+     for graphics, borders, and large/white-on-brand uses. */
+  --primary-strong: #6a3de0;
+  --primary-light: rgba(124, 77, 245, 0.10);
+  --primary-faint: #f5f3ff;
+  --accent: #ec5fa8;
+  --accent-hover: #d94e97;
+  --accent-light: #fff1f7;
+  --brand-orange: #f58e5b;
+  --brand-gradient: linear-gradient(135deg, #7c4df5 0%, #c255d8 50%, #f58e5b 100%);
+  --brand-gradient-text: linear-gradient(90deg, #7c4df5, #ec5fa8);
+  --accent-tint-purple: rgba(124, 77, 245, 0.10);
+  --accent-tint-purple-border: rgba(124, 77, 245, 0.25);
+  --accent-tint-orange: rgba(245, 142, 91, 0.14);
+  --accent-tint-orange-border: rgba(245, 142, 91, 0.30);
+  --success: #059669;
+  --success-light: #ecfdf5;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --dark: #0f172a;
+  --dark-elevated: #1e293b;
+  --dark-muted: #94a3b8;
+  --dark-border: #1e293b;
+  --focus-ring: rgba(124, 77, 245, 0.4);
+  --shadow-xs: 0 1px 2px rgba(15, 15, 20, 0.03);
+  --shadow-sm: 0 1px 3px rgba(15, 15, 20, 0.06), 0 1px 2px rgba(15, 15, 20, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 15, 20, 0.06), 0 2px 4px -2px rgba(15, 15, 20, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 15, 20, 0.07), 0 4px 6px -4px rgba(15, 15, 20, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 15, 20, 0.08), 0 8px 10px -6px rgba(15, 15, 20, 0.04);
+  --shadow-card: 0 8px 30px rgba(60, 40, 120, 0.08);
+  --shadow-card-hover: 0 12px 36px rgba(60, 40, 120, 0.12);
+  --shadow-brand: 0 10px 30px rgba(124, 77, 245, 0.30);
+  --shadow-focus: 0 0 0 3px var(--focus-ring);
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-card: 20px;
+  --radius-pill: 9999px;
+  --font-sans: var(--font-poppins), system-ui, -apple-system, sans-serif;
+  --font-accent: var(--font-lora), Georgia, serif;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-light: var(--primary-light);
+  --color-primary-faint: var(--primary-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-light: var(--accent-light);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-danger: var(--danger);
+  --color-danger-light: var(--danger-light);
+  --color-dark: var(--dark);
+  --color-dark-elevated: var(--dark-elevated);
+  --color-dark-muted: var(--dark-muted);
+  --color-dark-border: var(--dark-border);
+  --color-focus-ring: var(--focus-ring);
+  --font-sans: var(--font-poppins);
+  --font-accent: var(--font-lora);
+}
+
+/* Dark theme via data-theme attribute */
+[data-theme="dark"] {
+  --bg: #0e0c1b;
+  --bg-elevated: rgba(255, 255, 255, 0.05);
+  --fg: #f4f3fa;
+  --fg-muted: #a9a8bc;
+  /* Dark surface equivalent: #8f8da3 passes 4.5:1 on the dark bg (5.99)
+     and dark cards (5.61). */
+  --fg-subtle: #8f8da3;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.06);
+  --card: rgba(255, 255, 255, 0.05);
+  --card-hover: rgba(255, 255, 255, 0.08);
+  --primary: #a17dff;
+  --primary-hover: #b89cff;
+  --primary-strong: #b89cff;
+  --primary-light: rgba(161, 125, 255, 0.15);
+  --primary-faint: rgba(161, 125, 255, 0.08);
+  --accent: #f479c0;
+  --accent-hover: #f9a0d4;
+  --accent-light: rgba(244, 121, 192, 0.15);
+  --brand-orange: #ffaa7a;
+  --accent-tint-purple: rgba(161, 125, 255, 0.12);
+  --accent-tint-purple-border: rgba(161, 125, 255, 0.25);
+  --accent-tint-orange: rgba(255, 170, 122, 0.14);
+  --accent-tint-orange-border: rgba(255, 170, 122, 0.25);
+  --success: #34d399;
+  --success-light: #0d2818;
+  --danger: #f87171;
+  --danger-light: #2d1215;
+  --dark: #0f172a;
+  --dark-elevated: #1e293b;
+  --dark-muted: #94a3b8;
+  --focus-ring: rgba(161, 125, 255, 0.4);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.25);
+  --shadow-card-hover: 0 12px 36px rgba(0, 0, 0, 0.30);
+  --shadow-brand: 0 10px 30px rgba(124, 77, 245, 0.18);
+}
+
+[data-theme="dark"] body::before {
+  background: radial-gradient(circle, rgba(244, 114, 182, 0.05) 0%, transparent 70%);
+}
+
+[data-theme="dark"] body::after {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.04) 0%, transparent 70%);
+}
+
+/* NOTE: no prefers-color-scheme fallback here on purpose.
+   Light Mode is the unconditional default; Dark Mode activates only from
+   an explicit saved user choice (data-theme="dark"). */
+
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  min-width: 320px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Layered radial glows */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 9999px;
+}
+
+body::before {
+  width: 800px;
+  height: 800px;
+  top: -200px;
+  right: -150px;
+  background: radial-gradient(circle, rgba(244, 114, 182, 0.10) 0%, transparent 70%);
+}
+
+body::after {
+  width: 700px;
+  height: 700px;
+  top: -100px;
+  left: -200px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+::selection {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* WCAG 1.4.1: links inside prose are underlined (not color-only), so they
+   are distinguishable from surrounding text without relying on color.
+   Card/block navigation links are unaffected (not inside p/li). */
+main p a[href],
+main li a[href] {
+  text-decoration: underline;
+  text-decoration-color: rgba(124, 77, 245, 0.45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+main p a[href]:hover,
+main li a[href]:hover {
+  text-decoration-color: var(--primary);
+}
+
+/* Gradient button */
+.gradient-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--brand-gradient);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  border: none;
+  border-radius: 16px;
+  padding: 14px 32px;
+  cursor: pointer;
+  box-shadow: var(--shadow-brand);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+}
+
+.gradient-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px rgba(124, 77, 245, 0.36);
+}
+
+.gradient-btn:active {
+  transform: translateY(0);
+}
+
+.gradient-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Theme toggle */
+.theme-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 68px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 3px;
+  transition: background 0.2s ease;
+}
+
+.theme-toggle__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--brand-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(124, 77, 245, 0.25);
+}
+
+[data-theme="dark"] .theme-toggle__thumb {
+  left: 35px;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Media mount/swap fade: opacity only (never layout), 180ms so slide
+   switches feel instant without a blink. Applied to player roots that
+   intentionally remount per source. */
+@keyframes media-mount {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.media-mount {
+  animation: media-mount 0.18s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-mount {
+    animation: none;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes subtle-float-1 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes subtle-float-2 {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(7px); }
+}
+
+.animate-float-1 {
+  animation: subtle-float-1 4.5s ease-in-out infinite;
+}
+
+.animate-float-2 {
+  animation: subtle-float-2 5.5s ease-in-out infinite;
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--border-light) 25%, var(--border) 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-250 { animation-delay: 250ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Scroll reveal */
+.fade-section {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fade-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-section {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@keyframes wave-bounce {
+  from {
+    transform: scaleY(0.5);
+  }
+  to {
+    transform: scaleY(1.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waveform-bar {
+    animation: none !important;
+  }
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Spec-compliant video caps: 70vh mobile / 560px desktop, object-contain
+   keeps media letterboxed (never cropped). Short viewports clamp further. */
+.media-frame {
+  max-height: 560px;
+}
+
+/* Natural image previews: the image's own ratio rules — never force a fixed
+   box (this beats the phone 9/16 rules below by specificity). Height stays
+   automatic so portrait/landscape/square each fit without empty space. */
+.result-video-wrap img.media-natural.media-frame {
+  aspect-ratio: auto;
+  height: auto;
+  max-width: 100%;
+}
+@media (max-width: 639.98px) {
+  .media-frame {
+    max-height: 70vh;
+    max-height: 70dvh;
+  }
+}
+@media (max-height: 780px) {
+  .media-frame {
+    max-height: calc(100vh - 360px);
+    max-height: calc(100dvh - 360px);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Mobile polish: 320px–430px phones (Android + iOS)
+   Desktop (sm+ / 640px+) is intentionally untouched.
+   ───────────────────────────────────────────── */
+
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+@supports not (overflow: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Media result: keep the preview and details balanced without allowing
+   metadata or controls to create overflow at narrow widths. */
+.result-card {
+  width: min(calc(100% - 32px), 900px);
+  padding: clamp(12px, 2vw, 20px);
+}
+
+.result-grid {
+  align-items: stretch;
+}
+
+.result-video-wrap {
+  min-width: 0;
+  width: 100%;
+}
+
+.result-video-wrap .media-frame {
+  width: min(100%, 380px);
+  max-height: none;
+  margin-inline: auto;
+  aspect-ratio: 9 / 16;
+}
+
+.result-video-wrap video {
+  object-fit: contain;
+}
+
+.result-details,
+.result-info,
+.result-actions {
+  min-width: 0;
+}
+
+.result-stats {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.result-stat {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.75fr) minmax(0, 1.25fr);
+  align-items: baseline;
+  gap: 12px;
+}
+
+.result-stat > :last-child {
+  min-width: 0;
+  text-align: right;
+}
+
+.result-actions > * {
+  min-height: 48px;
+  flex: 1 1 0%;
+}
+
+.mobile-nav-icon {
+  display: inline-flex;
+  height: 34px;
+  width: 34px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.mobile-drawer {
+  padding-top: var(--sat);
+  border-left: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.mobile-drawer-header {
+  min-height: 68px;
+}
+
+.mobile-drawer-nav {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+[data-theme="dark"] .mobile-drawer {
+  background: #151321;
+  border-left-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .mobile-drawer .text-fg {
+  color: #f4f3fa;
+}
+
+[data-theme="dark"] .mobile-drawer .text-fg-subtle {
+  color: #aaa7bd;
+}
+
+[data-theme="dark"] .mobile-drawer .border-border,
+[data-theme="dark"] .mobile-drawer .border-border-light {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 767.98px) {
+  .result-card {
+    width: calc(100% - 32px);
+    padding: clamp(12px, 4vw, 16px);
+  }
+
+  .result-video-wrap .media-frame {
+    width: min(100%, 320px);
+  }
+
+  .result-details {
+    gap: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .result-video-wrap .media-frame {
+    width: 100%;
+  }
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  padding-left: var(--sal);
+  padding-right: var(--sar);
+}
+
+/* Important mobile containers respect safe-area with 16px floor (spec 3) */
+.hero-section,
+.site-header-inner {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* Prevent iOS auto-zoom + Android overflow from long URLs */
+input,
+textarea {
+  max-width: 100%;
+}
+
+/* Keep media from ever forcing horizontal scroll */
+img,
+video,
+svg {
+  max-width: 100%;
+}
+
+/* Tab bar: buttery horizontal scroll on touch, hidden scrollbar */
+.tabs-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  scroll-padding-inline: 12px;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, black 92%, transparent 100%);
+}
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+.tabs-scroll > * {
+  scroll-snap-align: center;
+}
+
+/* Only phones */
+@media (max-width: 639.98px) {
+  /* Fluid, compact hero type — no fixed desktop sizes */
+  .hero-title-a,
+  .hero-title-b {
+    font-size: clamp(1.65rem, 8.4vw, 2.35rem) !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.01em;
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(0.875rem, 3.9vw, 0.95rem) !important;
+    line-height: 1.6 !important;
+    text-wrap: pretty;
+  }
+
+  /* Compact header: everything fits one row at 320px */
+  .site-header-inner {
+    height: calc(60px + var(--sat)) !important;
+    padding-top: var(--sat);
+    padding-left: max(0.75rem, var(--sal)) !important;
+    padding-right: max(0.75rem, var(--sar)) !important;
+    gap: 0.5rem;
+  }
+  .site-logo-badge {
+    height: 34px !important;
+    width: 34px !important;
+    border-radius: 10px !important;
+  }
+  .site-logo-badge svg {
+    height: 1rem !important;
+    width: 1rem !important;
+  }
+  .site-logo-text {
+    font-size: 1.1rem !important;
+  }
+  .site-icon-btn {
+    min-width: 40px !important;
+    height: 40px !important;
+    padding-left: 0.4rem !important;
+    padding-right: 0.4rem !important;
+  }
+  .site-icon-btn svg {
+    height: 1.1rem !important;
+    width: 1.1rem !important;
+  }
+
+  /* Compact theme toggle on phones (desktop keeps 68px) */
+  .theme-toggle {
+    width: 52px !important;
+    height: 30px !important;
+  }
+  .theme-toggle__thumb {
+    width: 23px !important;
+    height: 23px !important;
+  }
+  [data-theme="dark"] .theme-toggle__thumb {
+    left: 25px !important;
+  }
+
+  /* Hero spacing: comfortable vertical rhythm below sticky header */
+  .hero-section {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
+  }
+
+  /* URL card fits viewport with balanced gutters */
+  .url-card {
+    padding: 0.5rem !important;
+    border-radius: 18px !important;
+  }
+  .url-card input {
+    font-size: 16px !important; /* stops iOS zoom-on-focus */
+    min-width: 0;
+  }
+  .url-actions {
+    min-width: 0;
+  }
+  .url-actions > * {
+    min-width: 0;
+    min-height: 48px;
+    white-space: nowrap;
+  }
+  /* Plain `.gradient-btn` CSS beats Tailwind utilities in the cascade,
+     so its desktop 32px side padding must be overridden explicitly. */
+  .url-actions .gradient-btn {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    gap: 6px;
+  }
+  .url-actions .btn-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* MediaResult: balanced margins, never oversized video */
+  .result-card {
+    width: 100% !important;
+    max-width: min(100%, 400px) !important;
+    margin-inline: auto;
+    padding: 0.75rem !important;
+    border-radius: 22px !important;
+  }
+  .result-top-row {
+    gap: 0.5rem;
+  }
+  .result-username {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .result-video-wrap {
+    width: 100%;
+    max-width: 280px;
+    margin-inline: auto;
+  }
+  .result-video-wrap .media-frame {
+    aspect-ratio: 9 / 16;
+    max-height: min(56dvh, 480px);
+    margin-inline: auto;
+  }
+  .result-download {
+    min-height: 48px !important;
+    width: 100%;
+  }
+
+  /* Footer respects iPhone home indicator */
+  footer {
+    padding-bottom: calc(3rem + var(--sab)) !important;
+  }
+}
+
+/* Ultra-narrow: 320px–359px — tighten even further.
+   Width budget at 320px (~301px usable): logo ~118 + controls ~156 + gaps. */
+@media (max-width: 359.98px) {
+  .site-header-inner {
+    padding-left: max(0.6rem, var(--sal)) !important;
+    padding-right: max(0.6rem, var(--sar)) !important;
+    gap: 0.25rem !important;
+  }
+  .site-controls {
+    gap: 0 !important;
+  }
+  .site-icon-btn {
+    min-width: 36px !important;
+    height: 36px !important;
+  }
+  .site-menu-btn {
+    height: 36px !important;
+    width: 36px !important;
+  }
+  .theme-toggle {
+    width: 48px !important;
+  }
+  [data-theme="dark"] .theme-toggle__thumb {
+    left: 21px !important;
+  }
+  .site-logo-text {
+    font-size: 1rem !important;
+  }
+  .site-logo-badge {
+    height: 30px !important;
+    width: 30px !important;
+  }
+  .hero-title-a,
+  .hero-title-b {
+    font-size: clamp(1.5rem, 8.8vw, 2rem) !important;
+  }
+  .url-actions > * {
+    font-size: 13px !important;
+    padding-left: 0.6rem !important;
+    padding-right: 0.6rem !important;
+  }
+  .result-card {
+    padding: 0.625rem !important;
+  }
+  .result-video-wrap {
+    max-width: 248px;
+  }
+  /* Tabs: keep Reels / Videos / Photos in one view at 320px */
+  .tabs-scroll {
+    gap: 2px !important;
+  }
+  .tabs-scroll > button {
+    padding-left: 0.625rem !important;
+    padding-right: 0.625rem !important;
+    font-size: 12px !important;
+    min-height: 40px !important;
+  }
+}
+
+/* Short landscape phones: keep 9:16 video reachable */
+@media (max-width: 639.98px) and (max-height: 500px) {
+  .result-video-wrap .media-frame {
+    max-height: 78dvh;
+  }
+}
+
+/* Notched iPhones: drawer + dropdown clear the sensor housing */
+@media (max-width: 639.98px) {
+  .mobile-drawer-header {
+    padding-top: max(0.75rem, var(--sat));
+  }
+}
+
+/* Result preview layout */
+.result-card {
+  width: min(calc(100% - 32px), 980px);
+  padding: clamp(12px, 2vw, 20px);
+}
+
+.result-grid {
+  align-items: start;
+}
+
+.result-video-wrap {
+  align-self: start;
+}
+
+.result-video-wrap .media-frame {
+  width: min(100%, 340px);
+  max-height: 520px;
+  margin-inline: auto;
+}
+
+.result-details {
+  height: fit-content;
+}
+
+.result-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1023.98px) {
+  .result-video-wrap {
+    max-width: 360px;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .result-card {
+    width: calc(100% - 32px);
+    padding: 10px;
+  }
+
+  .result-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .result-details {
+    display: contents;
+  }
+
+  .result-info {
+    order: 3;
+    padding: 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .result-video-wrap {
+    order: 1;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .result-video-wrap .media-frame {
+    width: clamp(200px, 58vw, 240px);
+    max-height: none;
+    margin-inline: auto;
+  }
+
+  .result-info .result-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px !important;
+  }
+
+  .result-info .result-stat {
+    display: block;
+    min-width: 0;
+    padding: 8px 10px !important;
+  }
+
+  .result-info .result-stat > :last-child {
+    margin-top: 2px;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .result-actions {
+    order: 2;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .result-actions > * {
+    min-height: 44px;
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  .result-actions + p {
+    order: 4;
+    margin-top: 0;
+  }
+
+  .result-top-row {
+    margin-bottom: 8px !important;
+  }
+
+  .result-title {
+    margin-bottom: 0.25rem;
+    overflow-wrap: anywhere;
+  }
+
+  .result-card > div > p {
+    padding-bottom: 8px;
+  }
+
+  .result-info p {
+    max-width: 100%;
+  }
+
+  .result-info .result-stat p {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 379.98px) {
+  .result-info .result-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .result-details {
+    display: flex;
+  }
+
+  .result-video-wrap .media-frame {
+    width: min(100%, 380px);
+  }
+}
