@@ -592,8 +592,38 @@ function formatBytes(size: number | null | undefined): string {
 }
 
 function formatResolution(w: number | null | undefined, h: number | null | undefined): string {
-  if (typeof w === "number" && w > 0 && typeof h === "number" && h > 0) return `${w}×${h}`;
+  if (typeof w === "number" && w > 0 && typeof h === "number" && h > 0) return `${w} × ${h}`;
   return "Unknown";
+}
+
+/**
+ * True only for a directly playable remote video URL: a non-empty http(s)
+ * string. Rejects javascript:/data:/blob: and other non-http(s) schemes so
+ * an unsafe or empty value can never be mounted into a <video> element
+ * (which would instantly error and show "Preview unavailable").
+ */
+function isPlayableVideoUrl(u: unknown): u is string {
+  if (typeof u !== "string") return false;
+  const v = u.trim();
+  if (!v) return false;
+  try {
+    const parsed = new URL(v);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A poster is only passed to <video> when it is a plausible remote image:
+ * non-empty http(s) URL, never blob:/data:/javascript:. Query-signed CDN
+ * URLs carry no file extension, so no extension is required.
+ */
+function isValidImagePoster(u: unknown): u is string {
+  if (!isPlayableVideoUrl(u)) return false;
+  const v = u.trim().toLowerCase();
+  if (v.endsWith(".mp4") || v.includes(".mp4?") || v.includes(".mp4#")) return false;
+  return true;
 }
 
 function formatMetaDuration(d: number | null | undefined, fallback: number | null): string {
@@ -853,6 +883,15 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
   // Media stream URL through our proxy (source allows stale-URL recovery)
   const streamSrc = currentMedia ? getStreamUrl(currentMedia.url, result.sourceUrl) : "";
 
+  // Preview source selection from the actual API shape (media.url): a video
+  // item always previews through <VideoPlayer> and is never rendered as an
+  // image. The URL must be a playable http(s) value — otherwise the shared
+  // "Preview unavailable" tile is shown instead of mounting a broken player.
+  const isVideoItem = currentMedia?.type === "video";
+  const playableVideoSrc = isVideoItem && isPlayableVideoUrl(currentMedia?.url) ? streamSrc : "";
+  const rawPoster = currentMedia?.thumbnail ?? undefined;
+  const validPoster = isValidImagePoster(rawPoster) ? rawPoster : undefined;
+
   // Reserve the image's own ratio before the bytes arrive (CLS fix): with
   // width 100% + aspect-ratio, the box has its final height pre-load, so
   // neither the first paint nor slide switches move surrounding layout.
@@ -1042,22 +1081,34 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 )}
                 {audioUrl && <AudioPlayer src={audioUrl} onDurationChange={(d) => setAudioDuration(d)} />}
               </>
-            ) : !currentMedia ? null : currentMedia.type === "video" ? (
-              // NOTE: keying by URL intentionally remounts per source. That
-              // resets playing/time/mute state for the new video AND unmounts
-              // the old <video> element, which stops its decode — so the
-              // previous video can never keep playing (or play simultaneously)
-              // after a slide switch, a new search, or leaving the preview.
-              <VideoPlayer
-                key={currentMedia.url}
-                src={streamSrc}
-                poster={currentMedia.thumbnail || undefined}
-                mediaType={currentMedia.type}
-                width={currentMedia.width}
-                height={currentMedia.height}
-                onDurationChange={(d) => setRealDuration(d)}
-                onResolution={(w, h) => setRealResolution({ w, h })}
-              />
+            ) : !currentMedia ? null : isVideoItem ? (
+              playableVideoSrc ? (
+                // NOTE: keying by the full proxied source intentionally remounts
+                // per source. That resets playing/time/mute/error state for the
+                // new video AND unmounts the old <video> element, which stops
+                // its decode — so the previous video can never keep playing (or
+                // play simultaneously) after a slide switch, a URL refresh, a
+                // new search, or leaving the preview. A stale/expired signed
+                // URL therefore can never linger and wrongly report
+                // "Preview unavailable" for a valid video.
+                <VideoPlayer
+                  key={playableVideoSrc}
+                  src={playableVideoSrc}
+                  poster={validPoster}
+                  mediaType={currentMedia.type}
+                  width={currentMedia.width}
+                  height={currentMedia.height}
+                  onDurationChange={(d) => setRealDuration(d)}
+                  onResolution={(w, h) => setRealResolution({ w, h })}
+                />
+              ) : (
+                <div className="flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-[20px] bg-black/5">
+                  <ImageIcon className="h-10 w-10" style={{ color: "var(--fg-subtle)", opacity: 0.4 }} />
+                  <p className="text-xs" style={{ color: "var(--fg-subtle)" }}>
+                    {t.result.previewUnavailable}
+                  </p>
+                </div>
+              )
             ) : imgFailed ? (
               <div className="flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-[20px] bg-black/5">
                 <ImageIcon className="h-10 w-10" style={{ color: "var(--fg-subtle)", opacity: 0.4 }} />
