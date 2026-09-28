@@ -7,6 +7,7 @@ import { KeyedConcurrency, getGate } from "../lib/capacity.js";
 import { readBoundedInt } from "../lib/env.js";
 import {
   validateProxyUrl,
+  type ValidatedUrl,
   getClientIp,
   fetchUpstreamMediaResilient,
   isHtmlContent,
@@ -42,6 +43,51 @@ function parseRangeHeader(header: string | undefined): ParsedRange | null {
   const end = endStr === "" ? null : parseInt(endStr, 10);
   if (end !== null && (isNaN(end) || end < start)) return null;
   return { start, end };
+}
+
+interface UpstreamRange {
+  start: number;
+  end: number;
+  total: number | null;
+}
+
+/**
+ * Parse an upstream `Content-Range` (`bytes 0-1023/1234567`, `bytes 0-1023/*`).
+ * Null when absent or malformed: a 206 without a parseable range can never
+ * be trusted to satisfy the browser.
+ */
+function parseContentRange(header: string | null | undefined): UpstreamRange | null {
+  if (!header) return null;
+  const match = /^bytes\s+(\d+)-(\d+)\/(\d+|\*)$/.exec(header.trim());
+  if (!match) return null;
+  const start = parseInt(match[1], 10);
+  const end = parseInt(match[2], 10);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start) return null;
+  const total = match[3] === "*" ? null : parseInt(match[3], 10);
+  if (total !== null && (!Number.isSafeInteger(total) || total <= 0 || end >= total)) return null;
+  return { start, end, total };
+}
+
+/**
+ * True only when the upstream 206 actually answers the browser's Range
+ * request. The browser's HTTP Range header is the authority here — never the
+ * Instagram CDN URL's embedded bytestart/byteend slice (those query params
+ * are part of the signed URL and are preserved verbatim, but they must not
+ * be mistaken for the browser's range). A suffix/unknown Range form (which
+ * parseRangeHeader declines) was forwarded verbatim upstream, so a
+ * well-formed upstream range is accepted as its answer.
+ */
+function upstreamSatisfiesBrowser(
+  upstream: UpstreamRange | null,
+  rawRange: string | undefined,
+  clientRange: ParsedRange | null
+): boolean {
+  if (!upstream) return false;
+  if (!rawRange) return false; // unsolicited 206: the browser expected 200
+  if (!clientRange) return true; // suffix form, answered verbatim upstream
+  if (upstream.start > clientRange.start) return false;
+  if (clientRange.end !== null && upstream.end < clientRange.end) return false;
+  return true;
 }
 
 function looksLikeMediaBytes(firstBytes: Uint8Array): boolean {
@@ -294,7 +340,7 @@ function logStreamDiag(
   });
 }
 
-router.get("/", async (req: Request, res: ExpressResponse): Promise<void> => {
+async function serveStream(req: Request, res: ExpressResponse): Promise<void> {
   const requestId = generateToken();
   const ip = getClientIp(req);
 
@@ -337,7 +383,75 @@ router.get("/", async (req: Request, res: ExpressResponse): Promise<void> => {
     res.off("close", onClose);
     perIpStream.release(ip);
   }
-});
+}
+
+router.get("/", serveStream);
+// HEAD uses the same pipeline (same validation, rate limit and budget);
+// handleStream answers it with headers only and no body.
+router.head("/", serveStream);
+
+/**
+ * Explicit HEAD support: some clients probe headers before streaming. A
+ * single 1-byte upstream range reveals the total object size (via its
+ * Content-Range) without ever downloading media; the byte is discarded and
+ * only headers are answered. Never sends a body.
+ */
+async function handleHead(
+  req: Request,
+  res: ExpressResponse,
+  requestId: string,
+  validation: ValidatedUrl,
+  signal: AbortSignal
+): Promise<void> {
+  const probe = await fetchUpstreamMediaResilient(validation.url, {
+    timeoutMs: UPSTREAM_TIMEOUT_MS,
+    rangeHeader: "bytes=0-0",
+    tag: "STREAM",
+    requestId,
+    sourceUrl: req.query.source,
+    signal,
+  });
+  if (probe.status.kind === "timeout") {
+    res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
+    return;
+  }
+  if (probe.status.kind === "client-gone") {
+    return;
+  }
+  if (probe.status.kind === "bad-redirect" || probe.status.kind === "network-error") {
+    res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+    return;
+  }
+  const upstream = probe.status.response;
+  if (upstream.status === 401 || upstream.status === 403 || upstream.status === 404) {
+    await upstream.body?.cancel().catch(() => {});
+    const expired = createError("MEDIA_URL_EXPIRED");
+    res.status(expired.statusCode).json(expired.toResponse());
+    return;
+  }
+  const upstreamCT = upstream.headers.get("content-type") || "";
+  const isVideo = upstreamCT.includes("video") || validation.url.includes(".mp4");
+  res.setHeader("Content-Type", isVideo ? "video/mp4" : upstreamCT || "application/octet-stream");
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Request-Id", requestId);
+  if (upstream.status === 206) {
+    const upRange = parseContentRange(upstream.headers.get("content-range"));
+    await upstream.body?.cancel().catch(() => {});
+    if (upRange?.total) res.setHeader("Content-Length", String(upRange.total));
+    res.status(200).end();
+    return;
+  }
+  if (upstream.status === 200) {
+    const length = upstream.headers.get("content-length");
+    await upstream.body?.cancel().catch(() => {});
+    if (length) res.setHeader("Content-Length", length);
+    res.status(200).end();
+    return;
+  }
+  await upstream.body?.cancel().catch(() => {});
+  res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+}
 
 async function handleStream(
   req: Request,
@@ -363,6 +477,12 @@ async function handleStream(
       res.status(validation.error === "DISALLOWED_HOST" || validation.error === "PRIVATE_HOST" ? 403 : 400).json(
         createErrorResponse(validation.error === "MISSING" ? "VALIDATION_ERROR" : "INVALID_URL")
       );
+      return;
+    }
+
+    // Header-only probe: no body is ever streamed for HEAD.
+    if (req.method === "HEAD") {
+      await handleHead(req, res, requestId, validation.value, signal);
       return;
     }
 
@@ -396,7 +516,10 @@ async function handleStream(
       return;
     }
 
-    const { response, finalUrl } = upstream;
+    const { finalUrl } = upstream;
+    // Reassignable: on an upstream range mismatch (below) the sliced 206 is
+    // discarded and the full object is fetched instead.
+    let response = upstream.response;
     const firstByteMs = Date.now() - upstreamStart;
     logger.info("[STREAM] upstream status", {
       requestId,
@@ -441,7 +564,7 @@ async function handleStream(
     }
 
     const isVideo = upstreamCT.includes("video") || validation.value.url.includes(".mp4");
-    const contentType = isVideo ? "video/mp4" : upstreamCT || "application/octet-stream";
+    let contentType = isVideo ? "video/mp4" : upstreamCT || "application/octet-stream";
 
     if (!response.body) {
       logger.warn("[STREAM] empty upstream body", { requestId });
@@ -454,17 +577,98 @@ async function handleStream(
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Request-Id", requestId);
 
-    // Case 1: upstream honored the range — forward 206 as-is
+    // Case 1: upstream honored the browser's range — forward 206 as-is.
+    // The upstream range MUST cover what the browser asked for. Instagram's
+    // CDN URLs carry their own embedded bytestart/byteend slice parameters;
+    // when the edge answers with that slice instead of the requested Range
+    // (e.g. `bytes 818-909/...` for a `bytes=0-...` request), forwarding it
+    // would hand the <video> element bytes it cannot use. Never forward a
+    // mismatched 206 — fall through to the full-fetch recovery below.
     if (response.status === 206) {
-      const contentRange = response.headers.get("content-range");
-      const contentLength = response.headers.get("content-length");
-      if (contentRange) res.setHeader("Content-Range", contentRange);
-      if (contentLength) res.setHeader("Content-Length", contentLength);
-      res.status(206);
-      logger.info("[STREAM] forwarding 206 partial content", { requestId, contentRange });
-      const result = await pipeUpstreamToClient(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal);
-      logger.info("[STREAM] 206 stream completed", { requestId, bytes: result.bytes });
-      logStreamDiag(requestId, { status: 206, mode: "upstream-range", contentType, bytes: result.bytes });
+      const upRange = parseContentRange(response.headers.get("content-range"));
+      if (upRange && upstreamSatisfiesBrowser(upRange, req.headers.range, clientRange)) {
+        const contentRange = response.headers.get("content-range") as string;
+        res.setHeader("Content-Range", contentRange);
+        const contentLength = response.headers.get("content-length");
+        res.setHeader(
+          "Content-Length",
+          contentLength ?? String(upRange.end - upRange.start + 1)
+        );
+        res.status(206);
+        logger.info("[STREAM] forwarding 206 partial content", { requestId, contentRange });
+        const result = await pipeUpstreamToClient(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal);
+        logger.info("[STREAM] 206 stream completed", { requestId, bytes: result.bytes });
+        logStreamDiag(requestId, { status: 206, mode: "upstream-range", contentType, bytes: result.bytes });
+        return;
+      }
+      // Mismatch recovery: discard the unusable slice and fetch the full
+      // object (no Range), then satisfy the browser's range locally via
+      // Case 2/3 below. The signed CDN URL is reused exactly as received —
+      // no parameter is stripped or rewritten.
+      await response.body?.cancel().catch(() => {});
+      logger.warn("[STREAM] upstream range mismatch, refetching full object", {
+        requestId,
+        rangeRequested: req.headers.range ?? null,
+        upstreamContentRange: response.headers.get("content-range"),
+      });
+      const refetch = await fetchUpstreamMediaResilient(validation.value.url, {
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+        tag: "STREAM",
+        requestId,
+        sourceUrl: req.query.source,
+        signal,
+      });
+      if (refetch.status.kind === "timeout") {
+        res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
+        return;
+      }
+      if (refetch.status.kind === "client-gone") {
+        logger.info("[STREAM] client gone before range recovery", { requestId });
+        return;
+      }
+      if (refetch.status.kind === "bad-redirect" || refetch.status.kind === "network-error") {
+        res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+        return;
+      }
+      const full = refetch.status.response;
+      if (full.status === 401 || full.status === 403 || full.status === 404) {
+        await full.body?.cancel().catch(() => {});
+        res.status(createError("MEDIA_URL_EXPIRED").statusCode).json(createError("MEDIA_URL_EXPIRED").toResponse());
+        return;
+      }
+      if (full.status !== 200) {
+        // Still no full object (e.g. the edge keeps serving its embedded
+        // slice): the URL cannot satisfy range playback. Report it as an
+        // expired/unusable link — never a lying 206.
+        await full.body?.cancel().catch(() => {});
+        logger.warn("[STREAM] range recovery failed, upstream status", {
+          requestId,
+          status: full.status,
+        });
+        res.status(createError("MEDIA_URL_EXPIRED").statusCode).json(createError("MEDIA_URL_EXPIRED").toResponse());
+        return;
+      }
+      const fullCT = full.headers.get("content-type") || "";
+      if (isHtmlContent(fullCT)) {
+        await full.body?.cancel().catch(() => {});
+        logger.warn("[STREAM] range recovery hit HTML masquerading as media", { requestId });
+        res.status(createError("MEDIA_URL_EXPIRED").statusCode).json(createError("MEDIA_URL_EXPIRED").toResponse());
+        return;
+      }
+      if (!full.body) {
+        res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+        return;
+      }
+      response = full;
+      const recoveredVideo = fullCT.includes("video") || validation.value.url.includes(".mp4");
+      contentType = recoveredVideo ? "video/mp4" : fullCT || "application/octet-stream";
+      res.setHeader("Content-Type", contentType);
+    }
+
+    // Re-narrow after a possible recovery reassignment above.
+    if (!response.body) {
+      logger.warn("[STREAM] empty upstream body", { requestId });
+      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
       return;
     }
 
