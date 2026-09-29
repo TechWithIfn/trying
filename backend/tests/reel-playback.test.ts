@@ -710,7 +710,51 @@ describe("reel video playback pipeline", () => {
     ).toBeNull();
   });
 
-  it("8k. Paired audioUrl survives enrich + dedupe in the resolve pipeline", async () => {
+  it("8k. Probe ignores Instagram's embedded bytestart/byteend slice (unit)", async () => {
+    // Instagram's CDN answers a Range request with the slice baked into the
+    // signed URL instead of the requested range, so the probe received a 56-byte
+    // sidx fragment instead of the file head. That made the container check read
+    // the wrong bytes and reported the SLICE length as the candidate's total
+    // size, so "largest rendition wins" compared slice lengths. Only those two
+    // params may be dropped; every other signed param must survive verbatim.
+    const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
+    stubUpstreamFetch();
+    stubPolicy.getPlan = [];
+    const sliced =
+      "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/sliced.mp4?oh=00&oe=AB&bytestart=824&byteend=927";
+    const seen: string[] = [];
+    const inner = vi.fn(async (input: unknown, init?: unknown) => {
+      const url = String(input);
+      if (url.startsWith("http://127.0.0.1:") || url.startsWith("http://localhost:")) {
+        return globalThis.fetch(input as string, init as RequestInit);
+      }
+      seen.push(url);
+      const bytes = mp4WithTrack("vide", 200 * 1024);
+      const slice = bytes.subarray(0, 65_536);
+      return new Response(slice as unknown as BodyInit, {
+        status: 206,
+        headers: {
+          "content-type": "video/mp4",
+          "content-range": `bytes 0-${slice.length - 1}/${bytes.length}`,
+          "content-length": String(slice.length),
+        },
+      });
+    });
+    vi.stubGlobal("fetch", inner as never);
+    const check = await verifyVideoCandidate(sliced);
+    expect(seen.length).toBeGreaterThan(0);
+    // The probe must not carry the embedded slice...
+    expect(seen[0]).not.toContain("bytestart");
+    expect(seen[0]).not.toContain("byteend");
+    // ...while the rest of the signature stays byte-identical.
+    expect(seen[0]).toContain("oh=00");
+    expect(seen[0]).toContain("oe=AB");
+    // The reported size is the real object, not the slice length.
+    expect(check.ok).toBe(true);
+    expect(check.contentLength).toBe(200 * 1024);
+  });
+
+  it("8l. Paired audioUrl survives enrich + dedupe in the resolve pipeline", async () => {
     // The pairing is decided by the provider, but the resolve pipeline rewrites
     // every media item (size probe, pathname dedupe). If either rebuilt the
     // object field-by-field the paired track would be silently dropped and the

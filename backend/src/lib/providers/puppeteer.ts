@@ -975,6 +975,36 @@ const VERIFY_PROBE_BYTES = 65_536;
  * unplayable file, so anything smaller than this is treated as not-a-video.
  */
 const MIN_PLAYABLE_VIDEO_BYTES = 16_384;
+/**
+ * Drop Instagram's embedded `bytestart`/`byteend` slice window from a CDN URL.
+ *
+ * Those two params tell the edge to answer with that slice INSTEAD of the
+ * requested Range, so an unmodified probe received a 56-byte `sidx` fragment
+ * rather than the real file head. Two things broke because of it:
+ *
+ *  - the container header was read from the wrong bytes, and
+ *  - `Content-Length`/`Content-Range` described the slice, not the object, so
+ *    the "largest rendition wins" ordering compared slice lengths.
+ *
+ * Every other signed param (`oh`, `oe`, `_nc_*`, `efg`) is left byte-identical,
+ * matching the streaming route, which already relies on this being safe.
+ * Returns the input unchanged when it carries no slice.
+ */
+function withoutEmbeddedByteSlice(rawUrl: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return rawUrl;
+  }
+  if (!parsed.searchParams.has("bytestart") || !parsed.searchParams.has("byteend")) {
+    return rawUrl;
+  }
+  parsed.searchParams.delete("bytestart");
+  parsed.searchParams.delete("byteend");
+  return parsed.toString();
+}
+
 /** Leading ISO-BMFF box types that identify real MP4 media. */
 const MP4_BOX_TYPES = ["ftyp", "styp", "moov", "moof", "sidx", "emsg", "free", "skip"] as const;
 
@@ -1116,7 +1146,7 @@ function mp4TrackHandler(bytes: Uint8Array, trak: Mp4Box): string | null {
  * Returns null when the `moov` box is not fully inside the probe window, so a
  * real video that keeps its `moov` at the end of the file is never misjudged.
  */
-function mp4TrackKinds(bytes: Uint8Array): { video: boolean; audio: boolean } | null {
+export function mp4TrackKinds(bytes: Uint8Array): { video: boolean; audio: boolean } | null {
   if (bytes.length < 16) return null;
   let moov: Mp4Box | null = null;
   let o = 0;
@@ -1202,6 +1232,7 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
   } catch {
     return verifyFail("malformed-url");
   }
+  current = withoutEmbeddedByteSlice(current);
 
   for (let hop = 0; hop <= VERIFY_MAX_REDIRECTS; hop++) {
     let parsed: URL;
