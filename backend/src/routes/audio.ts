@@ -19,7 +19,7 @@ import { readBoundedInt } from "../lib/env.js";
 import {
   validateProxyUrl,
   getClientIp,
-  fetchUpstreamMedia,
+  fetchUpstreamMediaResilient,
   isHtmlContent,
 } from "../lib/media-proxy.js";
 import { isTrustedProviderMediaUrl } from "../lib/audio-provider.js";
@@ -31,6 +31,11 @@ const MAX_INPUT_BYTES = 100 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 20 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 60_000;
 const FFMPEG_TIMEOUT_MS = 60_000;
+// Bounded source-download attempts. The first attempt carries the CDN link from
+// resolve; a retry exists only for a transient transport failure or a truncated
+// body, and each retry re-runs the same bounded stale-URL recovery. Never an
+// open loop: a persistently unreachable source fails after the second attempt.
+const SOURCE_DOWNLOAD_ATTEMPTS = 2;
 const STALE_DIR_TTL_MS = 30 * 60 * 1000;
 const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -286,95 +291,184 @@ async function handleAudioRequest(
     }
     logger.info("[AUDIO] source validated", { requestId, hostname: sourceHost });
 
-    // --- 8. Download source video safely ---
+    // --- 8. Download the source video safely ---
+    //
+    // The CDN link handed over by resolve can be stale, and a serverless egress
+    // reset can cut the transfer short mid-body. Both used to end as one generic
+    // `AUDIO_UNAVAILABLE` 502, because a half-written file is non-zero: it
+    // passed the only size check that existed and was then handed to FFmpeg,
+    // which failed on bytes that were never a complete video. So:
+    //   - the fetch reuses /api/stream's stale-URL recovery (one re-resolve,
+    //     bounded, never a loop) instead of a bare single-shot request;
+    //   - a transport failure or a short read is retried, bounded;
+    //   - the written byte count is checked against the upstream
+    //     Content-Length, so a truncated download is reported as a download
+    //     failure and never decoded.
     await mkdir(tmpDir, { recursive: true });
     dirCreated = true;
 
-    const upstream = await fetchUpstreamMedia(sourceUrl, {
-      timeoutMs: UPSTREAM_TIMEOUT_MS,
-      tag: "AUDIO",
-      requestId,
-      signal,
-    });
+    let inputBytes = 0;
+    let sourceCT = "";
+    let upstreamStatus: number | null = null;
+    let downloaded = false;
 
-    if (upstream.kind === "client-gone") {
-      logger.info("[AUDIO] client gone before source download", { requestId });
-      return;
-    }
-    if (upstream.kind === "timeout") {
-      res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
-      return;
-    }
-    if (upstream.kind === "bad-redirect" || upstream.kind === "network-error") {
-      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
-      return;
-    }
+    for (let attempt = 1; attempt <= SOURCE_DOWNLOAD_ATTEMPTS; attempt++) {
+      const upstream = await fetchUpstreamMediaResilient(sourceUrl, {
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+        tag: "AUDIO",
+        requestId,
+        sourceUrl: parsed.normalized,
+        signal,
+      });
+      const status = upstream.status;
 
-    const { response: videoResponse } = upstream;
-    logger.info("[AUDIO] source status", { requestId, status: videoResponse.status });
-
-    if (videoResponse.status === 401 || videoResponse.status === 403 || videoResponse.status === 404) {
-      await videoResponse.body?.cancel().catch(() => {});
-      const expired = createError("MEDIA_URL_EXPIRED");
-      res.status(expired.statusCode).json(expired.toResponse());
-      return;
-    }
-    if (!videoResponse.ok) {
-      await videoResponse.body?.cancel().catch(() => {});
-      logger.warn("[AUDIO] source fetch failed", { requestId, status: videoResponse.status });
-      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
-      return;
-    }
-
-    const sourceCT = videoResponse.headers.get("content-type") || "";
-    logger.info("[AUDIO] source content-type", { requestId, contentType: sourceCT });
-    if (isHtmlContent(sourceCT)) {
-      await videoResponse.body?.cancel().catch(() => {});
-      logger.warn("[AUDIO] source is HTML, not media", { requestId });
-      const expired = createError("MEDIA_URL_EXPIRED");
-      res.status(expired.statusCode).json(expired.toResponse());
-      return;
-    }
-
-    const sourceLength = videoResponse.headers.get("content-length");
-    if (sourceLength && parseInt(sourceLength, 10) > MAX_INPUT_BYTES) {
-      await videoResponse.body?.cancel().catch(() => {});
-      res.status(413).json(createErrorResponse("REQUEST_TOO_LARGE"));
-      return;
-    }
-
-    // Stream the source straight to the temp file (never buffer the whole
-    // video in RAM) with a hard byte cap enforced after the pipe.
-    if (!videoResponse.body) {
-      logger.warn("[AUDIO] empty source body", { requestId });
-      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
-      return;
-    }
-    try {
-      // The source download is abortable: a client that leaves mid-transfer
-      // must not keep pulling 100 MB through the server to a dead socket.
-      await pipeline(
-        Readable.fromWeb(videoResponse.body as import("stream/web").ReadableStream<Uint8Array>),
-        createWriteStream(inputPath),
-        { signal }
-      );
-    } catch (pipeErr) {
-      if (pipeErr instanceof Error && pipeErr.name === "AbortError") {
-        if (signal.aborted) {
-          logger.info("[AUDIO] client gone during source download", { requestId });
-          return;
-        }
-        logger.warn("[AUDIO] source download timed out", { requestId });
+      if (status.kind === "client-gone") {
+        logger.info("[AUDIO] client gone before source download", { requestId });
+        return;
+      }
+      if (status.kind === "timeout") {
         res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
         return;
       }
-      throw pipeErr;
+      if (status.kind === "bad-redirect" || status.kind === "network-error") {
+        logger.warn("[AUDIO] source fetch failed", { requestId, attempt, kind: status.kind });
+        if (attempt === SOURCE_DOWNLOAD_ATTEMPTS) {
+          res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+          return;
+        }
+        continue;
+      }
+
+      const videoResponse = status.response;
+      upstreamStatus = videoResponse.status;
+      logger.info("[AUDIO] source status", {
+        requestId,
+        status: videoResponse.status,
+        attempt,
+        refreshed: upstream.refreshed,
+      });
+
+      // The resilient fetch already re-resolved once, so a still-expired link
+      // is terminal: report it truthfully instead of retrying again.
+      if (videoResponse.status === 401 || videoResponse.status === 403 || videoResponse.status === 404) {
+        await videoResponse.body?.cancel().catch(() => {});
+        const expired = createError("MEDIA_URL_EXPIRED");
+        res.status(expired.statusCode).json(expired.toResponse());
+        return;
+      }
+      if (!videoResponse.ok) {
+        await videoResponse.body?.cancel().catch(() => {});
+        logger.warn("[AUDIO] source fetch failed", { requestId, status: videoResponse.status, attempt });
+        if (attempt === SOURCE_DOWNLOAD_ATTEMPTS) {
+          res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+          return;
+        }
+        continue;
+      }
+
+      sourceCT = videoResponse.headers.get("content-type") || "";
+      logger.info("[AUDIO] source content-type", { requestId, contentType: sourceCT });
+      if (isHtmlContent(sourceCT)) {
+        await videoResponse.body?.cancel().catch(() => {});
+        logger.warn("[AUDIO] source is HTML, not media", { requestId });
+        const expired = createError("MEDIA_URL_EXPIRED");
+        res.status(expired.statusCode).json(expired.toResponse());
+        return;
+      }
+
+      const expectedLength = Number.parseInt(videoResponse.headers.get("content-length") ?? "", 10);
+      if (Number.isFinite(expectedLength) && expectedLength > MAX_INPUT_BYTES) {
+        await videoResponse.body?.cancel().catch(() => {});
+        logger.warn("[AUDIO] source too large", { requestId, size: expectedLength });
+        res.status(413).json(createErrorResponse("REQUEST_TOO_LARGE"));
+        return;
+      }
+
+      if (!videoResponse.body) {
+        logger.warn("[AUDIO] empty source body", { requestId, attempt });
+        if (attempt === SOURCE_DOWNLOAD_ATTEMPTS) {
+          res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+          return;
+        }
+        continue;
+      }
+
+      // Stream the source straight to the temp file (never buffer the whole
+      // video in RAM) with a hard byte cap enforced after the pipe.
+      let writeError: unknown = null;
+      try {
+        // The source download is abortable: a client that leaves mid-transfer
+        // must not keep pulling 100 MB through the server to a dead socket.
+        await pipeline(
+          Readable.fromWeb(videoResponse.body as import("stream/web").ReadableStream<Uint8Array>),
+          createWriteStream(inputPath),
+          { signal }
+        );
+      } catch (pipeErr) {
+        if (pipeErr instanceof Error && pipeErr.name === "AbortError") {
+          if (signal.aborted) {
+            logger.info("[AUDIO] client gone during source download", { requestId });
+            return;
+          }
+          logger.warn("[AUDIO] source download timed out", { requestId });
+          res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
+          return;
+        }
+        // A reset mid-body is a transport failure, not a decode error. Record
+        // it and retry from a fresh fetch rather than rethrowing it into the
+        // generic handler, which reported every such failure as a vague
+        // AUDIO_UNAVAILABLE with no sign of what actually went wrong.
+        writeError = pipeErr;
+      }
+
+      const inputStat = await stat(inputPath).catch(() => null);
+      inputBytes = inputStat?.size ?? 0;
+
+      if (writeError === null) {
+        if (inputBytes === 0) {
+          logger.warn("[AUDIO] empty source body", { requestId, attempt });
+          if (attempt === SOURCE_DOWNLOAD_ATTEMPTS) {
+            res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+            return;
+          }
+          continue;
+        }
+        // Completeness: a body shorter than the advertised Content-Length was
+        // cut off. It is a failed download, not a small video.
+        if (Number.isFinite(expectedLength) && expectedLength > 0 && inputBytes !== expectedLength) {
+          logger.warn("[AUDIO] source download truncated", {
+            requestId,
+            attempt,
+            received: inputBytes,
+            expected: expectedLength,
+          });
+          if (attempt === SOURCE_DOWNLOAD_ATTEMPTS) {
+            res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+            return;
+          }
+          continue;
+        }
+        downloaded = true;
+        break;
+      }
+
+      logger.warn("[AUDIO] source download interrupted", {
+        requestId,
+        attempt,
+        received: inputBytes,
+        error: writeError instanceof Error ? writeError.message : "unknown",
+      });
+      if (attempt === SOURCE_DOWNLOAD_ATTEMPTS) {
+        res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+        return;
+      }
     }
-    const inputStat = await stat(inputPath).catch(() => null);
-    const inputBytes = inputStat?.size ?? 0;
-    if (inputBytes === 0) {
-      logger.warn("[AUDIO] empty source body", { requestId });
-      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+
+    if (!downloaded) {
+      // Defensive: every non-success path above returns, so this only guards
+      // against a future loop change silently falling through to FFmpeg.
+      logger.error("[AUDIO] source download did not complete", { requestId, bytes: inputBytes });
+      res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
       return;
     }
     if (inputBytes > MAX_INPUT_BYTES) {
@@ -454,8 +548,9 @@ async function handleAudioRequest(
         requestId,
         exitCode,
         stderr: String(stderr).slice(-2000),
-        inputStatus: videoResponse.status,
+        inputStatus: upstreamStatus,
         inputContentType: sourceCT,
+        inputBytes,
       });
       res.status(502).json(createErrorResponse("AUDIO_UNAVAILABLE"));
       return;

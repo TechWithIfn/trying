@@ -231,7 +231,7 @@ function aspectRatioStyle(width?: number | null, height?: number | null, fallbac
   return { aspectRatio: fallback };
 }
 
-function VideoPlayer({ src, fallbackSrc, poster, mediaType, width, height, onDurationChange, onResolution }: { src: string; fallbackSrc?: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
+function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, onResolution }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -245,8 +245,10 @@ function VideoPlayer({ src, fallbackSrc, poster, mediaType, width, height, onDur
   // Loading state: true until the element reports usable data (loadedmetadata
   // covers the poster frame; canplay/loadeddata cover playback readiness).
   const [loading, setLoading] = useState(true);
-  // One bounded fallback only: the direct media URL first, then the backend
-  // proxy URL. Never retries forever, never loops between sources.
+  // Preview always plays the backend streaming endpoint (proxy-only: the raw
+  // Instagram CDN URL is never mounted). One bounded same-URL retry with a
+  // cache-buster recovers transient failures without ever looping, switching
+  // hosts, or re-resolving on the client.
   const triedFallbackRef = useRef(false);
   const [currentSrc, setCurrentSrc] = useState(src);
 
@@ -277,20 +279,29 @@ function VideoPlayer({ src, fallbackSrc, poster, mediaType, width, height, onDur
     const onError = () => {
       if (process.env.NODE_ENV === "development") {
         try {
-          console.debug("[Downloadit Preview]", {
+          console.debug("[Downloadit Preview] video error", {
             mediaType: mediaType ?? "unknown",
             streamHost: new URL(currentSrc).hostname,
-            viaFallback: triedFallbackRef.current,
+            retried: triedFallbackRef.current,
+            mediaErrorCode: v.error?.code ?? null,
+            mediaErrorMessage: v.error?.message || null,
+            readyState: v.readyState,
+            networkState: v.networkState,
           });
         } catch {
           /* ignore logging failures */
         }
       }
-      // Single bounded fallback: direct URL failed → try the backend proxy
-      // once. A second failure is genuine → show the unavailable state.
-      if (!triedFallbackRef.current && fallbackSrc && fallbackSrc !== currentSrc) {
+      // Single bounded recovery: the same proxy URL with a cache-buster (the
+      // backend already retried with a freshly resolved URL server-side). A
+      // second failure is genuine → show the unavailable state.
+      if (!triedFallbackRef.current) {
         triedFallbackRef.current = true;
-        setCurrentSrc(fallbackSrc);
+        setCurrentSrc((prev) => {
+          const base = prev.split("&_retry=")[0];
+          const bust = base.includes("?") ? "&" : "?";
+          return `${base}${bust}_retry=${Date.now()}`;
+        });
       } else {
         setLoading(false);
         setMediaError(true);
@@ -916,17 +927,15 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
 
   // Preview source selection from the actual API shape (media.url): a video
   // item always previews through <VideoPlayer> and is never rendered as an
-  // image. Two-tier source with one bounded fallback: the resolved direct
-  // media URL first (native CDN range support, no proxy latency), then the
-  // existing safe backend proxy (same backend + encoding as Download, with
-  // server-side stale-URL recovery). The URL must be a playable http(s)
-  // value — otherwise the shared "Preview unavailable" tile is shown instead
-  // of mounting a broken player. No cookies/session ever leave the client on
-  // the direct path; SSRF validation still guards the proxy path.
+  // image. The preview is proxy-only: it always plays the backend streaming
+  // endpoint (same backend + encoding as Download, with server-side stale-URL
+  // recovery and SSRF validation), and the raw Instagram CDN URL is never
+  // mounted in the client. The URL must be a playable http(s) value —
+  // otherwise the shared "Preview unavailable" tile is shown instead of
+  // mounting a broken player. No cookies/session ever leave the client.
   const isVideoItem = currentMedia?.type === "video";
   const mediaUrl = currentMedia?.url ?? "";
-  const directVideoSrc = isVideoItem && isPlayableVideoUrl(mediaUrl) ? mediaUrl : "";
-  const proxyVideoSrc = directVideoSrc ? streamSrc : "";
+  const proxyVideoSrc = isVideoItem && isPlayableVideoUrl(mediaUrl) ? streamSrc : "";
   const rawPoster = currentMedia?.thumbnail ?? undefined;
   const validPoster = isValidImagePoster(rawPoster) ? rawPoster : undefined;
 
@@ -1120,8 +1129,8 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 {audioUrl && <AudioPlayer src={audioUrl} onDurationChange={(d) => setAudioDuration(d)} />}
               </>
             ) : !currentMedia ? null : isVideoItem ? (
-              directVideoSrc ? (
-                // NOTE: keying by the direct media URL intentionally remounts
+              proxyVideoSrc ? (
+                // NOTE: keying by the proxied source intentionally remounts
                 // per source. That resets playing/time/mute/error state for the
                 // new video AND unmounts the old <video> element, which stops
                 // its decode — so the previous video can never keep playing (or
@@ -1130,9 +1139,8 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 // can never linger and wrongly report "Preview unavailable"
                 // for a valid video.
                 <VideoPlayer
-                  key={directVideoSrc}
-                  src={directVideoSrc}
-                  fallbackSrc={proxyVideoSrc || undefined}
+                  key={proxyVideoSrc}
+                  src={proxyVideoSrc}
                   poster={validPoster}
                   mediaType={currentMedia.type}
                   width={currentMedia.width}
