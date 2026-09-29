@@ -23,6 +23,12 @@ export interface MediaItem {
   size?: number | null;
   thumbnail: string | null;
   format: string | null;
+  /**
+   * Separate audio rendition for a split-track video (Instagram Reels publish
+   * a video-only MP4 plus its own audio-only MP4). Null when the video already
+   * carries its own audio track.
+   */
+  audioUrl?: string | null;
 }
 
 export interface ResolvedMedia {

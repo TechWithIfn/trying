@@ -59,6 +59,57 @@ const JPG_BYTES = (() => {
   return b;
 })();
 
+/**
+ * Minimal but structurally valid ISO-BMFF `ftyp` + `moov` prefix carrying a
+ * single `trak` with a `mdia` > `hdlr` handler type. This is exactly the part
+ * of the container that tells a video-only rendition from an audio-only one.
+ */
+function mp4HeaderParts(handler: "vide" | "soun") {
+  const hdlr = Buffer.alloc(32);
+  hdlr.writeUInt32BE(hdlr.length, 0);
+  hdlr.write("hdlr", 4, "latin1");
+  hdlr.write(handler, 16, "latin1"); // version/flags (4) + pre_defined (4)
+
+  const mdia = Buffer.alloc(8 + hdlr.length);
+  mdia.writeUInt32BE(mdia.length, 0);
+  mdia.write("mdia", 4, "latin1");
+  hdlr.copy(mdia, 8);
+
+  const trak = Buffer.alloc(8 + mdia.length);
+  trak.writeUInt32BE(trak.length, 0);
+  trak.write("trak", 4, "latin1");
+  mdia.copy(trak, 8);
+
+  const moov = Buffer.alloc(8 + trak.length);
+  moov.writeUInt32BE(moov.length, 0);
+  moov.write("moov", 4, "latin1");
+  trak.copy(moov, 8);
+
+  const ftyp = Buffer.alloc(24);
+  ftyp.writeUInt32BE(24, 0);
+  ftyp.write("ftyp", 4, "latin1");
+  ftyp.write("isom", 8, "latin1");
+  return { ftyp, moov };
+}
+
+/** Split-track rendition: ftyp, moov, then `mdat` padding to `totalBytes`. */
+function mp4WithTrack(handler: "vide" | "soun", totalBytes: number): Buffer {
+  const { ftyp, moov } = mp4HeaderParts(handler);
+  const mdat = Buffer.alloc(totalBytes - ftyp.length - moov.length, 0x41);
+  mdat.writeUInt32BE(mdat.length, 0);
+  mdat.write("mdat", 4, "latin1");
+  return Buffer.concat([ftyp, moov, mdat]);
+}
+
+/** Same file with `moov` pushed past the probe window (faststart disabled). */
+function mp4WithTrailingMoov(handler: "vide" | "soun", totalBytes: number): Buffer {
+  const { ftyp, moov } = mp4HeaderParts(handler);
+  const mdat = Buffer.alloc(totalBytes - ftyp.length - moov.length, 0x41);
+  mdat.writeUInt32BE(mdat.length, 0);
+  mdat.write("mdat", 4, "latin1");
+  return Buffer.concat([ftyp, mdat, moov]);
+}
+
 function videoItem(url: string) {
   return {
     url,
@@ -569,8 +620,136 @@ describe("reel video playback pipeline", () => {
     expect(check.contentLength).toBe(MP4_BYTES.length);
   });
 
-  it("8f. video_versions media graph is extracted despite escaped slashes (unit)", async () => {
-    // The real Reel document embeds its media graph with escaped slashes
+  it("8g. Split-track AUDIO rendition is refused as a video source (unit)", async () => {
+    // Instagram ships a Reel's sound as a SEPARATE audio-only MP4. That file is
+    // a valid container, is served as video/mp4, and is usually far above the
+    // minimum playable size, so the container + size checks alone accepted it
+    // as the Reel's video. The result was a blank preview with no sound. The
+    // track list in `moov` is the only thing that distinguishes the two.
+    const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
+    stubUpstreamFetch();
+    const url = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/reel-audio.mp4?sig=a";
+    stubPolicy.probeBodyByUrl[url] = {
+      status: 200,
+      contentType: "video/mp4",
+      body: mp4WithTrack("soun", 96 * 1024),
+    };
+    const check = await verifyVideoCandidate(url);
+    expect(check.ok).toBe(false);
+    expect(check.reason).toBe("audio-only-payload");
+    expect(check.hasVideoTrack).toBe(false);
+    expect(check.hasAudioTrack).toBe(true);
+  });
+
+  it("8h. A real video rendition is never rejected by the track scan (unit)", async () => {
+    const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
+    stubUpstreamFetch();
+    const url = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/reel-video.mp4?sig=v";
+    stubPolicy.probeBodyByUrl[url] = {
+      status: 200,
+      contentType: "video/mp4",
+      body: mp4WithTrack("vide", 96 * 1024),
+    };
+    const check = await verifyVideoCandidate(url);
+    expect(check.ok).toBe(true);
+    expect(check.hasVideoTrack).toBe(true);
+    expect(check.hasAudioTrack).toBe(false);
+  });
+
+  it("8i. moov outside the probe window leaves the payload UNclassified (unit)", async () => {
+    // A file that keeps `moov` at the end (no faststart) cannot be classified
+    // from the first 64 KB. The scan must report "unknown" rather than guess,
+    // so a real video is never dropped just because its index is late.
+    const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
+    stubUpstreamFetch();
+    const url = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/slow-start.mp4?sig=m";
+    stubPolicy.probeBodyByUrl[url] = {
+      status: 200,
+      contentType: "video/mp4",
+      body: mp4WithTrailingMoov("vide", 96 * 1024),
+    };
+    const check = await verifyVideoCandidate(url);
+    expect(check.ok).toBe(true);
+    expect(check.hasVideoTrack).toBeNull();
+    expect(check.hasAudioTrack).toBeNull();
+  });
+
+  it("8j. A 429/login-wall page is a retryable block, a healthy page is not (unit)", async () => {
+    // Production serverless egress gets HTTP 429 and is bounced onto
+    // /accounts/login/ by Instagram. Neither page carries media, so the old
+    // behavior burned a Chromium launch and reported a misleading
+    // VIDEO_SOURCE_NOT_FOUND instead of a retryable rate limit.
+    const { detectInstagramAccessBlock } = await import("@/lib/providers/puppeteer.js");
+    const page = { pageFinalHost: "www.instagram.com", htmlLength: 0 };
+    expect(
+      detectInstagramAccessBlock({ ...page, pageStatus: 429, pageFinalPath: "/accounts/login/" })
+    ).toBe("rate-limited");
+    expect(
+      detectInstagramAccessBlock({ ...page, pageStatus: 403, pageFinalPath: "/reel/Abc123/" })
+    ).toBe("rate-limited");
+    expect(
+      detectInstagramAccessBlock({ ...page, pageStatus: 200, pageFinalPath: "/accounts/login/" })
+    ).toBe("login-redirect");
+    // A normal page is never a block...
+    expect(
+      detectInstagramAccessBlock({
+        ...page,
+        pageStatus: 200,
+        pageFinalPath: "/reel/ReelPlay001/",
+        htmlLength: 40_000,
+      })
+    ).toBeNull();
+    // ...and neither is a private post, which still returns the real page.
+    expect(
+      detectInstagramAccessBlock({
+        ...page,
+        pageStatus: 200,
+        pageFinalPath: "/reel/Private01/",
+        htmlLength: 5_000,
+      })
+    ).toBeNull();
+  });
+
+  it("8k. Paired audioUrl survives enrich + dedupe in the resolve pipeline", async () => {
+    // The pairing is decided by the provider, but the resolve pipeline rewrites
+    // every media item (size probe, pathname dedupe). If either rebuilt the
+    // object field-by-field the paired track would be silently dropped and the
+    // preview would fall back to silence.
+    const splitReel = "https://www.instagram.com/reel/SplitAudio001/";
+    const splitVideo = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/split-video.mp4?sig=p";
+    const splitAudio = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/split-audio.mp4?sig=q";
+    mockCreateProvider().mockReturnValue({
+      name: "test-mock",
+      resolve: async (url: string) => ({
+        type: "REEL",
+        sourceUrl: url,
+        thumbnail: CDN_PHOTO,
+        title: null,
+        author: null,
+        media: [{ ...videoItem(splitVideo), audioUrl: splitAudio }],
+      }),
+    } as never);
+    stubUpstreamFetch();
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(`${base}/api/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: splitReel }),
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        success: boolean;
+        data: { media: Array<{ url: string; audioUrl?: string | null }> };
+      };
+      expect(body.data.media[0].url).toBe(splitVideo);
+      expect(body.data.media[0].audioUrl).toBe(splitAudio);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("8f. video_versions media graph is extracted despite escaped slashes (unit)", async () => {    // The real Reel document embeds its media graph with escaped slashes
     // ("https:\/\/cdn…\/clip.mp4?…"). Before normalization the URL patterns
     // could not see it and every Reel reported zero video candidates.
     const { extractMediaFromJson, extractVideoVersions } = await import(

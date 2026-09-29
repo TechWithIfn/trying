@@ -993,19 +993,35 @@ export interface VideoVerification {
     | "too-many-redirects"
     | "probe-failed"
     | "degenerate-payload"
-    | "not-mp4-payload";
+    | "not-mp4-payload"
+    | "audio-only-payload";
   /** Log-safe CDN identity (host + pathname, no query). */
   cdnHost: string | null;
   contentType: string | null;
   /** Total upstream size in bytes when the CDN reported it (null = unknown). */
   contentLength: number | null;
+  /**
+   * Track handler types seen in the probe window. `null` means "unknown" — the
+   * `moov` box was not fully inside the probe window, so the payload is NOT
+   * classified and never rejected on this basis.
+   */
+  hasVideoTrack: boolean | null;
+  hasAudioTrack: boolean | null;
 }
 
 function verifyFail(
   reason: VideoVerification["reason"],
   cdnHost: string | null = null
 ): VideoVerification {
-  return { ok: false, reason, cdnHost, contentType: null, contentLength: null };
+  return {
+    ok: false,
+    reason,
+    cdnHost,
+    contentType: null,
+    contentLength: null,
+    hasVideoTrack: null,
+    hasAudioTrack: null,
+  };
 }
 
 /** True when the first bytes look like an ISO-BMFF (MP4) container. */
@@ -1013,6 +1029,127 @@ function looksLikeMp4(bytes: Uint8Array): boolean {
   if (bytes.length < 8) return false;
   const box = String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]);
   return (MP4_BOX_TYPES as readonly string[]).includes(box);
+}
+
+interface Mp4Box {
+  type: string;
+  end: number;
+  dataStart: number;
+}
+
+/**
+ * Read one ISO-BMFF box header at `offset`, bounded by `limit`.
+ *
+ * Returns null (rather than guessing) whenever the box is truncated by the
+ * probe window, malformed, or declares a 64-bit size — callers then treat the
+ * track layout as unknown instead of misclassifying the payload.
+ */
+function readMp4Box(bytes: Uint8Array, offset: number, limit: number): Mp4Box | null {
+  if (offset + 8 > limit) return null;
+  const size =
+    ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+  const type = String.fromCharCode(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]);
+  let dataStart = offset + 8;
+  if (size === 1) {
+    if (offset + 16 > limit) return null;
+    const high =
+      ((bytes[offset + 8] << 24) | (bytes[offset + 9] << 16) | (bytes[offset + 10] << 8) | bytes[offset + 11]) >>> 0;
+    if (high !== 0) return null;
+    const low =
+      ((bytes[offset + 12] << 24) |
+        (bytes[offset + 13] << 16) |
+        (bytes[offset + 14] << 8) |
+        bytes[offset + 15]) >>>
+      0;
+    dataStart = offset + 16;
+    const extended = low;
+    if (extended < dataStart - offset) return null;
+    const end = offset + extended;
+    if (end > limit) return null;
+    return { type, end, dataStart };
+  }
+  const boxSize = size === 0 ? limit - offset : size;
+  if (boxSize < dataStart - offset) return null;
+  const end = offset + boxSize;
+  if (end > limit) return null;
+  return { type, end, dataStart };
+}
+
+/** The `hdlr` handler type of a `trak` box, or null when it is not visible. */
+function mp4TrackHandler(bytes: Uint8Array, trak: Mp4Box): string | null {
+  let m = trak.dataStart;
+  let mdia: Mp4Box | null = null;
+  while (m + 8 <= trak.end) {
+    const box = readMp4Box(bytes, m, trak.end);
+    if (!box) return null;
+    if (box.type === "mdia") {
+      mdia = box;
+      break;
+    }
+    m = box.end;
+  }
+  if (!mdia) return null;
+  let h = mdia.dataStart;
+  while (h + 8 <= mdia.end) {
+    const box = readMp4Box(bytes, h, mdia.end);
+    if (!box) return null;
+    if (box.type === "hdlr") {
+      // version+flags (4 bytes) then pre_defined (4 bytes), then handler_type.
+      const at = box.dataStart + 8;
+      if (at + 4 > box.end) return null;
+      return String.fromCharCode(bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]);
+    }
+    h = box.end;
+  }
+  return null;
+}
+
+/**
+ * Report which track handler types the probe window exposes.
+ *
+ * Instagram publishes a Reel as SPLIT TRACKS: a video-only MP4 plus a separate
+ * audio-only MP4 for the same clip. The audio file is a perfectly valid ISO-BMFF
+ * container served as `video/mp4` and usually larger than the minimum playable
+ * size, so container + size checks alone cannot tell the two apart — only the
+ * `moov` track list can.
+ *
+ * Returns null when the `moov` box is not fully inside the probe window, so a
+ * real video that keeps its `moov` at the end of the file is never misjudged.
+ */
+function mp4TrackKinds(bytes: Uint8Array): { video: boolean; audio: boolean } | null {
+  if (bytes.length < 16) return null;
+  let moov: Mp4Box | null = null;
+  let o = 0;
+  while (o + 8 <= bytes.length) {
+    const box = readMp4Box(bytes, o, bytes.length);
+    if (!box) return null;
+    if (box.type === "moov") {
+      moov = box;
+      break;
+    }
+    o = box.end;
+  }
+  if (!moov) return null;
+  let video = false;
+  let audio = false;
+  let seen = false;
+  let t = moov.dataStart;
+  while (t + 8 <= moov.end) {
+    const box = readMp4Box(bytes, t, moov.end);
+    if (!box) break;
+    if (box.type === "trak") {
+      const handler = mp4TrackHandler(bytes, box);
+      if (handler === "vide") {
+        video = true;
+        seen = true;
+      } else if (handler === "soun") {
+        audio = true;
+        seen = true;
+      }
+    }
+    t = box.end;
+  }
+  return seen ? { video, audio } : null;
 }
 
 /** Total size from `Content-Range: bytes 0-65535/1234567`, else Content-Length. */
@@ -1134,6 +1271,23 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
       if (head.length > 0 && !looksLikeMp4(head)) {
         return verifyFail("not-mp4-payload", cdnHost);
       }
+      // Split-track detection: a valid container with an audio track and no
+      // video track is Instagram's separate audio rendition for a Reel, never a
+      // playable video. Rejected as a video candidate and surfaced as the
+      // paired audio track during assembly. `tracks` is null when the `moov`
+      // box fell outside the probe window, which leaves this payload undecided.
+      const tracks = mp4TrackKinds(head);
+      const hasVideoTrack = tracks ? tracks.video : null;
+      const hasAudioTrack = tracks ? tracks.audio : null;
+      if (tracks && !tracks.video && tracks.audio) {
+        return {
+          ...verifyFail("audio-only-payload", cdnHost),
+          contentType: contentType.split(";")[0] || null,
+          contentLength: totalSize,
+          hasVideoTrack,
+          hasAudioTrack,
+        };
+      }
       if (totalSize !== null && totalSize < MIN_PLAYABLE_VIDEO_BYTES) {
         return verifyFail("degenerate-payload", cdnHost);
       }
@@ -1145,6 +1299,8 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
         cdnHost,
         contentType: contentType.split(";")[0],
         contentLength: totalSize,
+        hasVideoTrack,
+        hasAudioTrack,
       };
     }
     if (status >= 300 && status < 400) {
@@ -1162,11 +1318,8 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
     }
     if (status === 401 || status === 403 || status === 404 || status === 410) {
       return {
-        ok: false,
-        reason: status === 404 ? "not-found" : "expired-or-forbidden",
-        cdnHost,
+        ...verifyFail(status === 404 ? "not-found" : "expired-or-forbidden", cdnHost),
         contentType: contentType || null,
-        contentLength: null,
       };
     }
     if (status === 429) {
@@ -1269,6 +1422,37 @@ async function fetchPageSnapshot(url: string, timeoutMs = 10_000): Promise<PageF
 
 export async function fetchPageHtml(url: string, timeoutMs = 10_000): Promise<string | null> {
   return (await fetchPageSnapshot(url, timeoutMs)).html;
+}
+
+/**
+ * Detect the two anonymous-access blocks Instagram puts in front of a page
+ * fetch, so a blocked request is reported as a retryable rate limit instead of
+ * being carried on into Chromium and surfacing as a misleading
+ * "no media found".
+ *
+ * - HTTP 429: the explicit throttle response. Serverless egress IPs are
+ *   throttled far more aggressively than a residential one.
+ * - A redirect onto the login route: Instagram serves the login page to
+ *   throttled/anonymous clients instead of a 429. Only treated as a block when
+ *   no usable HTML came back, so a genuine private post (which still returns
+ *   the real page) is unaffected.
+ *
+ * Returns a machine-readable reason, or null when the page is usable.
+ */
+export function detectInstagramAccessBlock(meta: {
+  pageStatus: number | null;
+  pageFinalPath: string | null;
+  pageFinalHost: string | null;
+  htmlLength: number;
+}): "rate-limited" | "login-redirect" | null {
+  if (meta.pageStatus === 429 || meta.pageStatus === 403) return "rate-limited";
+  if (
+    /^\/(accounts\/)?login\/?$/i.test(meta.pageFinalPath ?? "") &&
+    (meta.htmlLength === 0 || /instagram\.com$/i.test(meta.pageFinalHost ?? ""))
+  ) {
+    return "login-redirect";
+  }
+  return null;
 }
 
 function isLikelyProfileImageUrl(url: string): boolean {
@@ -1852,6 +2036,24 @@ export class PuppeteerProvider extends BaseProvider {
       const fetchMeta = await fetchMetadata(url);
       timings.metadataMs = Date.now() - metaStart;
       onProgress?.(35, "Media source opened");
+
+      // Stop before spending a Chromium launch (~20s) on a request Instagram has
+      // already refused. A throttled or login-walled page yields no media under
+      // any tier, so the browser fallback could only end in a misleading
+      // VIDEO_SOURCE_NOT_FOUND. Report the real, retryable cause instead.
+      const accessBlock = detectInstagramAccessBlock(fetchMeta);
+      if (accessBlock) {
+        logger.warn("Puppeteer page fetch blocked by Instagram", {
+          normalizedUrl: url,
+          block: accessBlock,
+          pageStatus: fetchMeta.pageStatus,
+          pageFinalHost: fetchMeta.pageFinalHost,
+          pageFinalPath: fetchMeta.pageFinalPath,
+          hasSession: Boolean(getInstagramSessionCookie()),
+          htmlLength: fetchMeta.htmlLength,
+        });
+        throw createError("INSTAGRAM_RATE_LIMITED");
+      }
 
       const isStory = this.detectContentType(url) === "STORY";
       const storySegments = new URL(url).pathname.split("/").filter(Boolean);
@@ -2813,10 +3015,18 @@ export class PuppeteerProvider extends BaseProvider {
         const videoCandidates = validMedia.filter((item) => item.type === "video");
         const probePassed: Array<{ item: MediaItem; size: number }> = [];
         const captureFallback: Array<{ item: MediaItem; origin: ExtractedMedia }> = [];
+        // Instagram split renditions: audio-only MP4s that belong to the same
+        // clip. They can never be a video source, so they are diverted here
+        // instead of being probed into the video tier.
+        const audioOnly: Array<{ item: MediaItem; size: number }> = [];
         await Promise.all(
           videoCandidates.map(async (item) => {
             const check = await verifyVideoCandidate(item.url);
             verifyTally[check.reason] = (verifyTally[check.reason] ?? 0) + 1;
+            if (check.reason === "audio-only-payload") {
+              audioOnly.push({ item, size: check.contentLength ?? 0 });
+              return;
+            }
             if (check.ok) {
               probePassed.push({ item, size: check.contentLength ?? 0 });
               return;
@@ -2831,6 +3041,7 @@ export class PuppeteerProvider extends BaseProvider {
           })
         );
         probePassed.sort((a, b) => b.size - a.size);
+        audioOnly.sort((a, b) => b.size - a.size);
         verifiedByProbeCount = probePassed.length;
         trustedCaptureCount = probePassed.length === 0 ? captureFallback.length : 0;
         if (probePassed.length > 0) {
@@ -2852,6 +3063,31 @@ export class PuppeteerProvider extends BaseProvider {
         } else {
           playableMedia = [];
           selectedCandidateSource = null;
+        }
+        // A Reel whose video renditions all failed verification but whose audio
+        // rendition passed is exactly the blank-preview bug: report the real
+        // cause instead of an empty playable set.
+        if (playableMedia.length === 0 && audioOnly.length > 0) {
+          logger.info("Puppeteer found audio renditions but no playable video", {
+            contentType,
+            audioOnlyCount: audioOnly.length,
+            verifyTally,
+          });
+        }
+        // Pair the split audio rendition onto the video. Every entry in
+        // playableMedia is a rendition of the SAME clip, so they share one audio
+        // track; the largest is the most complete encode.
+        const pairedAudio = audioOnly[0];
+        if (pairedAudio && playableMedia.length > 0) {
+          for (const item of playableMedia) {
+            if (item.type === "video") item.audioUrl = pairedAudio.item.url;
+          }
+          logger.info("Puppeteer paired split audio rendition", {
+            contentType,
+            audioOnlyCount: audioOnly.length,
+            pairedVideoCount: playableMedia.filter((m) => m.type === "video").length,
+            audioCdnHost: hostnameOf(pairedAudio.item.url),
+          });
         }
       } else if (validMedia.length > 0) {
         const firstOrigin = originByUrl.get(validMedia[0]?.url ?? "");

@@ -44,6 +44,8 @@ export interface MediaItem {
   size?: number | null;
   thumbnail: string | null;
   format: string | null;
+  /** Separate audio rendition for split-track videos (Instagram Reels). */
+  audioUrl?: string | null;
 }
 
 export interface Author {

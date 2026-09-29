@@ -228,9 +228,10 @@ function aspectRatioStyle(width?: number | null, height?: number | null, fallbac
   return { aspectRatio: fallback };
 }
 
-function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, onResolution }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
+function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurationChange, onResolution }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; audioSrc?: string | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   // Diagnostics mirror the real element (never drive it) and are asserted by
   // the DOM checks in tests. No UI reads them, so they cost no re-renders.
@@ -394,6 +395,85 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
     };
   }, [currentSrc, mediaType, syncState]);
 
+  // Instagram publishes a Reel as SPLIT TRACKS: a video-only MP4 plus a
+  // separate audio-only MP4 for the same clip. The backend pairs them, and the
+  // preview plays both from ONE <video> that keeps the native controls and
+  // stays the only visible player. The companion <audio> is invisible and has
+  // no controls of its own: the video's native volume/mute remains
+  // authoritative and is mirrored onto it, so the speaker button still really
+  // mutes the sound instead of leaving a hidden track playing.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const v = videoRef.current;
+    // Fixed, generous-enough threshold: absorbs ordinary decode jitter without
+    // re-seeking the audio on every timeupdate tick.
+    const DRIFT_TOLERANCE = 0.35;
+    const mirrorVolume = () => {
+      if (!v) return;
+      a.volume = v.volume;
+      a.muted = v.muted;
+    };
+    const alignToVideo = (force: boolean) => {
+      if (!v || !Number.isFinite(v.currentTime)) return;
+      if (force || Math.abs(a.currentTime - v.currentTime) > DRIFT_TOLERANCE) {
+        try {
+          a.currentTime = v.currentTime;
+        } catch {
+          /* seeking before metadata is legal to fail */
+        }
+      }
+    };
+    // Called from the video's own play event, i.e. still inside the user
+    // gesture that started playback, which is what lets the browser permit
+    // audible playback without a second gesture.
+    const startAudio = () => {
+      alignToVideo(true);
+      mirrorVolume();
+      a.play().catch(() => {
+        /* autoplay policy refused: the video's own track stays audible */
+      });
+    };
+    const onVideoPlay = () => startAudio();
+    const onVideoPause = () => a.pause();
+    const onVideoEnd = () => a.pause();
+    const onVideoSeeked = () => alignToVideo(true);
+    const onVideoTime = () => alignToVideo(false);
+    const onVolumeChange = () => mirrorVolume();
+    // The audio can finish loading after the video is already running.
+    const onAudioReady = () => {
+      alignToVideo(true);
+      if (v && !v.paused && !v.ended) startAudio();
+    };
+
+    v?.addEventListener("play", onVideoPlay);
+    v?.addEventListener("playing", onVideoPlay);
+    v?.addEventListener("pause", onVideoPause);
+    v?.addEventListener("ended", onVideoEnd);
+    v?.addEventListener("seeked", onVideoSeeked);
+    v?.addEventListener("timeupdate", onVideoTime);
+    v?.addEventListener("volumechange", onVolumeChange);
+    a.addEventListener("loadedmetadata", onAudioReady);
+    a.addEventListener("canplay", onAudioReady);
+
+    return () => {
+      v?.removeEventListener("play", onVideoPlay);
+      v?.removeEventListener("playing", onVideoPlay);
+      v?.removeEventListener("pause", onVideoPause);
+      v?.removeEventListener("ended", onVideoEnd);
+      v?.removeEventListener("seeked", onVideoSeeked);
+      v?.removeEventListener("timeupdate", onVideoTime);
+      v?.removeEventListener("volumechange", onVolumeChange);
+      a.removeEventListener("loadedmetadata", onAudioReady);
+      a.removeEventListener("canplay", onAudioReady);
+      try {
+        a.pause();
+      } catch {
+        /* element may already be detached */
+      }
+    };
+  }, [audioSrc]);
+
   if (mediaError) {
     return (
       <div className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-2 rounded-[20px] bg-black/5">
@@ -432,6 +512,11 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
           preload="metadata"
           className="absolute inset-0 h-full w-full object-contain"
         />
+
+        {/* Paired audio track for split-track Reels. Hidden and control-less on
+            purpose: this is the same clip's audio, driven by the video element
+            above, never a second player the user could see or unmute alone. */}
+        {audioSrc && <audio ref={audioRef} src={audioSrc} preload="auto" className="hidden" />}
 
         {loading && !mediaError && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
@@ -898,6 +983,14 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
   const isVideoItem = currentMedia?.type === "video";
   const mediaUrl = currentMedia?.url ?? "";
   const proxyVideoSrc = isVideoItem && isPlayableVideoUrl(mediaUrl) ? streamSrc : "";
+  // Split-track Reels ship their sound as a separate audio-only rendition. It
+  // is proxied exactly like the video (never the raw CDN URL) and only mounted
+  // when the resolver actually paired it with this video.
+  const pairedAudioRaw = currentMedia?.audioUrl ?? null;
+  const pairedAudioSrc =
+    isVideoItem && typeof pairedAudioRaw === "string" && isPlayableVideoUrl(pairedAudioRaw)
+      ? getStreamUrl(pairedAudioRaw, result.sourceUrl)
+      : null;
   const rawPoster = currentMedia?.thumbnail ?? undefined;
   const validPoster = isValidImagePoster(rawPoster) ? rawPoster : undefined;
 
@@ -1116,6 +1209,7 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
                   mediaType={currentMedia.type}
                   width={currentMedia.width}
                   height={currentMedia.height}
+                  audioSrc={pairedAudioSrc}
                   onDurationChange={(d) => setRealDuration(d)}
                   onResolution={(w, h) => setRealResolution({ w, h })}
                 />
