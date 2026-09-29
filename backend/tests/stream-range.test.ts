@@ -44,6 +44,7 @@ type CdnMode =
   | "honor-range"
   | "embedded-slice"
   | "always-slice"
+  | "slice-as-200"
   | "expired"
   | "html";
 
@@ -98,6 +99,26 @@ function stubUpstreamFetch() {
       // Production failure mode: the edge answers ranged requests with its
       // embedded bytestart/byteend slice, ignoring the Range header.
       return sliceResponse(parseInt(bs, 10), parseInt(be, 10));
+    }
+    if (stubPolicy.mode === "slice-as-200" && embeddedSlice) {
+      // The observed PRODUCTION failure: the edge answers with HTTP 200, NO
+      // Content-Range, and a body of exactly the embedded window's length
+      // (real values seen: 104 bytes for bytestart=824&byteend=927, and a
+      // 56-byte `sidx` box for other renditions). A 200 with no Content-Range
+      // looks like the full object, so the backend used to slice those few
+      // mid-file bytes and answer a lying `Content-Range: bytes 0-N/104` —
+      // the <video> element then never fired loadedmetadata and the UI showed
+      // "Preview unavailable". Only the window params are removed upstream.
+      const start = parseInt(bs, 10);
+      const end = parseInt(be, 10);
+      return new Response(MP4.subarray(start, end + 1) as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          "content-type": "video/mp4",
+          "content-length": String(end - start + 1),
+          "accept-ranges": "bytes",
+        },
+      });
     }
     if (range) {
       const m = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
@@ -306,6 +327,86 @@ describe("/api/stream range streaming", () => {
       expect(res.headers.get("content-length")).toBe(String(TOTAL));
       const bytes = Buffer.from(await res.arrayBuffer());
       expect(bytes.length).toBe(0);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("9b. PRODUCTION FIX: upstream 200 carrying only the embedded slice is never forwarded", async () => {
+    // The real bug: the edge answered 200 with no Content-Range and a body of
+    // exactly the embedded window length, so the backend sliced those bytes
+    // and answered a lying Content-Range. The <video> element then got
+    // mid-file bytes, never fired loadedmetadata, and the UI showed
+    // "Preview unavailable" while Format stayed MP4 and Resolution/Duration
+    // stayed Unknown.
+    stubPolicy.mode = "slice-as-200";
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(`${base}${streamUrl()}`, {
+        headers: { Range: "bytes=0-1023" },
+      });
+      expect(res.status).toBe(206);
+      expect(res.headers.get("content-type")).toBe("video/mp4");
+      expect(res.headers.get("accept-ranges")).toBe("bytes");
+      // The true object size, NOT the 92-byte slice length.
+      expect(res.headers.get("content-range")).toBe(`bytes 0-1023/${TOTAL}`);
+      expect(res.headers.get("content-length")).toBe("1024");
+      const bytes = Buffer.from(await res.arrayBuffer());
+      expect(bytes.length).toBe(1024);
+      // Real MP4 head from the start of the object (ftyp), proving the bytes
+      // come from the beginning of the file and not from the embedded window.
+      expect(bytes.equals(MP4.subarray(0, 1024))).toBe(true);
+      expect(bytes.subarray(4, 8).toString()).toBe("ftyp");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("9c. embedded-slice 200 with NO Range also returns the full object", async () => {
+    stubPolicy.mode = "slice-as-200";
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(`${base}${streamUrl()}`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("video/mp4");
+      expect(res.headers.get("content-length")).toBe(String(TOTAL));
+      const bytes = Buffer.from(await res.arrayBuffer());
+      expect(bytes.equals(MP4)).toBe(true);
+      expect(bytes.subarray(4, 8).toString()).toBe("ftyp");
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("9d. HEAD on an embedded-slice 200 reports the full length, not the slice", async () => {
+    stubPolicy.mode = "slice-as-200";
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(`${base}${streamUrl()}`, { method: "HEAD" });
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("video/mp4");
+      // Real object size. A 92-byte answer here told the client the "video"
+      // was 92 bytes long, which alone breaks playback.
+      expect(res.headers.get("content-length")).toBe(String(TOTAL));
+      expect(Buffer.from(await res.arrayBuffer()).length).toBe(0);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("9e. recovery preserves every other signed query param (only the window is dropped)", async () => {
+    stubPolicy.mode = "slice-as-200";
+    const { server, base } = await startServer(app);
+    try {
+      await fetch(`${base}${streamUrl()}`, { headers: { Range: "bytes=0-1023" } });
+      // Signed params must reach the CDN byte-identically.
+      expect(stubPolicy.lastUpstreamUrl).toContain("_nc_cat=101");
+      expect(stubPolicy.lastUpstreamUrl).toContain("oh=00");
+      expect(stubPolicy.lastUpstreamUrl).toContain("efg=");
+      expect(stubPolicy.lastUpstreamUrl).toContain("_nc_sid=abc123");
+      // The embedded window is what got dropped for the recovery request.
+      expect(stubPolicy.lastUpstreamUrl).not.toContain("bytestart=");
+      expect(stubPolicy.lastUpstreamUrl).not.toContain("byteend=");
     } finally {
       await closeServer(server);
     }

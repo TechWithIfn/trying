@@ -26,6 +26,64 @@ const UPSTREAM_TIMEOUT_MS = 30_000;
 const streamGate = getGate("stream");
 const perIpStream = new KeyedConcurrency(readBoundedInt("MAX_CONCURRENT_STREAMS_PER_IP", 3, 1, 16));
 
+/**
+ * Instagram CDN URLs carry their own embedded slice window in `bytestart` /
+ * `byteend`. Those params are part of the signed URL, so they are preserved
+ * verbatim on the first request. But the edge also uses them to decide WHAT to
+ * return: when they are present it can answer with that embedded slice instead
+ * of the range the caller asked for.
+ *
+ * Returns the URL with ONLY those two params removed (every other signed param
+ * — `oh`, `oe`, `_nc_*`, `efg` — is preserved byte-identically), or null when
+ * the URL has no embedded slice or the two params are inconsistent.
+ */
+function withoutEmbeddedSlice(rawUrl: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  const bytestartRaw = parsed.searchParams.get("bytestart");
+  const byteendRaw = parsed.searchParams.get("byteend");
+  if (bytestartRaw === null || byteendRaw === null) return null;
+  const bytestart = parseInt(bytestartRaw, 10);
+  const byteend = parseInt(byteendRaw, 10);
+  if (!Number.isSafeInteger(bytestart) || !Number.isSafeInteger(byteend) || byteend < bytestart) {
+    return null;
+  }
+  parsed.searchParams.delete("bytestart");
+  parsed.searchParams.delete("byteend");
+  return parsed.toString();
+}
+
+/**
+ * Detect the "200 that is really an embedded slice" case.
+ *
+ * The production failure: Instagram's edge answers a Range request with HTTP
+ * 200, NO `Content-Range`, and a body of only `byteend - bytestart + 1` bytes
+ * (observed: 104 bytes for `bytestart=824&byteend=927`, and a 56-byte `sidx`
+ * box for other renditions). A 200 with no Content-Range looks like the full
+ * object, so the normal full-fetch path slices those few mid-file bytes and
+ * answers a lying `Content-Range: bytes 0-N/104`. The <video> element receives
+ * unusable data, `loadedmetadata`/`canplay` never fire, and the UI reports
+ * "Preview unavailable".
+ *
+ * A full object is far larger than a slice window, and it advertises its real
+ * size. So: a 200 without Content-Range whose Content-Length matches the
+ * embedded slice length exactly is a slice, not the object.
+ */
+function isEmbeddedSliceAsFullObject(
+  contentLengthHeader: string | null,
+  embeddedStart: number,
+  embeddedEnd: number
+): boolean {
+  if (!contentLengthHeader) return false;
+  const advertised = parseInt(contentLengthHeader, 10);
+  if (!Number.isSafeInteger(advertised) || advertised <= 0) return false;
+  return advertised === embeddedEnd - embeddedStart + 1;
+}
+
 interface ParsedRange {
   start: number;
   end: number | null;
@@ -443,9 +501,55 @@ async function handleHead(
     return;
   }
   if (upstream.status === 200) {
-    const length = upstream.headers.get("content-length");
+    // Same embedded-slice trap as GET: the edge can answer the 1-byte probe
+    // with 200 + the slice length, which would advertise a 56/104-byte
+    // "video" to the client. Re-probe without the embedded window so the
+    // reported Content-Length is the real object size.
+    const declaredLength = upstream.headers.get("content-length");
+    const startRaw = new URL(validation.url).searchParams.get("bytestart");
+    const endRaw = new URL(validation.url).searchParams.get("byteend");
+    const embeddedStart = startRaw === null ? NaN : parseInt(startRaw, 10);
+    const embeddedEnd = endRaw === null ? NaN : parseInt(endRaw, 10);
     await upstream.body?.cancel().catch(() => {});
-    if (length) res.setHeader("Content-Length", length);
+    if (isEmbeddedSliceAsFullObject(declaredLength, embeddedStart, embeddedEnd)) {
+      const embedded = withoutEmbeddedSlice(validation.url);
+      logger.info("[STREAM] HEAD probe hit embedded slice, re-probing full object", {
+        requestId,
+        embeddedStart,
+        embeddedEnd,
+      });
+      if (embedded) {
+        const retry = await fetchUpstreamMediaResilient(embedded, {
+          timeoutMs: UPSTREAM_TIMEOUT_MS,
+          rangeHeader: "bytes=0-0",
+          tag: "STREAM",
+          requestId,
+          sourceUrl: req.query.source,
+          signal,
+        });
+        if (retry.status.kind === "ok") {
+          const retryRes = retry.status.response;
+          if (retryRes.status === 206) {
+            const retryRange = parseContentRange(retryRes.headers.get("content-range"));
+            await retryRes.body?.cancel().catch(() => {});
+            if (retryRange?.total) res.setHeader("Content-Length", String(retryRange.total));
+            res.status(200).end();
+            return;
+          }
+          if (retryRes.status === 200) {
+            const retryLength = retryRes.headers.get("content-length");
+            await retryRes.body?.cancel().catch(() => {});
+            if (retryLength) res.setHeader("Content-Length", retryLength);
+            res.status(200).end();
+            return;
+          }
+          await retryRes.body?.cancel().catch(() => {});
+        }
+      }
+      res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+      return;
+    }
+    if (declaredLength) res.setHeader("Content-Length", declaredLength);
     res.status(200).end();
     return;
   }
@@ -577,6 +681,90 @@ async function handleStream(
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Request-Id", requestId);
 
+    // Case 0: upstream answered 200 WITHOUT Content-Range, but the body is
+    // exactly the length of the URL's embedded bytestart/byteend window — the
+    // edge served that slice while claiming to be the full object. Slicing it
+    // (Case 2) or forwarding it (Case 3) would answer a lying Content-Range and
+    // feed the <video> element mid-file bytes, so `loadedmetadata`/`canplay`
+    // never fire. Re-request the same signed asset with ONLY the embedded
+    // window removed so the edge honors the browser's real Range.
+    if (response.status === 200) {
+      const embedded = withoutEmbeddedSlice(validation.value.url);
+      if (embedded) {
+        const startRaw = new URL(validation.value.url).searchParams.get("bytestart");
+        const endRaw = new URL(validation.value.url).searchParams.get("byteend");
+        const embeddedStart = startRaw === null ? NaN : parseInt(startRaw, 10);
+        const embeddedEnd = endRaw === null ? NaN : parseInt(endRaw, 10);
+        if (
+          isEmbeddedSliceAsFullObject(
+            response.headers.get("content-length"),
+            embeddedStart,
+            embeddedEnd
+          )
+        ) {
+          await response.body?.cancel().catch(() => {});
+          logger.info("[STREAM] upstream 200 is an embedded slice, refetching full object", {
+            requestId,
+            embeddedStart,
+            embeddedEnd,
+            rangeRequested: req.headers.range ?? null,
+          });
+          const clean = await fetchUpstreamMediaResilient(embedded, {
+            timeoutMs: UPSTREAM_TIMEOUT_MS,
+            rangeHeader: req.headers.range,
+            tag: "STREAM",
+            requestId,
+            sourceUrl: req.query.source,
+            signal,
+          });
+          if (clean.status.kind === "timeout") {
+            res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
+            return;
+          }
+          if (clean.status.kind === "client-gone") {
+            logger.info("[STREAM] client gone during embedded-slice recovery", { requestId });
+            return;
+          }
+          if (clean.status.kind === "bad-redirect" || clean.status.kind === "network-error") {
+            res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+            return;
+          }
+          const recovered = clean.status.response;
+          if (recovered.status === 401 || recovered.status === 403 || recovered.status === 404) {
+            await recovered.body?.cancel().catch(() => {});
+            const expired = createError("MEDIA_URL_EXPIRED");
+            res.status(expired.statusCode).json(expired.toResponse());
+            return;
+          }
+          if (recovered.status !== 200 && recovered.status !== 206) {
+            await recovered.body?.cancel().catch(() => {});
+            logger.warn("[STREAM] embedded-slice recovery upstream status", {
+              requestId,
+              status: recovered.status,
+            });
+            res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+            return;
+          }
+          const recoveredCT = recovered.headers.get("content-type") || "";
+          if (isHtmlContent(recoveredCT)) {
+            await recovered.body?.cancel().catch(() => {});
+            const expired = createError("MEDIA_URL_EXPIRED");
+            res.status(expired.statusCode).json(expired.toResponse());
+            return;
+          }
+          if (!recovered.body) {
+            res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+            return;
+          }
+          response = recovered;
+          const recoveredVideo = recoveredCT.includes("video") || validation.value.url.includes(".mp4");
+          contentType = recoveredVideo ? "video/mp4" : recoveredCT || "application/octet-stream";
+          res.setHeader("Content-Type", contentType);
+          logStreamDiag(requestId, { status: recovered.status, mode: "embedded-slice-recovery", contentType, bytes: 0 });
+        }
+      }
+    }
+
     // Case 1: upstream honored the browser's range — forward 206 as-is.
     // The upstream range MUST cover what the browser asked for. Instagram's
     // CDN URLs carry their own embedded bytestart/byteend slice parameters;
@@ -596,6 +784,10 @@ async function handleStream(
         );
         res.status(206);
         logger.info("[STREAM] forwarding 206 partial content", { requestId, contentRange });
+        if (!response.body) {
+          res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+          return;
+        }
         const result = await pipeUpstreamToClient(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal);
         logger.info("[STREAM] 206 stream completed", { requestId, bytes: result.bytes });
         logStreamDiag(requestId, { status: 206, mode: "upstream-range", contentType, bytes: result.bytes });
