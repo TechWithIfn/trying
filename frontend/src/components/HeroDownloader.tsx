@@ -17,14 +17,11 @@ import {
   Music,
   ChevronLeft,
   ChevronRight,
-  Maximize,
-  Minimize,
   Heart,
   MessageCircle,
   Send,
   Bookmark,
   Volume2,
-  VolumeX,
 } from "lucide-react";
 import {
   resolveInstagramUrl,
@@ -235,12 +232,8 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [currentTime, setCurrent] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [muted, setMuted] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  // Diagnostics mirror the real element (never drive it) and are asserted by
+  // the DOM checks in tests. No UI reads them, so they cost no re-renders.
   const [mediaError, setMediaError] = useState(false);
   // Loading state: true until the element reports usable data (loadedmetadata
   // covers the poster frame; canplay/loadeddata cover playback readiness).
@@ -251,30 +244,79 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
   // hosts, or re-resolving on the client.
   const triedFallbackRef = useRef(false);
   const [currentSrc, setCurrentSrc] = useState(src);
+  // Latest callbacks, so the media listeners below attach exactly once for the
+  // lifetime of the element instead of being torn down and re-added whenever a
+  // parent render passes new inline closures.
+  const onDurationChangeRef = useRef(onDurationChange);
+  const onResolutionRef = useRef(onResolution);
+  useEffect(() => {
+    onDurationChangeRef.current = onDurationChange;
+    onResolutionRef.current = onResolution;
+  });
+
+  // Reflect element state onto the wrapper as data-* attributes. This is a
+  // read-only mirror of the HTMLVideoElement, so React state can never drift
+  // out of sync with real playback.
+  const syncState = useCallback(() => {
+    const v = videoRef.current;
+    const host = playerRef.current;
+    if (!v || !host) return;
+    host.dataset.paused = String(v.paused);
+    host.dataset.ended = String(v.ended);
+    host.dataset.playing = String(!v.paused && !v.ended);
+    host.dataset.muted = String(v.muted);
+    host.dataset.volume = v.volume.toFixed(2);
+    host.dataset.currentTime = v.currentTime.toFixed(2);
+    host.dataset.duration = Number.isFinite(v.duration) ? v.duration.toFixed(2) : "0";
+    host.dataset.controls = "native";
+  }, []);
 
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onTime = () => setCurrent(v.currentTime);
+    // Audio: the element is never muted and never has its volume forced to 0.
+    // Playback is started from the Preview button's real click (a user
+    // gesture), which satisfies the autoplay policy, so audible playback is
+    // permitted from the first frame. No state here pretends audio is on — the
+    // browser's own policy is the only thing allowed to refuse it.
+    v.muted = false;
+    v.defaultMuted = false;
+    v.volume = 1;
+
+    // Single set of listeners for the whole element lifetime: no duplicated
+    // play/pause/ended handlers and no listener churn per render.
+    const onPlay = () => syncState();
+    const onPlaying = () => syncState();
+    const onPause = () => syncState();
+    const onTime = () => syncState();
+    const onVolume = () => syncState();
+    const onSeeked = () => syncState();
     const onLoadStart = () => {
       setLoading(true);
     };
     const onMeta = () => {
       const nextDuration = Number.isFinite(v.duration) && v.duration >= 0 ? v.duration : 0;
-      setDuration(nextDuration);
-      onDurationChange?.(nextDuration);
+      onDurationChangeRef.current?.(nextDuration);
       if (v.videoWidth > 0 && v.videoHeight > 0) {
-        onResolution?.(v.videoWidth, v.videoHeight);
+        onResolutionRef.current?.(v.videoWidth, v.videoHeight);
       }
+      // A source switch resets the audio properties to their defaults; reassert
+      // the audible state for the newly loaded media.
+      v.muted = false;
+      v.volume = 1;
       setLoading(false);
+      syncState();
     };
-    const onReady = () => setLoading(false);
+    const onReady = () => {
+      setLoading(false);
+      syncState();
+    };
     const onEnd = () => {
-      v.pause();
-      setPlaying(false);
-      setCurrent(0);
+      // End of media: stop at the end, stay paused, let the native control bar
+      // reappear showing Play. No restart, no loop, no play() call — the Reel
+      // must not play itself again. currentTime is deliberately left at the
+      // end so the user sees the final frame.
+      syncState();
     };
     const onError = () => {
       if (process.env.NODE_ENV === "development") {
@@ -308,83 +350,49 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
       }
     };
     v.addEventListener("play", onPlay);
+    v.addEventListener("playing", onPlaying);
     v.addEventListener("pause", onPause);
     v.addEventListener("timeupdate", onTime);
-    v.addEventListener("loadstart", onLoadStart);
     v.addEventListener("loadedmetadata", onMeta);
     v.addEventListener("loadeddata", onReady);
     v.addEventListener("canplay", onReady);
     v.addEventListener("ended", onEnd);
+    v.addEventListener("volumechange", onVolume);
+    v.addEventListener("seeked", onSeeked);
+    // `loadstart` only drives the spinner; a source switch is not an error.
+    v.addEventListener("loadstart", onLoadStart);
     v.addEventListener("error", onError);
     // `abort` accompanies source switches/unmounts and carries no failure
     // signal on its own, so it never triggers the fallback or error state.
+    syncState();
+
+    // Cleanup: remove every listener and stop playback so the Reel can never
+    // keep playing (or hold its decoder) after the Result card goes away.
+    // The `src` attribute is deliberately NOT removed: React does not re-apply
+    // an unchanged `src` prop, and StrictMode's double-invoked effects would
+    // then leave the element with no source at all (readyState 0, nothing
+    // loads). Detaching the element from the DOM already releases its network
+    // activity.
     return () => {
       v.removeEventListener("play", onPlay);
+      v.removeEventListener("playing", onPlaying);
       v.removeEventListener("pause", onPause);
       v.removeEventListener("timeupdate", onTime);
-      v.removeEventListener("loadstart", onLoadStart);
       v.removeEventListener("loadedmetadata", onMeta);
       v.removeEventListener("loadeddata", onReady);
       v.removeEventListener("canplay", onReady);
       v.removeEventListener("ended", onEnd);
+      v.removeEventListener("volumechange", onVolume);
+      v.removeEventListener("seeked", onSeeked);
+      v.removeEventListener("loadstart", onLoadStart);
       v.removeEventListener("error", onError);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSrc, mediaType]);
-
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      setFullscreen(document.fullscreenElement === playerRef.current);
-    };
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
-  }, []);
-
-  const togglePlay = useCallback(async () => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (v.paused || v.ended) {
-      if (v.ended) v.currentTime = 0;
       try {
-        await v.play();
+        v.pause();
       } catch {
-        // Playback can be rejected by the browser; media events remain the
-        // only source of truth for the React playing state.
+        /* element may already be detached */
       }
-    } else {
-      v.pause();
-    }
-  }, []);
-
-  const handleSeek = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const bar = progressRef.current;
-      const v = videoRef.current;
-      if (!bar || !v || !duration) return;
-      const rect = bar.getBoundingClientRect();
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      v.currentTime = pct * duration;
-    },
-    [duration]
-  );
-
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  const toggleMute = useCallback(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = !v.muted;
-    setMuted(v.muted);
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    if (!playerRef.current) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
-    } else {
-      playerRef.current.requestFullscreen?.().catch(() => {});
-    }
-  }, []);
+    };
+  }, [currentSrc, mediaType, syncState]);
 
   if (mediaError) {
     return (
@@ -396,8 +404,25 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
   }
 
   return (
-    <div ref={playerRef} className="media-mount relative overflow-hidden rounded-[20px]" style={{ background: "#0a0a14" }}>
+    <div
+      ref={playerRef}
+      className="media-mount relative overflow-hidden rounded-[20px]"
+      style={{ background: "#0a0a14" }}
+      data-paused="true"
+      data-ended="false"
+      data-playing="false"
+      data-muted="false"
+      data-volume="1.00"
+      data-controls="native"
+    >
       <div className="relative w-full media-frame" style={aspectRatioStyle(width, height, "9/16")}>
+        {/* ONE control system: the browser's native video controls. The custom
+            control bar that used to sit below this element (duplicate progress
+            bar, time, mute and fullscreen buttons) was removed, so play/pause,
+            seek, volume/mute, fullscreen and the auto-hide/show behaviour are
+            all handled natively against the real element. There is deliberately
+            no onClick here: the native bar owns the play/pause interaction, and
+            a click handler on the video surface fought with it. */}
         <video
           ref={videoRef}
           src={currentSrc}
@@ -406,79 +431,16 @@ function VideoPlayer({ src, poster, mediaType, width, height, onDurationChange, 
           playsInline
           preload="metadata"
           className="absolute inset-0 h-full w-full object-contain"
-          onClick={togglePlay}
         />
 
         {loading && !mediaError && (
-          <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
             <svg className="h-8 w-8 animate-spin text-white/60" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
               <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
             </svg>
           </div>
         )}
-
-        {!loading && !playing && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              togglePlay();
-            }}
-            className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full backdrop-blur-md transition-transform hover:scale-105 active:scale-95 sm:h-16 sm:w-16"
-            style={{ background: "rgba(255,255,255,0.18)", border: "1.5px solid rgba(255,255,255,0.25)" }}
-            aria-label={t.result.playVideo}
-          >
-            <Play className="ml-1 h-6 w-6 text-white" fill="white" strokeWidth={0} />
-          </button>
-        )}
-      </div>
-
-      {/* Progress bar + time + mute */}
-      <div className="px-4 pt-2 pb-3">
-        <div
-          ref={progressRef}
-          onClick={handleSeek}
-          className="group relative h-1.5 w-full cursor-pointer rounded-full"
-          style={{ background: "rgba(255,255,255,0.15)" }}
-          role="slider"
-          aria-label={t.result.videoProgress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(progress)}
-        >
-          <div
-            className="absolute inset-y-0 left-0 rounded-full"
-            style={{ width: `${progress}%`, background: "var(--brand-gradient)" }}
-          />
-          <div
-            className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white opacity-0 transition-opacity group-hover:opacity-100"
-            style={{ left: `${progress}%`, background: "var(--primary)" }}
-          />
-        </div>
-        <div className="mt-1.5 flex items-center justify-between text-[12px] font-medium tabular-nums text-white/60">
-          <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-white/60 transition-colors hover:text-white"
-              aria-label={muted ? "Unmute video" : "Mute video"}
-              aria-pressed={muted}
-            >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-white/60 transition-colors hover:text-white"
-              aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              aria-pressed={fullscreen}
-            >
-              {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -1008,6 +970,15 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
   const handlePreview = useCallback(() => {
     const v = previewRef.current?.querySelector<HTMLVideoElement>("video");
     if (v) {
+      // This runs inside the Preview button's real click, i.e. a user gesture,
+      // which is what lets the browser start playback WITH audio. The element
+      // is never muted and its volume is never forced to 0, so a successful
+      // play() here is audible. If the browser still refuses (its own policy),
+      // the rejection is swallowed and the element's real paused state stays
+      // visible in the native controls — no audio state is ever faked.
+      v.muted = false;
+      if (v.volume === 0) v.volume = 1;
+      if (v.ended) v.currentTime = 0;
       if (v.paused) v.play().catch(() => {});
       else v.pause();
       v.scrollIntoView({ behavior: "smooth", block: "center" });
