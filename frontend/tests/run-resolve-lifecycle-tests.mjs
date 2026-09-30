@@ -186,6 +186,64 @@ async function main() {
   check("POST failure rethrown (component owns the message)", threw instanceof TypeError, true);
   check("POST attempted exactly once (no client retry)", fetchCalls, 1);
 
+  // ---- F. stale-media recovery helpers (preview retry policy) ----
+  // Only an expired signed CDN URL may trigger the single fresh resolve.
+  check("expired code recognized", api.isExpiredMediaErrorCode("MEDIA_URL_EXPIRED"), true);
+  check("generic unavailable is not expiry", api.isExpiredMediaErrorCode("CONTENT_UNAVAILABLE"), false);
+  check("unknown code is not expiry", api.isExpiredMediaErrorCode("TEMPORARY_ERROR"), false);
+  check("non-string code is not expiry", api.isExpiredMediaErrorCode(null), false);
+  check("410 status is expiry", api.isExpiredMediaStatus(410), true);
+  check("403 status is not expiry", api.isExpiredMediaStatus(403), false);
+  check("null status is not expiry", api.isExpiredMediaStatus(null), false);
+
+  // The client's own cache-buster strips cleanly; CDN signatures survive.
+  const proxied =
+    "https://backend/api/stream?url=https%3A%2F%2Fcdn%2Fv.mp4%3Foh%3D00%26oe%3DAB&source=https%3A%2F%2Fwww.instagram.com%2Freel%2FX%2F";
+  check(
+    "retry param stripped",
+    api.stripStreamRetryParam(`${proxied}&_retry=123`),
+    proxied
+  );
+  check("clean url untouched", api.stripStreamRetryParam(proxied), proxied);
+
+  // Fresh-item swap: same index refreshed, siblings untouched, no-op when
+  // the "fresh" URL is identical (must show the error, never reload stale).
+  const staleItems = [
+    { url: "https://cdn/old-a?sig=1", type: "video", width: 1, height: 1, duration: 1, size: 1, thumbnail: null, format: "mp4", audioUrl: "https://cdn/old-audio?sig=1" },
+    { url: "https://cdn/old-b?sig=2", type: "image", width: 2, height: 2, duration: null, size: 2, thumbnail: null, format: "jpg" },
+  ];
+  const freshMedia = [
+    { url: "https://cdn/new-a?sig=9", type: "video", width: 1080, height: 1920, duration: 12, size: 99, thumbnail: null, format: "mp4", audioUrl: "https://cdn/new-audio?sig=9" },
+    { url: "https://cdn/old-b?sig=2", type: "image", width: 2, height: 2, duration: null, size: 2, thumbnail: null, format: "jpg" },
+  ];
+  const swapped = api.refreshMediaItemUrl(staleItems, freshMedia, 0);
+  check("swap returns a list", Array.isArray(swapped), true);
+  check("current item takes the fresh URL", swapped && swapped[0].url, "https://cdn/new-a?sig=9");
+  check("fresh pairing follows the video", swapped && swapped[0].audioUrl, "https://cdn/new-audio?sig=9");
+  check("sibling untouched", swapped && swapped[1].url, "https://cdn/old-b?sig=2");
+  check("identical URL is a no-op", api.refreshMediaItemUrl(staleItems, staleItems, 0), null);
+  check("empty fresh result is a no-op", api.refreshMediaItemUrl(staleItems, [], 0), null);
+  check("null fresh result is a no-op", api.refreshMediaItemUrl(staleItems, null, 0), null);
+
+  // N. playback-error handling: the refresh flag travels only on recovery.
+  let lastBody = null;
+  globalThis.fetch = async (_url, init) => {
+    lastBody = JSON.parse(init.body);
+    return { ok: true, json: async () => ({ success: true, data: { media: [] } }) };
+  };
+  await api.resolveInstagramUrl("https://www.instagram.com/reel/DDD/");
+  check("initial resolve carries no refresh flag", "refresh" in lastBody, false);
+  await api.resolveInstagramUrl("https://www.instagram.com/reel/DDD/", undefined, { refresh: true });
+  check("recovery resolve sets refresh:true", lastBody.refresh, true);
+
+  // Stream/download URL construction: `url` is the CDN media source and
+  // `source` is only the original page — never confused, never double-encoded.
+  const cdn = "https://scontent-iad3-1.cdninstagram.com/v/t16/a.mp4?oh=00&oe=AB&efg=x%3Dy";
+  const page = "https://www.instagram.com/reel/DDD/";
+  const built = new URL(api.getStreamUrl(cdn, page));
+  check("url param round-trips the CDN URL", built.searchParams.get("url"), cdn);
+  check("source param is the page URL", built.searchParams.get("source"), page);
+
   fs.rmSync(outDir, { recursive: true, force: true });
 
   if (failures > 0) {

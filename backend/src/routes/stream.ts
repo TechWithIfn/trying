@@ -11,7 +11,6 @@ import {
   getClientIp,
   fetchUpstreamMediaResilient,
   isHtmlContent,
-  pipeUpstreamToClient,
   upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
 
@@ -160,7 +159,118 @@ function looksLikeMediaBytes(firstBytes: Uint8Array): boolean {
   }
   if (firstBytes[0] === 0xFF && firstBytes[1] === 0xD8) return true;
   if (firstBytes[0] === 0x89 && firstBytes[1] === 0x50 && firstBytes[2] === 0x4E && firstBytes[3] === 0x47) return true;
+  // WebP (RIFF....WEBP) and GIF (GIF87a/GIF89a): valid photo payloads the
+  // stream proxy serves for image previews. Without these a genuine WebP/GIF
+  // photo was misclassified as non-media and answered 410 while the bytes
+  // were perfectly playable.
+  if (
+    firstBytes.length >= 12 &&
+    firstBytes[0] === 0x52 && firstBytes[1] === 0x49 && firstBytes[2] === 0x46 && firstBytes[3] === 0x46 &&
+    firstBytes[8] === 0x57 && firstBytes[9] === 0x45 && firstBytes[10] === 0x42 && firstBytes[11] === 0x50
+  ) return true;
+  if (text.startsWith("GIF87a") || text.startsWith("GIF89a")) return true;
   return false;
+}
+
+export type SniffedMediaType =
+  | "video/mp4"
+  | "image/jpeg"
+  | "image/png"
+  | "image/webp"
+  | "image/gif"
+  | null;
+
+/**
+ * Identify the media container from leading magic bytes. Offset-0 image
+ * magics win over the `ftyp` scan (which searches the whole window): a
+ * binary that merely contains those four bytes is still an image when it
+ * starts with a real image signature.
+ */
+export function sniffMediaContentType(firstBytes: Uint8Array): SniffedMediaType {
+  if (
+    firstBytes.length >= 12 &&
+    firstBytes[0] === 0x52 && firstBytes[1] === 0x49 && firstBytes[2] === 0x46 && firstBytes[3] === 0x46 &&
+    firstBytes[8] === 0x57 && firstBytes[9] === 0x45 && firstBytes[10] === 0x42 && firstBytes[11] === 0x50
+  ) return "image/webp";
+  if (firstBytes.length >= 6) {
+    const gif = String.fromCharCode(
+      firstBytes[0], firstBytes[1], firstBytes[2], firstBytes[3], firstBytes[4], firstBytes[5]
+    );
+    if (gif === "GIF87a" || gif === "GIF89a") return "image/gif";
+  }
+  if (
+    firstBytes.length >= 8 &&
+    firstBytes[0] === 0x89 && firstBytes[1] === 0x50 && firstBytes[2] === 0x4e && firstBytes[3] === 0x47 &&
+    firstBytes[4] === 0x0d && firstBytes[5] === 0x0a && firstBytes[6] === 0x1a && firstBytes[7] === 0x0a
+  ) return "image/png";
+  if (firstBytes.length >= 2 && firstBytes[0] === 0xff && firstBytes[1] === 0xd8) return "image/jpeg";
+  for (let i = 0; i + 4 <= firstBytes.length; i++) {
+    if (firstBytes[i] === 0x66 && firstBytes[i + 1] === 0x74 && firstBytes[i + 2] === 0x79 && firstBytes[i + 3] === 0x70) {
+      return "video/mp4";
+    }
+  }
+  return null;
+}
+
+/**
+ * Downstream Content-Type policy for proxied media.
+ *
+ * - A specific upstream `video/*` is normalized to `video/mp4` (Instagram
+ *   serves progressive MP4; the <video> element must see a video type).
+ * - A specific upstream `image/*` / `audio/*` is passed through untouched so
+ *   photo previews and paired split-track audio keep their real type.
+ * - A generic type (`application/octet-stream`, `binary/octet-stream`,
+ *   missing) carries no signal: prefer the sniffed container, then the URL
+ *   hint, and only then fall back to `application/octet-stream`. Without
+ *   this an extension-less video CDN URL served generically reached the
+ *   <video> element as `application/octet-stream`, which browsers refuse to
+ *   play — a 206 that can never become a preview.
+ */
+export function resolveDownstreamContentType(
+  upstreamContentType: string,
+  url: string,
+  sniffed: SniffedMediaType
+): string {
+  const ct = upstreamContentType.toLowerCase();
+  if (ct.includes("video")) return "video/mp4";
+  if (ct.includes("image/") || ct.includes("audio/")) {
+    return upstreamContentType.split(";")[0].trim() || upstreamContentType;
+  }
+  if (sniffed) return sniffed;
+  if (url.includes(".mp4")) return "video/mp4";
+  return upstreamContentType || "application/octet-stream";
+}
+
+export interface PipeValidationOptions {
+  /**
+   * When true (default) the leading bytes must look like media and the
+   * downstream Content-Type is resolved from the sniffed container whenever
+   * the upstream type is generic. Pass false ONLY for mid-file range slices
+   * (`Range` start > 0), whose first bytes are not the file head and can
+   * neither be validated nor sniffed.
+   */
+  validateHead?: boolean;
+  /** Upstream Content-Type header ("" when absent). */
+  upstreamContentType?: string;
+  /** Validated upstream media URL (host allowlisted; query never logged). */
+  mediaUrl?: string;
+  /**
+   * Stop after this many body bytes (range truncation for a sliced 206 served
+   * from a full 200 upstream). The upstream reader is cancelled and the
+   * response ended exactly at the limit — never more, never a guessed
+   * Content-Range.
+   */
+  limitBytes?: number;
+}
+
+function concatChunks(chunks: Uint8Array[], total: number): Uint8Array {
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return combined;
 }
 
 async function pipeWithValidation(
@@ -170,13 +280,16 @@ async function pipeWithValidation(
   maxBytes: number,
   tag: string,
   requestId: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: PipeValidationOptions = {}
 ): Promise<{ completed: boolean; bytes: number }> {
+  const validateHead = options.validateHead !== false;
   const reader = body.getReader();
   let totalBytes = 0;
   let finished = false;
   let clientGone = false;
   let validated = false;
+  let contentTypeSent = false;
   const HEADROOM = 128;
   const firstChunk: Uint8Array[] = [];
   let headroomBytes = 0;
@@ -210,6 +323,77 @@ async function pipeWithValidation(
     signal.addEventListener("abort", onExternalAbort, { once: true });
   }
 
+  // Content-Type is resolved exactly once, before the first body byte is
+  // written (headers are still unsent at that point). With a sniffable head
+  // the real container wins over a generic upstream type; for mid-file
+  // slices only the header/URL policy applies.
+  const ensureContentType = (sample: Uint8Array | null): void => {
+    if (contentTypeSent) return;
+    contentTypeSent = true;
+    const sniffed = validateHead && sample ? sniffMediaContentType(sample) : null;
+    res.setHeader(
+      "Content-Type",
+      resolveDownstreamContentType(options.upstreamContentType ?? "", options.mediaUrl ?? "", sniffed)
+    );
+  };
+
+  const rejectAsExpired = async (): Promise<{ completed: boolean; bytes: number }> => {
+    finished = true;
+    await reader.cancel().catch(() => {});
+    logger.warn(`[${tag}] upstream returned non-media content`, { requestId });
+    const err = createError("MEDIA_URL_EXPIRED");
+    // Explicit status: callers may already have set 206 for a range they can
+    // no longer satisfy with non-media bytes — the honest answer is 410, and
+    // the frontend treats exactly this code as "resolve once more, freshly".
+    res.status(err.statusCode).json(err.toResponse());
+    return { completed: false, bytes: totalBytes };
+  };
+
+  const writeChunk = async (chunk: Uint8Array): Promise<boolean> => {
+    try {
+      const canContinue = res.write(chunk);
+      if (!canContinue) {
+        await new Promise<void>((resolve) => res.once("drain", () => resolve()));
+      }
+      return true;
+    } catch {
+      finished = true;
+      await reader.cancel().catch(() => {});
+      return false;
+    }
+  };
+
+  const limitBytes = options.limitBytes;
+  let writtenBytes = 0;
+  /**
+   * Write capped at `limitBytes` (range truncation). Returns "stop" when the
+   * limit is reached (upstream cancelled, response ended), true when the
+   * chunk was written and more may follow, false on a write failure.
+   */
+  const writeCapped = async (chunk: Uint8Array): Promise<"stop" | boolean> => {
+    let out = chunk;
+    if (limitBytes !== undefined) {
+      const remaining = limitBytes - writtenBytes;
+      if (remaining <= 0) {
+        finished = true;
+        await reader.cancel().catch(() => {});
+        res.end();
+        return "stop";
+      }
+      if (out.length > remaining) out = out.slice(0, remaining);
+    }
+    const ok = await writeChunk(out);
+    if (!ok) return false;
+    writtenBytes += out.length;
+    if (limitBytes !== undefined && writtenBytes >= limitBytes) {
+      finished = true;
+      await reader.cancel().catch(() => {});
+      res.end();
+      return "stop";
+    }
+    return true;
+  };
+
   try {
     while (true) {
       if (clientGone) {
@@ -217,6 +401,23 @@ async function pipeWithValidation(
       }
       const { done, value } = await reader.read();
       if (done) {
+        // A body smaller than the headroom window never triggered validation:
+        // validate and sniff what exists, flush it, then end. Without this a
+        // tiny (but valid) payload was answered with an empty body.
+        if (!validated && validateHead && firstChunk.length > 0) {
+          const combined = concatChunks(firstChunk, headroomBytes);
+          if (!looksLikeMediaBytes(combined)) {
+            return rejectAsExpired();
+          }
+          validated = true;
+          ensureContentType(combined);
+          for (const chunk of firstChunk) {
+            const verdict = await writeCapped(chunk);
+            if (verdict === "stop") return { completed: true, bytes: writtenBytes };
+            if (!verdict) return { completed: false, bytes: totalBytes };
+          }
+          firstChunk.length = 0;
+        }
         finished = true;
         res.end();
         return { completed: true, bytes: totalBytes };
@@ -229,51 +430,29 @@ async function pipeWithValidation(
         logger.warn(`[${tag}] exceeded size limit mid-stream`, { requestId, bytes: totalBytes });
         return { completed: false, bytes: totalBytes };
       }
-      if (!validated) {
+      if (!validated && validateHead) {
         firstChunk.push(value);
         headroomBytes += value.length;
         if (headroomBytes >= HEADROOM) {
-          const combined = new Uint8Array(headroomBytes);
-          let offset = 0;
-          for (const chunk of firstChunk) {
-            combined.set(chunk, offset);
-            offset += chunk.length;
-          }
+          const combined = concatChunks(firstChunk, headroomBytes);
           if (!looksLikeMediaBytes(combined)) {
-            finished = true;
-            await reader.cancel().catch(() => {});
-            logger.warn(`[${tag}] upstream returned non-media content`, { requestId });
-            const err = createError("MEDIA_URL_EXPIRED");
-            res.status(err.statusCode).json(err.toResponse());
-            return { completed: false, bytes: totalBytes };
+            return rejectAsExpired();
           }
           validated = true;
+          ensureContentType(combined);
           for (const chunk of firstChunk) {
-            try {
-              const canContinue = res.write(chunk);
-              if (!canContinue) {
-                await new Promise<void>((resolve) => res.once("drain", () => resolve()));
-              }
-            } catch {
-              finished = true;
-              await reader.cancel().catch(() => {});
-              return { completed: false, bytes: totalBytes };
-            }
+            const verdict = await writeCapped(chunk);
+            if (verdict === "stop") return { completed: true, bytes: writtenBytes };
+            if (!verdict) return { completed: false, bytes: totalBytes };
           }
           firstChunk.length = 0;
         }
         continue;
       }
-      try {
-        const canContinue = res.write(value);
-        if (!canContinue) {
-          await new Promise<void>((resolve) => res.once("drain", () => resolve()));
-        }
-      } catch {
-        finished = true;
-        await reader.cancel().catch(() => {});
-        return { completed: false, bytes: totalBytes };
-      }
+      if (!contentTypeSent) ensureContentType(null);
+      const verdict = await writeCapped(value);
+      if (verdict === "stop") return { completed: true, bytes: writtenBytes };
+      if (!verdict) return { completed: false, bytes: totalBytes };
     }
   } finally {
     req.off("close", onClientClose);
@@ -626,11 +805,18 @@ async function handleStream(
     // discarded and the full object is fetched instead.
     let response = upstream.response;
     const firstByteMs = Date.now() - upstreamStart;
+    // Safe diagnostics only: status codes, byte counts and header VALUES —
+    // never the media URL (signed query params must not reach logs). The
+    // requested Range is client-supplied framing, safe to record verbatim.
     logger.info("[STREAM] upstream status", {
       requestId,
       status: response.status,
       firstByteMs,
       finalHost: new URL(finalUrl).hostname,
+      rangeRequested: req.headers.range ?? null,
+      upstreamContentType: (response.headers.get("content-type") || "").slice(0, 60),
+      upstreamContentLength: response.headers.get("content-length"),
+      upstreamContentRange: response.headers.get("content-range"),
     });
 
     if (response.status === 401 || response.status === 403 || response.status === 404) {
@@ -678,19 +864,27 @@ async function handleStream(
       return;
     }
 
-    const isVideo = upstreamCT.includes("video") || validation.value.url.includes(".mp4");
-    let contentType = isVideo ? "video/mp4" : upstreamCT || "application/octet-stream";
-
     if (!response.body) {
+      // No bytes behind a 200/206 is a broken upstream transfer, not missing
+      // content: report it as a download failure (502), never the generic
+      // "currently unavailable" verdict.
       logger.warn("[STREAM] empty upstream body", { requestId });
-      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+      res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
       return;
     }
 
-    res.setHeader("Content-Type", contentType);
+    // Content-Type is intentionally NOT set here: it is resolved per terminal
+    // path below from the real leading bytes whenever the file head is
+    // streamed (see resolveDownstreamContentType), so an extension-less video
+    // served generically still reaches <video> as video/mp4. These headers
+    // are correct regardless of that decision.
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Request-Id", requestId);
+    // Header-policy Content-Type for diagnostics (no sniffing): what the
+    // headers alone would say, before any byte-accurate override below.
+    let contentType = resolveDownstreamContentType(upstreamCT, validation.value.url, null);
+    const downstreamStart = Date.now();
 
     // Case 0: upstream answered 200 WITHOUT Content-Range, but the body is
     // exactly the length of the URL's embedded bytestart/byteend window — the
@@ -764,13 +958,11 @@ async function handleStream(
             return;
           }
           if (!recovered.body) {
-            res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+            res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
             return;
           }
           response = recovered;
-          const recoveredVideo = recoveredCT.includes("video") || validation.value.url.includes(".mp4");
-          contentType = recoveredVideo ? "video/mp4" : recoveredCT || "application/octet-stream";
-          res.setHeader("Content-Type", contentType);
+          contentType = resolveDownstreamContentType(recoveredCT, validation.value.url, null);
           logStreamDiag(requestId, { status: recovered.status, mode: "embedded-slice-recovery", contentType, bytes: 0 });
         }
       }
@@ -796,11 +988,37 @@ async function handleStream(
         res.status(206);
         logger.info("[STREAM] forwarding 206 partial content", { requestId, contentRange });
         if (!response.body) {
-          res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+          res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
           return;
         }
-        const result = await pipeUpstreamToClient(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal);
-        logger.info("[STREAM] 206 stream completed", { requestId, bytes: result.bytes });
+        // The shared validating pipe: when the range starts at the file head
+        // (the browser's initial probe) the leading bytes are verified as
+        // media and a generic upstream type is corrected from the sniffed
+        // container — a 206 that would otherwise carry unplayable bytes (or a
+        // refused application/octet-stream) becomes an honest 410 instead.
+        // Mid-file seeks (start > 0) cannot be sniffed and stream through.
+        const result = await pipeWithValidation(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal, {
+          validateHead: upRange.start === 0,
+          upstreamContentType: response.headers.get("content-type") || "",
+          mediaUrl: validation.value.url,
+        });
+        if (res.statusCode >= 400) {
+          // The pipe already answered with a structured error (e.g. 410 for
+          // non-media bytes): never mislog it as a completed 206.
+          logger.info("[STREAM] answered with structured error instead of 206", {
+            requestId,
+            downstreamStatus: res.statusCode,
+            bytes: result.bytes,
+            durationMs: Date.now() - downstreamStart,
+          });
+          return;
+        }
+        logger.info("[STREAM] 206 stream completed", {
+          requestId,
+          downstreamStatus: res.statusCode,
+          bytes: result.bytes,
+          durationMs: Date.now() - downstreamStart,
+        });
         logStreamDiag(requestId, { status: 206, mode: "upstream-range", contentType, bytes: result.bytes });
         return;
       }
@@ -859,48 +1077,88 @@ async function handleStream(
         return;
       }
       if (!full.body) {
-        res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+        res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
         return;
       }
       response = full;
-      const recoveredVideo = fullCT.includes("video") || validation.value.url.includes(".mp4");
-      contentType = recoveredVideo ? "video/mp4" : fullCT || "application/octet-stream";
-      res.setHeader("Content-Type", contentType);
+      contentType = resolveDownstreamContentType(fullCT, validation.value.url, null);
     }
 
     // Re-narrow after a possible recovery reassignment above.
     if (!response.body) {
       logger.warn("[STREAM] empty upstream body", { requestId });
-      res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+      res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
       return;
     }
 
-    // Case 2: upstream returned 200 but client asked for a range — slice it ourselves
+    // Case 2: upstream returned 200 but client asked for a range — slice it ourselves.
+    // The total MUST be known: without it no honest Content-Range can be
+    // written (`bytes 0-/*` is malformed and browsers reject the 206, which
+    // reads as "Preview unavailable"). With an unknown total the Range is
+    // legally ignored and the full object is served as 200 below instead.
     if (clientRange) {
       const totalHeader = response.headers.get("content-length");
       const total = totalHeader ? parseInt(totalHeader, 10) : NaN;
-      const end = clientRange.end ?? (isNaN(total) ? null : total - 1);
-      if (!isNaN(total) && clientRange.start >= total) {
-        await response.body.cancel().catch(() => {});
-        res.status(416).setHeader("Accept-Ranges", "bytes").json(createErrorResponse("CONTENT_UNAVAILABLE"));
+      if (!isNaN(total)) {
+        const end = clientRange.end ?? total - 1;
+        if (clientRange.start >= total) {
+          await response.body.cancel().catch(() => {});
+          res.status(416).setHeader("Accept-Ranges", "bytes").json(createErrorResponse("CONTENT_UNAVAILABLE"));
+          return;
+        }
+        res.setHeader("Content-Range", `bytes ${clientRange.start}-${end}/${total}`);
+        res.setHeader("Content-Length", String(end - clientRange.start + 1));
+        res.status(206);
+        logger.info("[STREAM] serving 206 from 200 upstream (slicing)", {
+          requestId,
+          start: clientRange.start,
+          end,
+        });
+        if (clientRange.start === 0) {
+          // File head: validate the bytes and resolve a generic upstream
+          // type from the sniffed container, truncating exactly at the
+          // promised range end.
+          const validated = await pipeWithValidation(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal, {
+            validateHead: true,
+            upstreamContentType: response.headers.get("content-type") || "",
+            mediaUrl: validation.value.url,
+            limitBytes: end - clientRange.start + 1,
+          });
+          if (res.statusCode >= 400) {
+            logger.info("[STREAM] answered with structured error instead of sliced 206", {
+              requestId,
+              downstreamStatus: res.statusCode,
+              bytes: validated.bytes,
+              durationMs: Date.now() - downstreamStart,
+            });
+            return;
+          }
+          logger.info("[STREAM] sliced 206 completed", {
+            requestId,
+            downstreamStatus: res.statusCode,
+            bytes: validated.bytes,
+            durationMs: Date.now() - downstreamStart,
+          });
+          logStreamDiag(requestId, { status: 206, mode: "sliced-206", contentType, bytes: validated.bytes });
+          return;
+        }
+        // Mid-file seek: the bytes cannot be sniffed, so the header/URL
+        // policy decides the type (specific upstream types pass through).
+        res.setHeader(
+          "Content-Type",
+          resolveDownstreamContentType(response.headers.get("content-type") || "", validation.value.url, null)
+        );
+        const sent = await pipeRangeSlice(req, res, response.body, clientRange.start, end, "STREAM", requestId, signal);
+        logger.info("[STREAM] sliced 206 completed", {
+          requestId,
+          downstreamStatus: res.statusCode,
+          bytes: sent,
+          durationMs: Date.now() - downstreamStart,
+        });
+        logStreamDiag(requestId, { status: 206, mode: "sliced-206", contentType, bytes: sent });
         return;
       }
-      const rangeEnd = end ?? "";
-      const rangeTotal = isNaN(total) ? "*" : String(total);
-      res.setHeader("Content-Range", `bytes ${clientRange.start}-${rangeEnd}/${rangeTotal}`);
-      if (end !== null) {
-        res.setHeader("Content-Length", String(end - clientRange.start + 1));
-      }
-      res.status(206);
-      logger.info("[STREAM] serving 206 from 200 upstream (slicing)", {
-        requestId,
-        start: clientRange.start,
-        end,
-      });
-      const sent = await pipeRangeSlice(req, res, response.body, clientRange.start, end, "STREAM", requestId, signal);
-      logger.info("[STREAM] sliced 206 completed", { requestId, bytes: sent });
-      logStreamDiag(requestId, { status: 206, mode: "sliced-206", contentType, bytes: sent });
-      return;
+      logger.info("[STREAM] unknown total, ignoring Range and serving full 200", { requestId });
     }
 
     // Case 3: full 200 stream — validate first bytes are actually media
@@ -914,11 +1172,26 @@ async function handleStream(
       res.setHeader("Content-Length", contentLength);
     }
     logger.info("[STREAM] full 200 stream started", { requestId });
-    const result = await pipeWithValidation(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal);
+    const result = await pipeWithValidation(req, res, response.body, MAX_STREAM_BYTES, "STREAM", requestId, signal, {
+      validateHead: true,
+      upstreamContentType: response.headers.get("content-type") || "",
+      mediaUrl: validation.value.url,
+    });
+    if (res.statusCode >= 400) {
+      logger.info("[STREAM] answered with structured error instead of full 200", {
+        requestId,
+        downstreamStatus: res.statusCode,
+        bytes: result.bytes,
+        durationMs: Date.now() - downstreamStart,
+      });
+      return;
+    }
     logger.info("[STREAM] full stream completed", {
       requestId,
+      downstreamStatus: res.statusCode,
       completed: result.completed,
       bytes: result.bytes,
+      durationMs: Date.now() - downstreamStart,
     });
     logStreamDiag(requestId, { status: 200, mode: "full", contentType, bytes: result.bytes });
   } catch (error) {

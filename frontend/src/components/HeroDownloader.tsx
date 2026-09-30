@@ -31,6 +31,9 @@ import {
   getApiBase,
   logApiFailure,
   isBrowserOffline,
+  refreshMediaItemUrl,
+  stripStreamRetryParam,
+  type MediaItem,
   type ResolveData,
   type ResolveStreamHandle,
 } from "@/services/api";
@@ -230,7 +233,7 @@ function aspectRatioStyle(width?: number | null, height?: number | null, fallbac
   return { aspectRatio: fallback };
 }
 
-function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurationChange, onResolution }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; audioSrc?: string | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void }) {
+function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurationChange, onResolution, onRequestFreshMedia }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; audioSrc?: string | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void; onRequestFreshMedia?: (failedSrc: string) => Promise<boolean> }) {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -242,19 +245,34 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
   // covers the poster frame; canplay/loadeddata cover playback readiness).
   const [loading, setLoading] = useState(true);
   // Preview always plays the backend streaming endpoint (proxy-only: the raw
-  // Instagram CDN URL is never mounted). One bounded same-URL retry with a
-  // cache-buster recovers transient failures without ever looping, switching
-  // hosts, or re-resolving on the client.
+  // Instagram CDN URL is never mounted). Recovery is bounded and ordered:
+  // first one same-URL retry with a cache-buster (transient failures), then
+  // exactly one parent-owned fresh resolve (expired signed URLs), then the
+  // honest unavailable tile. No path ever loops.
   const triedFallbackRef = useRef(false);
+  const freshTriedRef = useRef(false);
+  const mountedRef = useRef(true);
   const [currentSrc, setCurrentSrc] = useState(src);
+  const currentSrcRef = useRef(currentSrc);
+  useEffect(() => {
+    currentSrcRef.current = currentSrc;
+  });
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   // Latest callbacks, so the media listeners below attach exactly once for the
   // lifetime of the element instead of being torn down and re-added whenever a
   // parent render passes new inline closures.
   const onDurationChangeRef = useRef(onDurationChange);
   const onResolutionRef = useRef(onResolution);
+  const onRequestFreshMediaRef = useRef(onRequestFreshMedia);
   useEffect(() => {
     onDurationChangeRef.current = onDurationChange;
     onResolutionRef.current = onResolution;
+    onRequestFreshMediaRef.current = onRequestFreshMedia;
   });
 
   // Reflect element state onto the wrapper as data-* attributes. This is a
@@ -345,20 +363,55 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
           /* ignore logging failures */
         }
       }
-      // Single bounded recovery: the same proxy URL with a cache-buster (the
-      // backend already retried with a freshly resolved URL server-side). A
-      // second failure is genuine → show the unavailable state.
+      // Bounded recovery, in order:
+      // 1. Same proxy URL with a cache-buster (transient failure; the backend
+      //    already retried with a freshly resolved URL server-side when the
+      //    CDN reported expiry).
+      // 2. Exactly one parent-owned fresh resolve (the signed CDN URL itself
+      //    is stale — the parent swaps in the fresh media URL and remounts).
+      // 3. Anything else is genuine → show the unavailable state. No loops.
       if (!triedFallbackRef.current) {
         triedFallbackRef.current = true;
         setCurrentSrc((prev) => {
-          const base = prev.split("&_retry=")[0];
+          const base = stripStreamRetryParam(prev);
           const bust = base.includes("?") ? "&" : "?";
           return `${base}${bust}_retry=${Date.now()}`;
         });
-      } else {
-        setLoading(false);
-        setMediaError(true);
+        return;
       }
+      if (!freshTriedRef.current && onRequestFreshMediaRef.current) {
+        freshTriedRef.current = true;
+        const failed = currentSrcRef.current;
+        let pending: Promise<boolean>;
+        try {
+          pending = onRequestFreshMediaRef.current(failed);
+        } catch {
+          if (mountedRef.current) {
+            setLoading(false);
+            setMediaError(true);
+          }
+          return;
+        }
+        pending.then(
+          (recovered) => {
+            if (!mountedRef.current) return;
+            // Recovered means the parent swapped in a fresh media URL and this
+            // element is about to remount on it — keep the spinner until then.
+            if (!recovered) {
+              setLoading(false);
+              setMediaError(true);
+            }
+          },
+          () => {
+            if (!mountedRef.current) return;
+            setLoading(false);
+            setMediaError(true);
+          }
+        );
+        return;
+      }
+      setLoading(false);
+      setMediaError(true);
     };
     v.addEventListener("play", onPlay);
     v.addEventListener("playing", onPlaying);
@@ -817,10 +870,64 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
     audioFallbackRef.current = t.result.audioErrorFallback;
   });
 
-  const items = result.media;
+  // Refreshed media after the single stale-URL recovery: the item at the
+  // current index carries the freshly resolved CDN URL (never the expired
+  // one). Null until recovery succeeds. MediaResult remounts per result, so
+  // this resets naturally for every new resolve.
+  const [freshItems, setFreshItems] = useState<MediaItem[] | null>(null);
+  const items = freshItems ?? result.media;
   const safeIndex = items.length === 0 ? 0 : Math.min(currentIndex, items.length - 1);
   const currentMedia = items[safeIndex] ?? null;
   const isAudio = mode === "audio";
+
+  // URLs a recovery resolve was already attempted for (stripped of our own
+  // cache-buster). One entry per failed media URL, shared by the video and
+  // image paths: the fresh resolve runs at most once per stale URL, so the
+  // preview can never turn into a resolve loop.
+  const recoveryAttemptedRef = useRef<Set<string>>(new Set());
+
+  /**
+   * Single stale-media recovery: POST a fresh resolve that bypasses the
+   * server's resolved-URL cache, swap the current item to the fresh CDN URL,
+   * and report whether a remount with fresh bytes is coming. False means the
+   * caller must show the honest unavailable state.
+   */
+  const recoverStaleMedia = useCallback(
+    async (failedProxySrc: string): Promise<boolean> => {
+      const base = stripStreamRetryParam(failedProxySrc);
+      if (!base || recoveryAttemptedRef.current.has(base)) return false;
+      recoveryAttemptedRef.current.add(base);
+      const requestUrl = `${getApiBase()}/api/resolve`;
+      let data;
+      try {
+        data = await resolveInstagramUrl(result.sourceUrl, undefined, { refresh: true });
+      } catch (err) {
+        logApiFailure({ requestType: "resolve-post", requestUrl, status: null, error: err });
+        return false;
+      }
+      if (!data.success) {
+        logApiFailure({
+          requestType: "resolve-post",
+          requestUrl,
+          status: null,
+          error: new Error(`media-refresh-${data.error.code}`),
+        });
+        return false;
+      }
+      const next = refreshMediaItemUrl(items, data.data.media, safeIndex);
+      if (!next) return false;
+      const freshItem = next[Math.min(safeIndex, next.length - 1)];
+      recoveryAttemptedRef.current.add(
+        stripStreamRetryParam(getStreamUrl(freshItem.url, result.sourceUrl))
+      );
+      // The image path caches its retry URL locally; drop it so the fresh
+      // proxy URL takes effect on the next render.
+      setImgSrc(null);
+      setFreshItems(next);
+      return true;
+    },
+    [result.sourceUrl, items, safeIndex]
+  );
 
   // Frontend safety: NEVER display profile/avatar as Story media
   const isProfileImageUrlFrontend = (u: string) => {
@@ -1077,18 +1184,34 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
     [streamSrc, result.sourceUrl]
   );
 
-  // Image preview: retry once with a cache-buster, then show the error state.
-  // (The backend already retried with a freshly resolved URL when possible.)
+  // Image preview: retry once with a cache-buster, then the single
+  // fresh-resolve recovery (same policy as video), then the honest error
+  // state. (The backend already retried with a freshly resolved URL when
+  // possible.)
   const handleImgError = useCallback(() => {
     logPreviewDiag(currentMedia?.type);
     if (!imgRetriedRef.current) {
       imgRetriedRef.current = true;
       const bust = streamSrc.includes("?") ? "&" : "?";
       setImgSrc(`${streamSrc}${bust}_retry=${Date.now()}`);
-    } else {
-      setImgFailed(true);
+      return;
     }
-  }, [currentMedia, streamSrc, logPreviewDiag]);
+    const failed = imgSrc ?? streamSrc;
+    const base = stripStreamRetryParam(failed);
+    if (!base || recoveryAttemptedRef.current.has(base)) {
+      setImgFailed(true);
+      return;
+    }
+    recoverStaleMedia(failed).then(
+      (ok) => {
+        if (!ok) setImgFailed(true);
+        // On success freshItems swaps in the fresh URL (and setImgSrc(null)
+        // above drops the stale retry URL), so the <img> remounts on fresh
+        // bytes with no further action here.
+      },
+      () => setImgFailed(true)
+    );
+  }, [currentMedia, streamSrc, imgSrc, logPreviewDiag, recoverStaleMedia]);
 
   const goPrev = useCallback(() => {
     const target = Math.max(0, (carouselTargetRef.current ?? safeIndex) - 1);
@@ -1256,6 +1379,7 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
                   audioSrc={pairedAudioSrc}
                   onDurationChange={(d) => setRealDuration(d)}
                   onResolution={(w, h) => setRealResolution({ w, h })}
+                  onRequestFreshMedia={recoverStaleMedia}
                 />
               ) : (
                 <div className="flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-[20px] bg-black/5">

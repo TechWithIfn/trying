@@ -223,14 +223,28 @@ export function isResolveResponse(value: unknown): value is ResolveResponse {
   return false;
 }
 
-export async function resolveInstagramUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
+export interface ResolveRequestOptions {
+  /**
+   * Stale-media recovery: bypass the server's resolved-URL cache and resolve
+   * freshly. The preview layer sets this ONLY for its single automatic retry
+   * after the backend answered 410 MEDIA_URL_EXPIRED — never for initial
+   * resolves — so a retry cannot reuse the same expired signed CDN URL.
+   */
+  refresh?: boolean;
+}
+
+export async function resolveInstagramUrl(
+  url: string,
+  signal?: AbortSignal,
+  opts?: ResolveRequestOptions
+): Promise<ResolveResponse> {
   const requestUrl = `${getApiBase()}/api/resolve`;
   let response: Response;
   try {
     response = await fetch(requestUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(opts?.refresh === true ? { url, refresh: true } : { url }),
       signal,
     });
   } catch (error) {
@@ -394,6 +408,81 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
 export function getStreamUrl(mediaUrl: string, sourceUrl?: string): string {
   const base = `${getApiBase()}/api/stream?url=${encodeURIComponent(mediaUrl)}`;
   return sourceUrl ? `${base}&source=${encodeURIComponent(sourceUrl)}` : base;
+}
+
+/**
+ * Backend error codes that prove the signed CDN URL behind a preview is
+ * stale/expired (as opposed to a transient transport failure). Only these —
+ * observed from a structured error payload or HTTP status — may trigger the
+ * preview layer's single fresh-resolve retry. Anything else keeps the
+ * bounded same-URL cache-buster and then the honest unavailable state, so a
+ * broken player can never turn into a resolve loop.
+ */
+const EXPIRED_MEDIA_CODES = new Set(["MEDIA_URL_EXPIRED"]);
+
+export function isExpiredMediaErrorCode(code: unknown): boolean {
+  return typeof code === "string" && EXPIRED_MEDIA_CODES.has(code);
+}
+
+export function isExpiredMediaStatus(status: number | null | undefined): boolean {
+  return status === 410;
+}
+
+/**
+ * Strip this client's own `_retry` cache-buster from a proxied stream URL so
+ * recovery bookkeeping compares the real media identity. Only the exact
+ * `_retry=<digits>` parameter this app appends is removed; CDN signatures
+ * embedded in `url=` are byte-identical before and after.
+ */
+export function stripStreamRetryParam(proxyUrl: string): string {
+  return proxyUrl
+    .replace(/([?&])_retry=\d+(&|$)/, (_, sep: string, rest: string) => (rest ? sep : ""))
+    .replace(/[?&]$/, "");
+}
+
+/**
+ * Build the refreshed media list after a stale-media recovery resolve: the
+ * item at `index` takes the fresh URL (plus fresh pairing/metadata where the
+ * fresh result actually provides it); every other item is untouched. Returns
+ * null when there is nothing fresh to switch to (empty result, missing item,
+ * or byte-identical URL), in which case the caller must show the honest
+ * unavailable state instead of reloading the same expired bytes.
+ */
+export function refreshMediaItemUrl(
+  items: MediaItem[],
+  freshMedia: MediaItem[] | null | undefined,
+  index: number
+): MediaItem[] | null {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  if (!Array.isArray(freshMedia) || freshMedia.length === 0) return null;
+  const safe = Math.max(0, Math.min(index, items.length - 1));
+  const freshSafe = Math.max(0, Math.min(index, freshMedia.length - 1));
+  const prev = items[safe];
+  const cand = freshMedia[freshSafe];
+  if (!prev || !cand) return null;
+  if (typeof cand.url !== "string" || cand.url.length === 0) return null;
+  if (cand.url === prev.url) return null;
+  const next = items.slice();
+  next[safe] = {
+    ...prev,
+    url: cand.url,
+    // Pairing/metadata refresh only from real values: a null in the fresh
+    // result means "unknown", never "erase what the working item had".
+    // The audio pairing is the exception — a stale audioUrl is worse than
+    // none, so it always follows the fresh result.
+    audioUrl:
+      typeof cand.audioUrl === "string" && cand.audioUrl.length > 0 ? cand.audioUrl : null,
+    width: typeof cand.width === "number" ? cand.width : prev.width,
+    height: typeof cand.height === "number" ? cand.height : prev.height,
+    duration: typeof cand.duration === "number" ? cand.duration : prev.duration,
+    size: typeof cand.size === "number" ? cand.size : prev.size,
+    format: typeof cand.format === "string" && cand.format.length > 0 ? cand.format : prev.format,
+    thumbnail:
+      typeof cand.thumbnail === "string" && cand.thumbnail.length > 0
+        ? cand.thumbnail
+        : prev.thumbnail,
+  };
+  return next;
 }
 
 export function getDownloadUrl(mediaUrl: string, filename: string, sourceUrl?: string): string {

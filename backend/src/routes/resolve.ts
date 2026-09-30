@@ -103,11 +103,16 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { url } = body as { url: unknown };
+    const { url, refresh } = body as { url: unknown; refresh?: unknown };
     if (typeof url !== "string") {
       fail(400, "VALIDATION_ERROR");
       return;
     }
+    // Stale-media recovery: the preview layer detected an expired signed CDN
+    // URL (backend answered 410 MEDIA_URL_EXPIRED) and asks for exactly one
+    // freshly resolved result. Unknown shapes are ignored (treated as false)
+    // so this flag can never disable caching by accident.
+    const refreshRequested = refresh === true;
 
     logger.info("Request received", { requestId, url: url.slice(0, 100) });
 
@@ -185,7 +190,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
             ip,
             rateLimitRemaining,
             parsed,
-            controller.signal
+            controller.signal,
+            { bypassCache: refreshRequested }
           ),
         { signal: controller.signal }
       );
@@ -263,7 +269,8 @@ async function performResolve(
   ip: string,
   rateLimitRemaining: number,
   parsed: ParsedInstagramUrl,
-  signal: AbortSignal
+  signal: AbortSignal,
+  opts?: { bypassCache?: boolean }
 ): Promise<void> {
   // Route-level timeout (mirrors the SSE stream guard): a hung provider
   // fails fast with 504 while the in-flight work keeps running and warms
@@ -271,7 +278,10 @@ async function performResolve(
   // is served from cache instead of hanging again. The provider now has its
   // own hard deadline, so "keeps running" can never mean "runs forever".
   const timeoutMs = readPositiveInt("RESOLVER_TIMEOUT_MS", 15_000);
-  const pending = resolveUrl(parsed.normalized, undefined, { signal });
+  if (opts?.bypassCache) {
+    logger.info("Refresh resolve requested (stale CDN URL recovery)", { requestId });
+  }
+  const pending = resolveUrl(parsed.normalized, undefined, { signal, bypassCache: opts?.bypassCache });
   let gateWon = false;
   const timeoutGate = new Promise<never>((_, reject) => {
     const timer = setTimeout(() => {
