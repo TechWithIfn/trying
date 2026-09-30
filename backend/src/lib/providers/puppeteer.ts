@@ -2448,10 +2448,17 @@ export class PuppeteerProvider extends BaseProvider {
       // paying for two sequential round-trips on every post resolve.
       const shortcodeMatch = /instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i.exec(url);
       const shortcode = shortcodeMatch?.[1];
-      const embedHtmlPromise =
+      // Status-aware embed fetch: the HTML is consumed by the fast paths
+      // below, while the HTTP STATUS is a dead-link oracle (Instagram's
+      // public embed endpoint 404s for removed/private shortcodes). One
+      // shared promise — never a second request for the same document.
+      const embedSnapshotPromise =
         shortcode
-          ? fetchPageHtml(`https://www.instagram.com/p/${shortcode}/embed/`)
+          ? fetchPageSnapshot(`https://www.instagram.com/p/${shortcode}/embed/`).catch(() => null)
           : null;
+      const embedHtmlPromise = embedSnapshotPromise
+        ? embedSnapshotPromise.then((snap) => snap?.html ?? null)
+        : null;
       const fetchMeta = await fetchMetadata(url);
       timings.metadataMs = Date.now() - metaStart;
       onProgress?.(35, "Media source opened");
@@ -2501,6 +2508,37 @@ export class PuppeteerProvider extends BaseProvider {
           pageStatus: fetchMeta.pageStatus,
           loginWall: fetchMeta.loginWall,
         });
+      }
+      // Embed-404 dead-link fast path (audio pages excluded: their
+      // shortcode regex captures "audio", whose /p/audio/embed/ 404s
+      // spuriously). Conjunction rule: embed 404 AND the main fetch yielded
+      // zero video signals — a flaky embed fetch alone can never kill a
+      // resolve the main page could satisfy. Dead links fail here in ~1s
+      // with CONTENT_NOT_FOUND instead of a ~17s browser odyssey to an
+      // empty shell and the same answer.
+      if (shortcode && embedSnapshotPromise && !url.includes("/reels/audio/")) {
+        try {
+          const embedSnap = await embedSnapshotPromise;
+          const mainHasVideoSignals =
+            Boolean(fetchMeta.ogVideo) || fetchMeta.embeddedMedia.some((m) => m.type === "video");
+          if (embedSnap && embedSnap.status === 404 && !mainHasVideoSignals) {
+            logger.warn("Puppeteer embed endpoint reports removed content", {
+              normalizedUrl: url,
+              shortcode,
+              embedStatus: embedSnap.status,
+            });
+            const gone = createError("CONTENT_NOT_FOUND");
+            throw new AppError(gone.code, gone.message, gone.statusCode, {
+              provider: "puppeteer",
+              runtime: isServerlessRuntime() ? "serverless" : "local",
+              stage: "prefetch-embed-404",
+              pageStatus: fetchMeta.pageStatus,
+            });
+          }
+        } catch (err) {
+          if (err instanceof AppError) throw err;
+          // Embed fetch failed benignly: existing flow continues unchanged.
+        }
       }
       if (accessBlock === "login-redirect") {
         // Gated, not throttled: never a rate-limit code. With a viewer session
