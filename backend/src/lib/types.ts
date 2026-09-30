@@ -107,6 +107,13 @@ export interface ResolveDiagnostics {
   docStatus?: number | null;
   /** Final document hostname behind redirects (no query, no tokens). */
   docFinalHost?: string | null;
+  /** Final document pathname behind redirects (no query, no tokens). */
+  docFinalPath?: string | null;
+  /**
+   * Whether page HTML shows the server-side session as accepted (true),
+   * rejected (false), or carries no verdict (null — never decide on null).
+   */
+  sessionAccepted?: boolean | null;
 }
 
 export interface ResolveErrorResponse {

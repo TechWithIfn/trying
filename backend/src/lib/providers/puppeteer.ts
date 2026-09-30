@@ -1775,6 +1775,26 @@ export function detectInstagramAccessBlock(meta: {
   return null;
 }
 
+/**
+ * Determine from page HTML whether the configured server-side session was
+ * actually ACCEPTED by Instagram (vs silently ignored, e.g. expired
+ * sessionid). Scans the viewer's own bootstrap markers:
+ *  - `"is_authenticated":true` → accepted;
+ *  - `"is_authenticated":false` (or an explicit null viewer) → rejected;
+ *  - markers absent → null (unknown; caller must not decide on it).
+ *
+ * Null-safe by design: when Instagram omits these markers the result is
+ * null and every caller keeps its previous behavior. Never throws, never
+ * touches secrets — it only reads true/false/null literals.
+ */
+export function detectSessionAccepted(html: string | null | undefined): boolean | null {
+  if (typeof html !== "string" || html.length === 0) return null;
+  if (/"is_authenticated"\s*:\s*true/i.test(html)) return true;
+  if (/"is_authenticated"\s*:\s*false/i.test(html)) return false;
+  if (/"viewer"\s*:\s*null/i.test(html)) return false;
+  return null;
+}
+
 function isLikelyProfileImageUrl(url: string): boolean {
   try {
     return /\/t51\.[^/]+-19\//i.test(new URL(url).pathname);
@@ -1808,6 +1828,12 @@ export async function fetchMetadata(url: string): Promise<{
   description: string | null;
   author: Author | null;
   loginWall: boolean;
+  /**
+   * Whether the page HTML shows the server-side session as accepted
+   * (true), rejected (false), or carries no verdict (null — never decide
+   * on null).
+   */
+  sessionAccepted: boolean | null;
 }> {
   const empty = {
     ogImage: null,
@@ -1825,6 +1851,7 @@ export async function fetchMetadata(url: string): Promise<{
     description: null,
     author: extractAuthorFromUrl(url),
     loginWall: false,
+    sessionAccepted: null,
   };
   try {
     const page = await fetchPageSnapshot(url);
@@ -1889,6 +1916,7 @@ export async function fetchMetadata(url: string): Promise<{
       description: extractDescriptionFromHtml(html),
       author: extractAuthorFromHtml(html) || extractAuthorFromUrl(url),
       loginWall: false,
+      sessionAccepted: detectSessionAccepted(html),
     };
   } catch {
     return empty;
@@ -2450,6 +2478,28 @@ export class PuppeteerProvider extends BaseProvider {
           stage: "prefetch-throttled",
           pageStatus: fetchMeta.pageStatus,
           upstreamRetryAfterSeconds: fetchMeta.pageRetryAfterSeconds,
+        });
+      }
+      // Session rejected fast-fail: the page HTML positively shows the
+      // configured session as NOT accepted (stale/expired credential). Every
+      // downstream step — browser launch, navigation, extraction — would run
+      // as anonymous and can only end in an empty shell, so fail now with the
+      // actionable credential code instead of burning ~25s to get there.
+      // `null` (no verdict in the HTML) changes nothing: continue normally.
+      if (isInstagramSessionConfigured() && fetchMeta.sessionAccepted === false) {
+        logger.warn("Puppeteer session rejected by Instagram (stale credential?)", {
+          normalizedUrl: url,
+          pageStatus: fetchMeta.pageStatus,
+          pageFinalHost: fetchMeta.pageFinalHost,
+          loginWall: fetchMeta.loginWall,
+        });
+        const stale = createError("INSTAGRAM_AUTH_INVALID");
+        throw new AppError(stale.code, stale.message, stale.statusCode, {
+          provider: "puppeteer",
+          runtime: isServerlessRuntime() ? "serverless" : "local",
+          stage: "prefetch-session-rejected",
+          pageStatus: fetchMeta.pageStatus,
+          loginWall: fetchMeta.loginWall,
         });
       }
       if (accessBlock === "login-redirect") {
@@ -3149,7 +3199,8 @@ export class PuppeteerProvider extends BaseProvider {
           rejectionReasons?: Record<string, number>;
           verifiedByProbe?: number;
           trustedCapture?: number;
-        }
+        },
+        docSessionAccepted?: boolean | null
       ): ResolveDiagnostics => ({
         provider: "puppeteer",
         runtime: isServerlessRuntime() ? "serverless" : "local",
@@ -3159,6 +3210,8 @@ export class PuppeteerProvider extends BaseProvider {
         challenge: fetchMeta.hasChallenge,
         docStatus: navStatus,
         docFinalHost: navFinalHost,
+        docFinalPath: navFinalPath,
+        sessionAccepted: docSessionAccepted ?? fetchMeta.sessionAccepted ?? null,
         interceptedMediaCount: interceptedMedia.length,
         interceptedMediaTypes: [...new Set(interceptedMedia.map((m) => m.type))],
         videoCandidateCount: interceptedMedia.filter((m) => m.type === "video").length,
@@ -3755,6 +3808,9 @@ export class PuppeteerProvider extends BaseProvider {
         // the browser rendered app content at all. Scalars/booleans only.
         const shellWalled =
           pageState.hasLoginWall || pageState.hasChallenge || pageState.hasUnavailableMessage;
+        // Browser-document session verdict for the branch below (positive
+        // evidence only; null keeps prior behavior everywhere).
+        const docSessionAcceptedForLog = detectSessionAccepted(renderedHtmlText);
         const emptyShell = isEmptyShellRender({
           hasArticle: domResult.hasArticle,
           domVideoCount: domResult.videos.length,
@@ -3812,6 +3868,7 @@ export class PuppeteerProvider extends BaseProvider {
           docStatus: navStatus,
           docFinalHost: navFinalHost,
           docFinalPath: navFinalPath,
+          docSessionAccepted: docSessionAcceptedForLog,
           docContentType: navContentType,
           docRedirectHops: navRedirectHops,
           // Pre-hydration failures: which subresources died (host/type/
@@ -3840,24 +3897,45 @@ export class PuppeteerProvider extends BaseProvider {
           throw createError("AUDIO_NO_SOURCE");
         }
         if (noVideoKind === "REEL" || noVideoKind === "VIDEO") {
-          // Empty shell (computed above): the browser/page pipeline produced
-          // no app content, so VIDEO_SOURCE_NOT_FOUND would blame the content
-          // and PROVIDER_UNAVAILABLE would blame the whole provider for what
-          // is specifically an empty Instagram document. EMPTY_INSTAGRAM_SHELL
-          // names exactly that condition and stays retryable. A declared gate
-          // (walled=true) never reaches here as empty-shell — it keeps its
-          // specific outcome below.
+          // Empty-shell decision tree — every branch requires positive
+          // evidence, never an unknown:
+          // 1. Session configured but the rendered document shows it rejected
+          //    → stale credential: INSTAGRAM_AUTH_INVALID (operator action).
+          // 2. Instagram bounced the URL to the homepage with zero content:
+          //    with a proven-accepted session the link resolves to nothing
+          //    (deleted/private/moved) → CONTENT_NOT_FOUND; without proof of
+          //    acceptance it stays retryable → CONTENT_UNAVAILABLE.
+          // 3. Otherwise a transient/infra shell → EMPTY_INSTAGRAM_SHELL.
+          // A declared gate (walled=true) never reaches here as empty-shell.
           if (emptyShell) {
-            const empty = createError("EMPTY_INSTAGRAM_SHELL");
-            throw new AppError(
-              empty.code,
-              empty.message,
-              empty.statusCode,
-              failureDiagnostics("assembly-empty-shell", {
-                count: validMedia.length,
-                types: [...new Set(validMedia.map((m) => m.type))],
-              })
-            );
+            const normalized = {
+              count: validMedia.length,
+              types: [...new Set(validMedia.map((m) => m.type))],
+            };
+            const docSessionAccepted = detectSessionAccepted(renderedHtmlText);
+            const shellError = (
+              code: Parameters<typeof createError>[0],
+              stage: string
+            ): AppError => {
+              const err = createError(code);
+              return new AppError(
+                err.code,
+                err.message,
+                err.statusCode,
+                failureDiagnostics(stage, normalized, undefined, docSessionAccepted)
+              );
+            };
+            if (isInstagramSessionConfigured() && docSessionAccepted === false) {
+              throw shellError("INSTAGRAM_AUTH_INVALID", "assembly-session-rejected");
+            }
+            if (navFinalPath === "/") {
+              const stage = "assembly-empty-shell-redirect-home";
+              if (docSessionAccepted === true) {
+                throw shellError("CONTENT_NOT_FOUND", stage);
+              }
+              throw shellError("CONTENT_UNAVAILABLE", stage);
+            }
+            throw shellError("EMPTY_INSTAGRAM_SHELL", "assembly-empty-shell");
           }
           throw videoFailure(
             "assembly-no-playable-video",

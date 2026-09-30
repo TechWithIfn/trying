@@ -778,6 +778,22 @@ describe("reel video playback pipeline", () => {
     expect(isReloadableShell({ hasArticle: false, bodySnippet: "" }, false)).toBe(false);
   });
 
+  it("8j5. Session acceptance is read from bootstrap markers, null when absent (unit)", async () => {
+    // Positive evidence only: accepted / rejected / unknown. Unknown must
+    // never change behavior (stale credential must be proven, not guessed).
+    const { detectSessionAccepted } = await import("@/lib/providers/puppeteer.js");
+    expect(detectSessionAccepted('<script>{"is_authenticated":true,"user":"x"}</script>')).toBe(true);
+    expect(detectSessionAccepted('<script>{"is_authenticated":false}</script>')).toBe(false);
+    expect(detectSessionAccepted('<script>{"viewer":null,"x":1}</script>')).toBe(false);
+    expect(detectSessionAccepted("<html><body>login wall, no markers</body></html>")).toBeNull();
+    expect(detectSessionAccepted("")).toBeNull();
+    expect(detectSessionAccepted(null)).toBeNull();
+    expect(detectSessionAccepted(undefined)).toBeNull();
+    // True wins when both literals appear (mixed embeds); rejection needs
+    // the negative marker without a positive one.
+    expect(detectSessionAccepted('{"is_authenticated":false,"other":{"is_authenticated":true}}')).toBe(true);
+  });
+
   it("8j4. EMPTY_INSTAGRAM_SHELL is a retryable 503, distinct from other failures", async () => {
     const { createError } = await import("@/lib/errors.js");
     const err = createError("EMPTY_INSTAGRAM_SHELL");
