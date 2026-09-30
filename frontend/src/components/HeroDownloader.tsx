@@ -30,6 +30,7 @@ import {
   getDownloadUrl,
   getApiBase,
   logApiFailure,
+  isBrowserOffline,
   type ResolveData,
   type ResolveStreamHandle,
 } from "@/services/api";
@@ -1456,12 +1457,15 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
 
   const invalidateRequest = useCallback(() => {
     // Supersede any in-flight stream so a late event can never paint a
-    // stale result over the current request.
+    // stale result over the current request. Clearing the in-flight marker
+    // here (and on every terminal settle below) is what keeps the
+    // single-flight guard truthful: a ref, never stale React state.
     requestSeqRef.current++;
     closeStream();
     clearWatchdog();
     postAbortRef.current?.abort();
     postAbortRef.current = null;
+    inFlightUrlRef.current = null;
   }, [closeStream, clearWatchdog]);
 
   // Cleanup on unmount: supersede any in-flight stream and stop the watchdog.
@@ -1470,6 +1474,21 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       invalidateRequest();
     };
   }, [invalidateRequest]);
+
+  // Fail an in-flight resolve fast when the browser itself drops connectivity.
+  // Without this the job lingers until an SSE error event or the 60s silence
+  // watchdog fires. Reconnecting never auto-starts a job: the user retries
+  // explicitly with "Try again" → submit, which creates exactly one new job.
+  useEffect(() => {
+    const onOffline = () => {
+      if (inFlightUrlRef.current === null) return;
+      invalidateRequest();
+      setError(t.errors.unreachable);
+      setState("ERROR");
+    };
+    window.addEventListener("offline", onOffline);
+    return () => window.removeEventListener("offline", onOffline);
+  }, [invalidateRequest, t]);
 
   const handlePaste = useCallback(async () => {
     try {
@@ -1518,9 +1537,21 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
         return;
       }
       // Double-submit guard: the same link is already resolving — one user
-      // action must produce exactly one API request. (A different link still
-      // supersedes the in-flight one below.)
-      if (state === "PREPARING" && inFlightUrlRef.current === trimmed) {
+      // action must produce exactly one API request. The ref (not React
+      // state) is the source of truth, so the guard can never go stale
+      // across re-renders. (A different link still supersedes the in-flight
+      // one below.)
+      if (inFlightUrlRef.current === trimmed) {
+        return;
+      }
+      // Offline gate: submitting or retrying with no connectivity must create
+      // zero API requests instead of a doomed SSE + POST pair that only logs
+      // ERR_INTERNET_DISCONNECTED. Placed after the guard (an active job is
+      // left alone) and before invalidate (nothing is torn down for a submit
+      // that cannot run).
+      if (isBrowserOffline()) {
+        setError(t.errors.unreachable);
+        setState("ERROR");
         return;
       }
       // Single active request: supersede anything still in flight so rapid
@@ -1556,6 +1587,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
           closeStream();
           postAbortRef.current?.abort();
           postAbortRef.current = null;
+          inFlightUrlRef.current = null;
           setError(t.errors.unreachable);
           setState("ERROR");
         }, RESOLVE_SILENCE_TIMEOUT_MS);
@@ -1574,6 +1606,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
           if (requestSeqRef.current !== seq) return;
           clearWatchdog();
           closeStream();
+          inFlightUrlRef.current = null;
           setProgress(100);
           setProgressStage("");
           const detectedTab = resolveTabFromResultType(data.type);
@@ -1585,21 +1618,43 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
           if (requestSeqRef.current !== seq) return;
           clearWatchdog();
           closeStream();
+          inFlightUrlRef.current = null;
           setError(err.message || t.errors.failed);
           setState("ERROR");
         },
         onTransportError: () => {
           if (requestSeqRef.current !== seq) return;
+          // Offline now: the POST fallback could never succeed, so skip it
+          // and report the connection failure directly — one user action
+          // then costs exactly one (failed) stream and zero retries.
+          if (isBrowserOffline()) {
+            clearWatchdog();
+            closeStream();
+            inFlightUrlRef.current = null;
+            logApiFailure({
+              requestType: "resolve-sse",
+              requestUrl: `${getApiBase()}/api/resolve/stream`,
+              status: null,
+              error: new Error("resolve-sse-offline"),
+              category: "offline",
+            });
+            setError(t.errors.unreachable);
+            setState("ERROR");
+            return;
+          }
           // The event stream dropped without a server verdict — fall back to
           // one plain POST resolve (same URL coalesces server-side) instead
           // of reporting a false connection failure. Restart silence timing
           // because the fallback is a new request that can also be slow.
+          // This single fallback is the only automatic retry in the resolve
+          // flow; anything after it needs an explicit user retry.
           armSilenceWatchdog(seq);
           resolveInstagramUrl(trimmed, postController.signal)
             .then((data) => {
               if (requestSeqRef.current !== seq) return;
               clearWatchdog();
               closeStream();
+              inFlightUrlRef.current = null;
               if (!data.success) {
                 setError(data.error?.message || t.errors.failed);
                 setState("ERROR");
@@ -1617,6 +1672,14 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
               if (err instanceof DOMException && err.name === "AbortError") return;
               clearWatchdog();
               closeStream();
+              inFlightUrlRef.current = null;
+              // Transport-level failure only (the backend-verdict branch
+              // above keeps the server message): without a server verdict
+              // the connection message is the only honest one, so a
+              // disconnect can never surface as an Instagram/rate-limit
+              // or resolver error. The log category (offline/network) is
+              // classified inside logApiFailure.
+              logApiFailure({ requestType: "resolve-post", requestUrl: `${getApiBase()}/api/resolve`, status: null, error: err });
               setError(t.errors.unreachable);
               setState("ERROR");
             });
@@ -1624,7 +1687,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       });
       streamRef.current = handle;
     },
-    [url, t, activeTab, state, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange]
+    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange]
   );
 
   const isAudioMode = activeTab === "audio" || (audioExtractionRequested && state === "SUCCESS");

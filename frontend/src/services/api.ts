@@ -84,7 +84,13 @@ export type ApiRequestType =
   | "media-download"
   | "audio-post";
 
-export type ApiFailureCategory = "network" | "timeout" | "aborted" | "server" | "malformed-response";
+export type ApiFailureCategory =
+  | "network"
+  | "offline"
+  | "timeout"
+  | "aborted"
+  | "server"
+  | "malformed-response";
 
 export interface ApiFailureDiagnostic {
   requestType: ApiRequestType;
@@ -110,6 +116,32 @@ function failureMessage(error: unknown): string {
   return "";
 }
 
+/**
+ * True when the browser itself reports no connectivity. Checked first by the
+ * resolve flow: submitting or retrying while offline must create zero API
+ * requests instead of a doomed SSE + POST pair.
+ */
+export function isBrowserOffline(): boolean {
+  return typeof navigator !== "undefined" && !navigator.onLine;
+}
+
+/**
+ * Browser/network transport failure (ERR_INTERNET_DISCONNECTED,
+ * ERR_NETWORK_CHANGED, ERR_CONNECTION_RESET/ABORTED, TypeError: Failed to
+ * fetch, NetworkError, ...). This is CLIENT_NETWORK_ERROR: it must never be
+ * rendered as an Instagram rate limit, content verdict, or resolver failure.
+ * Deliberately excludes AbortError — our own supersede/unmount abort is
+ * lifecycle, not a network failure.
+ */
+export function isNetworkFailure(error: unknown): boolean {
+  if (isBrowserOffline()) return true;
+  const message = failureMessage(error);
+  if (!message) return false;
+  return /failed to fetch|networkerror|network request failed|err_internet_disconnected|err_network_changed|err_connection_reset|err_connection_aborted|err_connection_closed|err_connection_refused|err_name_not_resolved|connection reset|load failed|fetch failed/i.test(
+    message
+  );
+}
+
 function failureCategory(status: number | null, error: unknown): ApiFailureCategory {
   if (status !== null) return "server";
   if (error instanceof DOMException && error.name === "TimeoutError") return "timeout";
@@ -117,6 +149,8 @@ function failureCategory(status: number | null, error: unknown): ApiFailureCateg
   const message = failureMessage(error);
   if (/play\(\) request was interrupted|not allowed|autoplay/i.test(message)) return "aborted";
   if (/timeout|timed out|deadline exceeded/i.test(message)) return "timeout";
+  if (isBrowserOffline()) return "offline";
+  if (isNetworkFailure(error)) return "network";
   return "network";
 }
 
@@ -273,6 +307,18 @@ export interface ResolveStreamHandle {
  * percentages. Returns a handle whose `close()` stops the stream (used for
  * superseded requests and unmount cleanup). Each stream is single-use:
  * `complete`/`error` close it automatically.
+ *
+ * RESOLVE RETRY POLICY (the single policy for resolve requests — nothing else
+ * in the app retries a resolve):
+ *  1. One SSE stream per user action. EVERY terminal path closes it first,
+ *     which also stops EventSource's built-in auto-reconnect: a disconnect
+ *     can never turn into a reconnect loop.
+ *  2. At most ONE plain-POST fallback, via `onTransportError`, and only when
+ *     the stream dropped without a server verdict.
+ *  3. After that, only an explicit user retry ("Try again" → submit) starts a
+ *     new job. Reconnecting (`online` event) never auto-starts one.
+ * Late or repeated events after close are ignored, so the fallback — and any
+ * handler — runs at most once per handle.
  */
 export function startResolveStream(url: string, handlers: ResolveStreamHandlers): ResolveStreamHandle {
   const es = new EventSource(`${getApiBase()}/api/resolve/stream?url=${encodeURIComponent(url)}`);
@@ -284,6 +330,7 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
     }
   };
   const transportError = () => {
+    if (closed) return;
     close();
     if (handlers.onTransportError) {
       handlers.onTransportError();
@@ -293,6 +340,7 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
   };
 
   es.addEventListener("progress", (e) => {
+    if (closed) return;
     try {
       const data = JSON.parse((e as MessageEvent).data) as { progress?: unknown; stage?: unknown };
       if (typeof data.progress === "number") {
@@ -304,6 +352,7 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
   });
 
   es.addEventListener("complete", (e) => {
+    if (closed) return;
     try {
       const data = JSON.parse((e as MessageEvent).data) as { data?: ResolveData };
       if (data && data.data && Array.isArray(data.data.media)) {
@@ -318,6 +367,7 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
   });
 
   es.addEventListener("error", (e) => {
+    if (closed) return;
     const raw = (e as MessageEvent).data;
     if (typeof raw === "string" && raw) {
       try {
