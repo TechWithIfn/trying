@@ -12,7 +12,7 @@ import { resolveUrl } from "../lib/resolvers/index.js";
 import { checkRateLimit, routeRateLimitConfig } from "../lib/rate-limit.js";
 import { logger } from "../lib/logger.js";
 import { AppError, createError, createErrorResponse, isNetworkError, isTimeoutError, toAppError } from "../lib/errors.js";
-import { FfmpegAbortedError, isFfmpegAvailable, runFfmpeg, getFfmpegVersionSync } from "../lib/ffmpeg.js";
+import { FfmpegAbortedError, ffmpegOutputHasAudio, isFfmpegAvailable, runFfmpeg, getFfmpegVersionSync } from "../lib/ffmpeg.js";
 import { scheduleBackgroundTask } from "../lib/background.js";
 import { KeyedConcurrency, getGate } from "../lib/capacity.js";
 import { readBoundedInt } from "../lib/env.js";
@@ -21,6 +21,7 @@ import {
   getClientIp,
   fetchUpstreamMediaResilient,
   isHtmlContent,
+  upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
 import { isTrustedProviderMediaUrl } from "../lib/audio-provider.js";
 import type { ErrorCode, MediaItem } from "../lib/types.js";
@@ -437,6 +438,17 @@ async function handleAudioRequest(
         res.status(expired.statusCode).json(expired.toResponse());
         return;
       }
+      // Genuine CDN throttling is reported honestly (with the backoff the CDN
+      // asked for) instead of being flattened into a download failure. It is
+      // terminal here: the resilient fetch deliberately excludes 429 from
+      // stale-URL recovery, since re-resolving while throttled amplifies load.
+      if (videoResponse.status === 429) {
+        await videoResponse.body?.cancel().catch(() => {});
+        res.setHeader("Retry-After", upstreamRetryAfterValue(videoResponse));
+        logger.warn("[AUDIO] source rate limited", { requestId });
+        res.status(429).json(createErrorResponse("PROVIDER_RATE_LIMITED"));
+        return;
+      }
       if (!videoResponse.ok) {
         await videoResponse.body?.cancel().catch(() => {});
         logger.warn("[AUDIO] source fetch failed", { requestId, status: videoResponse.status, attempt });
@@ -627,14 +639,35 @@ async function handleAudioRequest(
       }
       const exitCode = (ffErr as { exitCode?: unknown }).exitCode ?? "unknown";
       const stderr = (ffErr as { stderr?: unknown }).stderr ?? "";
-      logger.error("[AUDIO] ffmpeg failed", {
-        requestId,
-        exitCode,
-        stderr: String(stderr).slice(-2000),
-        inputStatus: upstreamStatus,
-        inputContentType: sourceCT,
-        inputBytes,
-      });
+      const stderrText = String(stderr);
+      // Honest no-audio detection from the failure FFmpeg itself reported (no
+      // extra process needed: the transcode stderr already describes the
+      // input). A video-only source fails with "Output file does not contain
+      // any stream" and its input section lists no `Stream … Audio:` line —
+      // that is a silent source, not a decode malfunction, so name it instead
+      // of logging a bare transcode failure.
+      const noAudioStream =
+        /does not contain any stream|matches no streams/i.test(stderrText) &&
+        !ffmpegOutputHasAudio(stderrText);
+      if (noAudioStream) {
+        logger.error("[AUDIO] source contains no audio stream", {
+          requestId,
+          usePairedAudio: selection.usePairedAudio,
+          exitCode,
+          inputStatus: upstreamStatus,
+          inputContentType: sourceCT,
+          inputBytes,
+        });
+      } else {
+        logger.error("[AUDIO] ffmpeg failed", {
+          requestId,
+          exitCode,
+          stderr: stderrText.slice(-2000),
+          inputStatus: upstreamStatus,
+          inputContentType: sourceCT,
+          inputBytes,
+        });
+      }
       const failed = audioUnavailableResponse("transcode", "transcode");
       res.status(failed.status).json(failed.response);
       return;

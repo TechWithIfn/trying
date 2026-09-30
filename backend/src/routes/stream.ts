@@ -12,6 +12,7 @@ import {
   fetchUpstreamMediaResilient,
   isHtmlContent,
   pipeUpstreamToClient,
+  upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
 
 const MAX_STREAM_BYTES = 200 * 1024 * 1024;
@@ -646,6 +647,16 @@ async function handleStream(
     if (response.status === 416) {
       await response.body?.cancel().catch(() => {});
       res.status(416).setHeader("Accept-Ranges", "bytes").json(createErrorResponse("CONTENT_UNAVAILABLE"));
+      return;
+    }
+
+    // Genuine upstream throttling is reported honestly (with the backoff the
+    // CDN asked for) instead of being flattened into a download failure.
+    if (response.status === 429) {
+      await response.body?.cancel().catch(() => {});
+      res.setHeader("Retry-After", upstreamRetryAfterValue(response));
+      logger.warn("[STREAM] upstream rate limited", { requestId });
+      res.status(429).json(createErrorResponse("PROVIDER_RATE_LIMITED"));
       return;
     }
 

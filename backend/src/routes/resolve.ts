@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { validateInstagramUrl } from "../lib/validators/instagram-url.js";
 import type { ParsedInstagramUrl } from "../lib/validators/instagram-url.js";
 import { resolveUrl, getActiveProviderName, isResolutionInFlight } from "../lib/resolvers/index.js";
-import { checkRateLimit } from "../lib/rate-limit.js";
+import { checkRateLimit, peekRateLimit } from "../lib/rate-limit.js";
 import { generateToken } from "../lib/crypto.js";
 import { storeMedia } from "../lib/temp-store.js";
 import { logger } from "../lib/logger.js";
@@ -43,6 +43,17 @@ function requestDiagnostics(requestId: string, startTime: number): import("../li
     provider,
     totalDurationMs: Date.now() - startTime,
   };
+}
+
+/**
+ * Upstream backoff Instagram asked for (seconds), when the provider captured
+ * one from a genuine 429's `Retry-After` header. Null when absent — callers
+ * fall back to a conservative static value.
+ */
+function upstreamRetryAfterSeconds(error: AppError): number | null {
+  const value = error.details?.upstreamRetryAfterSeconds;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  return Math.min(Math.ceil(value), 300);
 }
 
 /** [Downloadit Media Debug] first-item type + hostname only (never query/tokens). */
@@ -102,14 +113,9 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     const ip = getClientIp(req);
 
-    const rateLimitResult = checkRateLimit(`resolve:${ip}`);
-    if (!rateLimitResult.allowed) {
-      logger.warn("Rate limit exceeded", { requestId, ip });
-      res.setHeader("Retry-After", String(Math.ceil(rateLimitResult.retryAfterMs / 1000)));
-      fail(429, "RATE_LIMITED");
-      return;
-    }
-
+    // Validation runs BEFORE rate limiting: cheap rejects (malformed URLs)
+    // must never burn quota, and the normalized URL is needed to tell a
+    // duplicate submit (joins in-flight work, costs nothing) from new work.
     const validation = validateInstagramUrl(url);
     if (!validation.valid || !validation.parsed) {
       logger.info("URL validation failed", {
@@ -133,9 +139,23 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     // Admission happens AFTER validation so cheap rejects are never throttled,
     // and BEFORE any provider/browser work. A request that will merely join an
-    // in-flight resolution for the same URL is not throttled: it consumes no
-    // additional provider or browser slot.
+    // in-flight resolution for the same URL consumes no quota and no per-IP
+    // slot: it starts no additional Instagram request (the SSE→POST fallback
+    // for one user action coalesces here instead of doubling upstream load).
     const joiningInflight = isResolutionInFlight(parsed.normalized);
+    let rateLimitRemaining: number;
+    if (joiningInflight) {
+      rateLimitRemaining = peekRateLimit(`resolve:${ip}`).remaining;
+    } else {
+      const rateLimitResult = checkRateLimit(`resolve:${ip}`);
+      if (!rateLimitResult.allowed) {
+        logger.warn("Rate limit exceeded", { requestId, ip });
+        res.setHeader("Retry-After", String(Math.ceil(rateLimitResult.retryAfterMs / 1000)));
+        fail(429, "RATE_LIMITED");
+        return;
+      }
+      rateLimitRemaining = rateLimitResult.remaining;
+    }
     if (!joiningInflight && !perIpResolve.tryAcquire(ip)) {
       logger.warn("Resolve per-client limit reached", { requestId, ip });
       res.setHeader("Retry-After", "3");
@@ -163,7 +183,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
             requestId,
             startTime,
             ip,
-            rateLimitResult.remaining,
+            rateLimitRemaining,
             parsed,
             controller.signal
           ),
@@ -176,6 +196,13 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       }
       if (error instanceof AppError) {
         if (error.statusCode === 503) res.setHeader("Retry-After", "3");
+        if (error.code === "INSTAGRAM_RATE_LIMITED" || error.code === "PROVIDER_RATE_LIMITED") {
+          // Genuine upstream throttling: answer with the backoff Instagram
+          // asked for when it sent one, so the client backs off instead of
+          // hammering. This header is set ONLY for real upstream 429s — never
+          // for our own quota (handled above) or other failures.
+          res.setHeader("Retry-After", String(upstreamRetryAfterSeconds(error) ?? 30));
+        }
         res.status(error.statusCode).json(withRequestDiagnostics(error.toResponse(), requestDiagnostics(requestId, startTime)));
         return;
       }
@@ -412,14 +439,9 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const rateLimitResult = checkRateLimit(`resolve:${ip}`);
-    if (!rateLimitResult.allowed) {
-      logger.warn("Rate limit exceeded", { requestId, ip });
-      failEvent("RATE_LIMITED");
-      finish();
-      return;
-    }
-
+    // Validation first (cheap rejects never burn quota), then the duplicate
+    // check: joining an in-flight resolution costs no extra provider/browser
+    // work, so it consumes neither quota nor a per-client slot.
     const validation = validateInstagramUrl(rawUrl);
     if (!validation.valid || !validation.parsed) {
       logger.info("URL validation failed", {
@@ -431,11 +453,21 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const joiningInflight = isResolutionInFlight(validation.parsed.normalized);
+    if (!joiningInflight) {
+      const rateLimitResult = checkRateLimit(`resolve:${ip}`);
+      if (!rateLimitResult.allowed) {
+        logger.warn("Rate limit exceeded", { requestId, ip });
+        failEvent("RATE_LIMITED");
+        finish();
+        return;
+      }
+    }
+
     // Per-client admission for the expensive part only, and only once the URL
     // is known good: a malformed URL is rejected above without consuming a
     // slot. Joining an in-flight resolution costs no extra provider/browser
     // work, so it is not throttled.
-    const joiningInflight = isResolutionInFlight(validation.parsed.normalized);
     if (!joiningInflight) {
       // Only release a slot this request actually took: a coalesced waiter
       // holds none, and releasing one for it would free another request's slot

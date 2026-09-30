@@ -13,7 +13,7 @@ describe("checkRateLimit", () => {
   it("allows first request", () => {
     const result = checkRateLimit("test-key");
     expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(29);
+    expect(result.remaining).toBe(16);
   });
 
   it("tracks request count", () => {
@@ -23,12 +23,12 @@ describe("checkRateLimit", () => {
     }
     const result = checkRateLimit(key);
     expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(24);
+    expect(result.remaining).toBe(11);
   });
 
   it("blocks after max requests", () => {
     const key = "test-block";
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 17; i++) {
       checkRateLimit(key);
     }
     const result = checkRateLimit(key);
@@ -39,17 +39,17 @@ describe("checkRateLimit", () => {
 
   it("resets after window expires", () => {
     const key = "test-reset";
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 17; i++) {
       checkRateLimit(key);
     }
     vi.advanceTimersByTime(61_000);
     const result = checkRateLimit(key);
     expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(29);
+    expect(result.remaining).toBe(16);
   });
 
   it("allows different keys independently", () => {
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 17; i++) {
       checkRateLimit("key-a");
     }
     const resultB = checkRateLimit("key-b");
@@ -80,6 +80,18 @@ describe("cleanupExpiredEntries", () => {
     vi.advanceTimersByTime(120_000);
     cleanupExpiredEntries();
     const result = checkRateLimit("cleanup-test");
-    expect(result.remaining).toBe(29);
+    expect(result.remaining).toBe(16);
+  });
+
+  it("peekRateLimit reads quota without consuming it", async () => {
+    const { peekRateLimit, resetRateLimitsForTests } = await import("@/lib/rate-limit");
+    resetRateLimitsForTests();
+    const key = "peek-key";
+    checkRateLimit(key);
+    expect(peekRateLimit(key).remaining).toBe(16);
+    // Peeking never consumes: a joiner of in-flight work costs no token.
+    expect(peekRateLimit(key).remaining).toBe(16);
+    expect(checkRateLimit(key).remaining).toBe(15);
+    resetRateLimitsForTests();
   });
 });

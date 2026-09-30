@@ -98,6 +98,11 @@ export interface ResolveDiagnostics {
   audioStage?: string;
   /** Audio-route failure category (never a URL or secret). */
   audioFailure?: "timeout" | "network" | "cancelled" | "transcode" | "unknown";
+  /**
+   * Upstream `Retry-After` (seconds) Instagram sent with a 429, when one was
+   * present. Lets routes answer a genuine throttle with the same backoff.
+   */
+  upstreamRetryAfterSeconds?: number | null;
 }
 
 export interface ResolveErrorResponse {

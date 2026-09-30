@@ -311,6 +311,21 @@ export function isHtmlContent(contentType: string): boolean {
   return ct.includes("text/html") || ct.includes("application/xhtml");
 }
 
+/**
+ * Sanitized upstream `Retry-After` for passthrough on a genuine upstream 429.
+ * The header is attacker-influenced (CDN-controlled), so CR/LF are stripped
+ * and the length is capped; falls back to a conservative static value when
+ * the upstream sent nothing usable.
+ */
+export function upstreamRetryAfterValue(response: Response, fallbackSeconds = 30): string {
+  const raw = response.headers.get("retry-after");
+  if (raw) {
+    const clean = raw.replace(/[\r\n]/g, "").trim().slice(0, 64);
+    if (clean.length > 0) return clean;
+  }
+  return String(fallbackSeconds);
+}
+
 // Upstream statuses that indicate the signed CDN URL is expired or invalid
 // (as opposed to a transport problem). Only these trigger a single guarded
 // re-resolution. 429 is deliberately excluded: re-resolving while rate

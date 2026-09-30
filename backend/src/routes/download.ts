@@ -11,6 +11,7 @@ import {
   fetchUpstreamMediaResilient,
   isHtmlContent,
   pipeUpstreamToClient,
+  upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
 
 const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
@@ -181,6 +182,7 @@ async function handleDownload(
 
     if (response.status === 429) {
       await response.body?.cancel().catch(() => {});
+      res.setHeader("Retry-After", upstreamRetryAfterValue(response));
       res.status(429).json(createErrorResponse("PROVIDER_RATE_LIMITED"));
       return;
     }

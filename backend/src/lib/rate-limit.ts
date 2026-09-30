@@ -21,7 +21,7 @@ const MAX_TRACKED_KEYS = readBoundedInt("RATE_LIMIT_MAX_TRACKED_KEYS", 20_000, 1
 function defaultRateLimitConfig(): RateLimitConfig {
   return {
     windowMs: readPositiveInt("RATE_LIMIT_WINDOW_MS", 60_000),
-    maxRequests: readPositiveInt("RATE_LIMIT_MAX_REQUESTS", 30),
+    maxRequests: readPositiveInt("RATE_LIMIT_MAX_REQUESTS", 17),
   };
 }
 
@@ -31,7 +31,7 @@ function defaultRateLimitConfig(): RateLimitConfig {
  *
  * Correctness rules encoded here:
  *  - RESOLVE is the expensive, abuse-sensitive operation and keeps the tight
- *    default budget (RATE_LIMIT_MAX_REQUESTS, 30/min).
+ *    default budget (RATE_LIMIT_MAX_REQUESTS, 17/min).
  *  - DOWNLOAD/STREAM are cheap transfers of already-resolved media. A user
  *    legitimately re-downloads the same file and a video preview issues many
  *    small range requests while seeking — those must not be treated as
@@ -111,6 +111,25 @@ function enforceKeyCap(): void {
     cap: MAX_TRACKED_KEYS,
     evicted: toRemove,
   });
+}
+
+/**
+ * Read the current remaining quota WITHOUT consuming it. Used when a request
+ * merely joins an in-flight resolution for the same URL: it starts no new
+ * provider/browser work, so it must not burn one of the client's 17 tokens —
+ * otherwise one user action (SSE + coalesced POST fallback) costs two tokens
+ * and rapid duplicate submits look like abuse.
+ */
+export function peekRateLimit(
+  key: string,
+  config: RateLimitConfig = defaultRateLimitConfig()
+): { remaining: number } {
+  const now = Date.now();
+  const entry = store.get(key);
+  if (!entry || now > entry.resetAt) {
+    return { remaining: config.maxRequests };
+  }
+  return { remaining: Math.max(0, config.maxRequests - entry.count) };
 }
 
 /** Test-only: drop every bucket so quota assertions are independent. */

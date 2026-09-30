@@ -1390,6 +1390,51 @@ async function isVerifiedVideoUrl(raw: string): Promise<boolean> {
 }
 
 /**
+ * Bounded number of extra CDN probes the no-browser fast paths may spend
+ * looking for a split audio rendition. One bounded ranged GET per candidate —
+ * never a fan-out, never a loop.
+ */
+const MAX_FASTPATH_AUDIO_PROBES = 6;
+
+/**
+ * Bounded search for a Reel's split audio rendition among already-collected
+ * candidates (fast-path pairing).
+ *
+ * Instagram publishes split-track Reels as a video-only MP4 plus a separate
+ * audio-only MP4 for the same clip. The full browser assembly pairs them via
+ * probes, but the no-browser fast paths (og:video, embed) used to return the
+ * video alone: the preview then played silent and /api/audio received a file
+ * with no audio stream (FFmpeg failed → AUDIO_UNAVAILABLE). This reuses the
+ * same verifier the assembly uses to find the pool's audio-only rendition and
+ * returns the largest one, or null when the pool holds none. Never throws:
+ * a probe failure just skips that candidate.
+ */
+export async function findSplitAudioUrl(
+  pool: ExtractedMedia[],
+  excludeUrl?: string
+): Promise<{ url: string; size: number } | null> {
+  let best: { url: string; size: number } | null = null;
+  let probed = 0;
+  for (const item of pool) {
+    if (item.type !== "video") continue;
+    if (excludeUrl && item.url === excludeUrl) continue;
+    if (probed >= MAX_FASTPATH_AUDIO_PROBES) break;
+    probed++;
+    let check: VideoVerification;
+    try {
+      check = await verifyVideoCandidate(item.url);
+    } catch {
+      continue;
+    }
+    if (check.reason === "audio-only-payload") {
+      const size = check.contentLength ?? 0;
+      if (!best || size > best.size) best = { url: item.url, size };
+    }
+  }
+  return best;
+}
+
+/**
  * Plain-HTTP page fetch shared by metadata extraction and the dedicated
  * audio-page resolver. Returns raw HTML, or null on any failure.
  */
@@ -1400,6 +1445,33 @@ interface PageFetchResult {
   finalHost: string | null;
   finalPath: string | null;
   error: string | null;
+  /**
+   * Upstream `Retry-After` (seconds, clamped) when Instagram sent one with a
+   * throttle response. Null otherwise. Lets the resolve routes answer a
+   * genuine 429 with the same backoff Instagram asked for.
+   */
+  retryAfterSeconds: number | null;
+}
+
+/**
+ * Parse an upstream `Retry-After` value (delta-seconds or HTTP-date) into a
+ * bounded second count. Null when absent or unparsable — never NaN, never
+ * negative, never unbounded.
+ */
+export function parseRetryAfterSeconds(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const delta = Number.parseInt(trimmed, 10);
+  if (Number.isSafeInteger(delta) && delta >= 0) {
+    return Math.min(delta, 300);
+  }
+  const when = Date.parse(trimmed);
+  if (Number.isFinite(when)) {
+    const seconds = Math.ceil((when - Date.now()) / 1000);
+    if (seconds > 0) return Math.min(seconds, 300);
+  }
+  return null;
 }
 
 async function fetchPageSnapshot(url: string, timeoutMs = 10_000): Promise<PageFetchResult> {
@@ -1441,6 +1513,7 @@ async function fetchPageSnapshot(url: string, timeoutMs = 10_000): Promise<PageF
       finalHost: final.hostname,
       finalPath: final.pathname,
       error: null,
+      retryAfterSeconds: parseRetryAfterSeconds(res.headers.get("retry-after")),
     };
     if (!res.ok || (!ct.includes("text/html") && !ct.includes("application/xhtml"))) {
       await res.body?.cancel().catch(() => {});
@@ -1471,6 +1544,7 @@ async function fetchPageSnapshot(url: string, timeoutMs = 10_000): Promise<PageF
       finalHost: null,
       finalPath: null,
       error: error instanceof Error ? error.name : "fetch-failed",
+      retryAfterSeconds: null,
     };
   }
 }
@@ -1480,17 +1554,21 @@ export async function fetchPageHtml(url: string, timeoutMs = 10_000): Promise<st
 }
 
 /**
- * Detect the two anonymous-access blocks Instagram puts in front of a page
- * fetch, so a blocked request is reported as a retryable rate limit instead of
- * being carried on into Chromium and surfacing as a misleading
- * "no media found".
+ * Detect the anonymous-access blocks Instagram puts in front of a page fetch,
+ * so a blocked request is reported honestly instead of being carried on into
+ * Chromium and surfacing as a misleading "no media found".
  *
- * - HTTP 429: the explicit throttle response. Serverless egress IPs are
- *   throttled far more aggressively than a residential one.
+ * - HTTP 429 ONLY is the explicit throttle response (genuine rate limiting).
+ *   A 403 is NOT throttling: it is Instagram refusing this client/URL
+ *   (bot-defence, forbidden, revoked), and mislabelling it as a rate limit
+ *   is exactly what produced false "Instagram is rate-limiting requests"
+ *   errors for ordinary failures. A 403 page is left to the normal flow so it
+ *   fails honestly (VIDEO_SOURCE_NOT_FOUND / CONTENT_UNAVAILABLE).
  * - A redirect onto the login route: Instagram serves the login page to
- *   throttled/anonymous clients instead of a 429. Only treated as a block when
+ *   gated/anonymous clients instead of the post. Only treated as a block when
  *   no usable HTML came back, so a genuine private post (which still returns
- *   the real page) is unaffected.
+ *   the real page) is unaffected. This is a gate, not throttling, so it never
+ *   maps to a rate-limit code.
  *
  * Returns a machine-readable reason, or null when the page is usable.
  */
@@ -1500,7 +1578,7 @@ export function detectInstagramAccessBlock(meta: {
   pageFinalHost: string | null;
   htmlLength: number;
 }): "rate-limited" | "login-redirect" | null {
-  if (meta.pageStatus === 429 || meta.pageStatus === 403) return "rate-limited";
+  if (meta.pageStatus === 429) return "rate-limited";
   if (
     /^\/(accounts\/)?login\/?$/i.test(meta.pageFinalPath ?? "") &&
     (meta.htmlLength === 0 || /instagram\.com$/i.test(meta.pageFinalHost ?? ""))
@@ -1536,6 +1614,7 @@ export async function fetchMetadata(url: string): Promise<{
   pageFinalHost: string | null;
   pageFinalPath: string | null;
   pageError: string | null;
+  pageRetryAfterSeconds: number | null;
   htmlLength: number;
   hasChallenge: boolean;
   title: string | null;
@@ -1552,6 +1631,7 @@ export async function fetchMetadata(url: string): Promise<{
     pageFinalHost: null,
     pageFinalPath: null,
     pageError: null,
+    pageRetryAfterSeconds: null,
     htmlLength: 0,
     hasChallenge: false,
     title: null,
@@ -1568,6 +1648,7 @@ export async function fetchMetadata(url: string): Promise<{
       pageFinalHost: page.finalHost,
       pageFinalPath: page.finalPath,
       pageError: page.error,
+      pageRetryAfterSeconds: page.retryAfterSeconds,
       htmlLength: html?.length || 0,
     };
     if (!html) return { ...empty, ...pageInfo };
@@ -1942,11 +2023,21 @@ export class PuppeteerProvider extends BaseProvider {
     }
   }
 
-  /** Fast path: plain-HTML metadata already yielded a direct video URL. */
+  /**
+   * Fast path: plain-HTML metadata already yielded a direct video URL.
+   *
+   * `audioPool` carries the other already-collected video candidates for this
+   * page (embedded media graph, embed HTML). When the verified video is not
+   * positively combined (video+audio in one file), the pool is searched for
+   * the clip's split audio rendition and paired as `audioUrl` — the same
+   * pairing the browser assembly performs. Without this the fast path
+   * returned silent video-only files while the paired sound existed.
+   */
   private async buildResultFromVideo(
     url: string,
     videoUrl: string,
-    meta: { ogImage: string | null; title: string | null; description: string | null; author: Author | null }
+    meta: { ogImage: string | null; title: string | null; description: string | null; author: Author | null },
+    audioPool?: ExtractedMedia[]
   ): Promise<ResolverResult | null> {
     // Safe diagnostic: WHY a fast-path video was accepted or dropped. Only
     // the CDN host (no query/token) is logged, never the signed URL.
@@ -1980,6 +2071,25 @@ export class PuppeteerProvider extends BaseProvider {
         format: "mp4",
       },
     ];
+    // A combined file already carries sound; anything else (video-only or
+    // unknown track layout) gets the split rendition when the pool has one.
+    // This mirrors the browser assembly's `!combined` pairing rule.
+    const combined =
+      verification.hasVideoTrack === true && verification.hasAudioTrack === true;
+    if (!combined && audioPool && audioPool.length > 0) {
+      try {
+        const paired = await findSplitAudioUrl(audioPool, videoUrl);
+        if (paired) {
+          media[0].audioUrl = paired.url;
+          logger.info("Puppeteer fast-path paired split audio rendition", {
+            contentType,
+            audioCdnHost: hostnameOf(paired.url),
+          });
+        }
+      } catch {
+        // Pairing is best-effort: the verified video stands on its own.
+      }
+    }
     logger.info("Puppeteer resolve via fast metadata path (no browser)", {
       contentType,
       verifyReason: verification.reason,
@@ -1987,6 +2097,7 @@ export class PuppeteerProvider extends BaseProvider {
       upstreamContentType: verification.contentType,
       mediaCount: 1,
       selectedMediaType: "video",
+      audioPaired: Boolean(media[0].audioUrl),
     });
     return {
       type: contentType,
@@ -2093,21 +2204,53 @@ export class PuppeteerProvider extends BaseProvider {
       onProgress?.(35, "Media source opened");
 
       // Stop before spending a Chromium launch (~20s) on a request Instagram has
-      // already refused. A throttled or login-walled page yields no media under
-      // any tier, so the browser fallback could only end in a misleading
-      // VIDEO_SOURCE_NOT_FOUND. Report the real, retryable cause instead.
+      // already refused with an explicit 429. Only a 429 is throttling: a
+      // login redirect is a gate (handled below), and any other status
+      // (403/404/...) flows into the normal pipeline so it fails honestly
+      // instead of masquerading as a rate limit.
       const accessBlock = detectInstagramAccessBlock(fetchMeta);
-      if (accessBlock) {
-        logger.warn("Puppeteer page fetch blocked by Instagram", {
+      if (accessBlock === "rate-limited") {
+        const throttled = createError("INSTAGRAM_RATE_LIMITED");
+        logger.warn("Puppeteer page fetch throttled by Instagram (HTTP 429)", {
           normalizedUrl: url,
-          block: accessBlock,
           pageStatus: fetchMeta.pageStatus,
           pageFinalHost: fetchMeta.pageFinalHost,
           pageFinalPath: fetchMeta.pageFinalPath,
-          hasSession: Boolean(getInstagramSessionCookie()),
           htmlLength: fetchMeta.htmlLength,
+          upstreamRetryAfterSeconds: fetchMeta.pageRetryAfterSeconds,
         });
-        throw createError("INSTAGRAM_RATE_LIMITED");
+        throw new AppError(throttled.code, throttled.message, throttled.statusCode, {
+          provider: "puppeteer",
+          runtime: isServerlessRuntime() ? "serverless" : "local",
+          stage: "prefetch-throttled",
+          pageStatus: fetchMeta.pageStatus,
+          upstreamRetryAfterSeconds: fetchMeta.pageRetryAfterSeconds,
+        });
+      }
+      if (accessBlock === "login-redirect") {
+        // Gated, not throttled: never a rate-limit code. With a viewer session
+        // the browser pass below (which sets the session cookies) may still
+        // succeed, so continue. Without one the browser would only hit the
+        // same wall — skip the launch and fail honestly instead.
+        if (!isInstagramSessionConfigured()) {
+          logger.warn("Puppeteer page fetch gated by Instagram login (no session)", {
+            normalizedUrl: url,
+            pageStatus: fetchMeta.pageStatus,
+            pageFinalHost: fetchMeta.pageFinalHost,
+            pageFinalPath: fetchMeta.pageFinalPath,
+          });
+          const gated = createError("CONTENT_UNAVAILABLE");
+          throw new AppError(gated.code, gated.message, gated.statusCode, {
+            provider: "puppeteer",
+            runtime: isServerlessRuntime() ? "serverless" : "local",
+            stage: "prefetch-login-gate",
+            pageStatus: fetchMeta.pageStatus,
+            loginWall: true,
+          });
+        }
+        logger.info("Puppeteer page fetch hit login gate, continuing with session", {
+          normalizedUrl: url,
+        });
       }
 
       const isStory = this.detectContentType(url) === "STORY";
@@ -2173,7 +2316,7 @@ export class PuppeteerProvider extends BaseProvider {
         url.includes("/tv/") ||
         url.includes("/reels/audio/");
       if (isVideoPage && fetchMeta.ogVideo && !fetchMeta.loginWall) {
-        const result = await this.buildResultFromVideo(url, fetchMeta.ogVideo, fetchMeta);
+        const result = await this.buildResultFromVideo(url, fetchMeta.ogVideo, fetchMeta, fetchMeta.embeddedMedia);
         if (result) {
           timings.totalMs = Date.now() - startTime;
           logger.info("[resolve] fast path complete", { ...timings, mediaCount: 1 });
@@ -2218,7 +2361,7 @@ export class PuppeteerProvider extends BaseProvider {
             if (currentType === "REEL" || currentType === "VIDEO") {
               const videoCandidates = validEmbed.filter((m) => m.type === "video");
               for (const cand of videoCandidates) {
-                const res = await this.buildResultFromVideo(url, cand.url, fetchMeta);
+                const res = await this.buildResultFromVideo(url, cand.url, fetchMeta, combinedEmbedMedia);
                 if (res) {
                   timings.totalMs = Date.now() - startTime;
                   logger.info("Puppeteer resolve via embed video fast path (no browser)", {

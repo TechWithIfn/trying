@@ -69,6 +69,15 @@ export class FfmpegAbortedError extends Error {
 }
 
 /**
+ * True when `ffmpeg -i` output describes at least one audio stream
+ * (`Stream #0:1(...): Audio: ...`). Pure string scan — no process, no I/O —
+ * so it is unit-testable without an FFmpeg binary.
+ */
+export function ffmpegOutputHasAudio(output: string): boolean {
+  return /^\s*Stream\s+#\d+:\d+.*\bAudio:/mi.test(output);
+}
+
+/**
  * Every invocation is a real OS process holding native memory and CPU, so a
  * cancelled caller (client disconnect, drain, or gate abandonment) must kill
  * the child immediately instead of letting it run to completion unobserved.

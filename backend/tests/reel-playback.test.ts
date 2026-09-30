@@ -692,19 +692,23 @@ describe("reel video playback pipeline", () => {
     expect([silent, audible].sort(compareReelVideoCandidates)[0]?.item.url).toBe(audible.item.url);
   });
 
-  it("8j. A 429/login-wall page is a retryable block, a healthy page is not (unit)", async () => {
+  it("8j. Only a 429 is a retryable throttle; 403/login-gate are not (unit)", async () => {
     // Production serverless egress gets HTTP 429 and is bounced onto
-    // /accounts/login/ by Instagram. Neither page carries media, so the old
-    // behavior burned a Chromium launch and reported a misleading
-    // VIDEO_SOURCE_NOT_FOUND instead of a retryable rate limit.
+    // /accounts/login/ by Instagram. Only the explicit 429 is throttling: a
+    // 403 is a refusal (bot-defence/forbidden), and mislabelling it produced
+    // false "Instagram is rate-limiting requests" errors for ordinary
+    // failures. A login redirect is a gate, never a rate limit.
     const { detectInstagramAccessBlock } = await import("@/lib/providers/puppeteer.js");
     const page = { pageFinalHost: "www.instagram.com", htmlLength: 0 };
     expect(
       detectInstagramAccessBlock({ ...page, pageStatus: 429, pageFinalPath: "/accounts/login/" })
     ).toBe("rate-limited");
     expect(
-      detectInstagramAccessBlock({ ...page, pageStatus: 403, pageFinalPath: "/reel/Abc123/" })
+      detectInstagramAccessBlock({ ...page, pageStatus: 429, pageFinalPath: "/reel/Abc123/" })
     ).toBe("rate-limited");
+    expect(
+      detectInstagramAccessBlock({ ...page, pageStatus: 403, pageFinalPath: "/reel/Abc123/" })
+    ).toBeNull();
     expect(
       detectInstagramAccessBlock({ ...page, pageStatus: 200, pageFinalPath: "/accounts/login/" })
     ).toBe("login-redirect");
