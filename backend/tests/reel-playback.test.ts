@@ -732,6 +732,35 @@ describe("reel video playback pipeline", () => {
     ).toBeNull();
   });
 
+  it("8j2. Empty-shell render is distinguished from a videoless post (unit)", async () => {
+    // Production NO_MEDIA_FOUND with zero intercepted/DOM media and no gate
+    // markers is a browser/page-pipeline failure, not proof the Reel lacks
+    // video — it must map to PROVIDER_UNAVAILABLE, never VIDEO_SOURCE_NOT_FOUND.
+    const { isEmptyShellRender } = await import("@/lib/providers/puppeteer.js");
+    // The exact production shape: nothing rendered, no gate declared.
+    expect(
+      isEmptyShellRender({ hasArticle: false, domVideoCount: 0, domImageCount: 0, interceptedCount: 0, walled: false })
+    ).toBe(true);
+    // Any rendered content defeats the empty-shell verdict...
+    expect(
+      isEmptyShellRender({ hasArticle: true, domVideoCount: 0, domImageCount: 0, interceptedCount: 0, walled: false })
+    ).toBe(false);
+    expect(
+      isEmptyShellRender({ hasArticle: false, domVideoCount: 0, domImageCount: 2, interceptedCount: 0, walled: false })
+    ).toBe(false);
+    expect(
+      isEmptyShellRender({ hasArticle: false, domVideoCount: 0, domImageCount: 0, interceptedCount: 3, walled: false })
+    ).toBe(false);
+    expect(
+      isEmptyShellRender({ hasArticle: false, domVideoCount: 1, domImageCount: 0, interceptedCount: 0, walled: false })
+    ).toBe(false);
+    // ...and a declared gate keeps its own specific outcome, never the
+    // generic provider-unavailable path.
+    expect(
+      isEmptyShellRender({ hasArticle: false, domVideoCount: 0, domImageCount: 0, interceptedCount: 0, walled: true })
+    ).toBe(false);
+  });
+
   it("8k. Probe ignores Instagram's embedded bytestart/byteend slice (unit)", async () => {
     // Instagram's CDN answers a Range request with the slice baked into the
     // signed URL instead of the requested range, so the probe received a 56-byte

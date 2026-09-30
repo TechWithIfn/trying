@@ -906,6 +906,34 @@ function isTrustedCdnUrl(raw: string): boolean {
   }
 }
 
+/** Structural signals for telling an empty render from a videoless post. */
+export interface EmptyShellSignals {
+  hasArticle: boolean;
+  domVideoCount: number;
+  domImageCount: number;
+  interceptedCount: number;
+  /** A declared gate (login wall / challenge / unavailable) — diagnosed by its own path. */
+  walled: boolean;
+}
+
+/**
+ * True when Chromium rendered no app content at all: no <article>, no media
+ * elements, no intercepted API media, and no declared gate. That is a
+ * browser/page-pipeline failure (bot-mitigation shell, failed hydration,
+ * interception breakage) — NOT proof the Reel lacks video. Pure and
+ * unit-tested; callers map true → PROVIDER_UNAVAILABLE (retryable) instead
+ * of VIDEO_SOURCE_NOT_FOUND.
+ */
+export function isEmptyShellRender(signals: EmptyShellSignals): boolean {
+  if (signals.walled) return false;
+  return (
+    !signals.hasArticle &&
+    signals.domVideoCount <= 0 &&
+    signals.domImageCount <= 0 &&
+    signals.interceptedCount <= 0
+  );
+}
+
 /**
  * Machine-readable reason a candidate was dropped during normalization
  * (before any network probe). Used ONLY for safe diagnostic tallies —
@@ -2674,6 +2702,9 @@ export class PuppeteerProvider extends BaseProvider {
           if (jar.length > 0) {
             await page.setCookie(...jar);
           }
+          // Count only: proves the session was injected pre-navigation
+          // without ever logging names, values, or domains.
+          logger.info("Puppeteer session cookies applied", { count: jar.length });
         } catch {
           /* anonymous fallback below */
         }
@@ -3550,6 +3581,17 @@ export class PuppeteerProvider extends BaseProvider {
 
       if (playableMedia.length === 0) {
         const rejectedVideoCount = validMedia.filter((item) => item.type === "video").length;
+        // Empty-shell signal for the branch below and the log line: whether
+        // the browser rendered app content at all. Scalars/booleans only.
+        const shellWalled =
+          pageState.hasLoginWall || pageState.hasChallenge || pageState.hasUnavailableMessage;
+        const emptyShell = isEmptyShellRender({
+          hasArticle: domResult.hasArticle,
+          domVideoCount: domResult.videos.length,
+          domImageCount: domResult.images.length,
+          interceptedCount: interceptedMedia.length,
+          walled: shellWalled,
+        });
         logger.error("Puppeteer NO_MEDIA_FOUND", {
           url: url.slice(0, 100),
           contentType,
@@ -3586,6 +3628,15 @@ export class PuppeteerProvider extends BaseProvider {
                 (item) => !isLikelyProfileImageUrl(item)
               ).length
             : domResult.videos.length + domResult.images.length,
+          // Browser-side render state: distinguishes an empty shell
+          // (hydration/bot-mitigation failure) from a rendered but
+          // videoless post. Scalars only — never body text or URLs.
+          pageHasArticle: domResult.hasArticle,
+          pageBodyChars: domResult.bodySnippet.length,
+          pageLoginWall: pageState.hasLoginWall,
+          pageChallenge: pageState.hasChallenge,
+          pageUnavailableMessage: pageState.hasUnavailableMessage,
+          emptyShell,
           duration: Date.now() - startTime,
         });
         // A Reel/TV page with no discoverable video must NEVER degrade into
@@ -3602,6 +3653,23 @@ export class PuppeteerProvider extends BaseProvider {
           throw createError("AUDIO_NO_SOURCE");
         }
         if (noVideoKind === "REEL" || noVideoKind === "VIDEO") {
+          // Empty shell (computed above): the browser/page pipeline produced
+          // no app content, so VIDEO_SOURCE_NOT_FOUND would blame the content
+          // for a provider-layer failure. PROVIDER_UNAVAILABLE names the real
+          // retryable layer. A declared gate (walled=true) never reaches here
+          // as empty-shell — it keeps its specific outcome below.
+          if (emptyShell) {
+            const unavailable = createError("PROVIDER_UNAVAILABLE");
+            throw new AppError(
+              unavailable.code,
+              unavailable.message,
+              unavailable.statusCode,
+              failureDiagnostics("assembly-empty-shell", {
+                count: validMedia.length,
+                types: [...new Set(validMedia.map((m) => m.type))],
+              })
+            );
+          }
           throw videoFailure(
             "assembly-no-playable-video",
             {
