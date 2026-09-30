@@ -761,6 +761,36 @@ describe("reel video playback pipeline", () => {
     ).toBe(false);
   });
 
+  it("8j3. Reload is earned only by positive evidence of emptiness (unit)", async () => {
+    // The single bounded reload must fire for a true empty shell, and never
+    // for gated pages, healthy pages, or unknown probe shapes.
+    const { isReloadableShell } = await import("@/lib/providers/puppeteer.js");
+    const empty = { hasArticle: false, videos: [], images: [], bodySnippet: "  \n " };
+    expect(isReloadableShell(empty, false)).toBe(true);
+    expect(isReloadableShell({ ...empty, bodySnippet: "x".repeat(200) }, false)).toBe(false);
+    expect(isReloadableShell({ ...empty, hasArticle: true }, false)).toBe(false);
+    expect(isReloadableShell({ ...empty, videos: ["https://x/y.mp4"] }, false)).toBe(false);
+    expect(isReloadableShell({ ...empty, images: ["https://x/y.jpg"] }, false)).toBe(false);
+    expect(isReloadableShell(empty, true)).toBe(false);
+    expect(isReloadableShell(null, false)).toBe(false);
+    expect(isReloadableShell(undefined, false)).toBe(false);
+    expect(isReloadableShell({}, false)).toBe(false);
+    expect(isReloadableShell({ hasArticle: false, bodySnippet: "" }, false)).toBe(false);
+  });
+
+  it("8j4. EMPTY_INSTAGRAM_SHELL is a retryable 503, distinct from other failures", async () => {
+    const { createError } = await import("@/lib/errors.js");
+    const err = createError("EMPTY_INSTAGRAM_SHELL");
+    expect(err.code).toBe("EMPTY_INSTAGRAM_SHELL");
+    expect(err.statusCode).toBe(503);
+    const res = err.toResponse();
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.retryable).toBe(true);
+      expect(res.error.message).not.toMatch(/rate-limit|rate limit/i);
+    }
+  });
+
   it("8k. Probe ignores Instagram's embedded bytestart/byteend slice (unit)", async () => {
     // Instagram's CDN answers a Range request with the slice baked into the
     // signed URL instead of the requested range, so the probe received a 56-byte

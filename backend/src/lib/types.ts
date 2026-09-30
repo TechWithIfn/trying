@@ -103,6 +103,10 @@ export interface ResolveDiagnostics {
    * present. Lets routes answer a genuine throttle with the same backoff.
    */
   upstreamRetryAfterSeconds?: number | null;
+  /** Browser document navigation HTTP status (null = navigation failed). */
+  docStatus?: number | null;
+  /** Final document hostname behind redirects (no query, no tokens). */
+  docFinalHost?: string | null;
 }
 
 export interface ResolveErrorResponse {
@@ -153,7 +157,8 @@ export type ErrorCode =
   | "STORY_EXPIRED"
   | "STORY_PRIVATE"
   | "INSTAGRAM_RATE_LIMITED"
-  | "INSTAGRAM_PROVIDER_ERROR";
+  | "INSTAGRAM_PROVIDER_ERROR"
+  | "EMPTY_INSTAGRAM_SHELL";
 
 export interface ResolverResult {
   type: InstagramContentType;

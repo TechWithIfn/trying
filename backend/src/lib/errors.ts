@@ -230,6 +230,11 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     status: 502,
     retryable: true,
   },
+  EMPTY_INSTAGRAM_SHELL: {
+    message: "Instagram returned an empty page without playable media. Please try again shortly.",
+    status: 503,
+    retryable: true,
+  },
 };
 
 /**

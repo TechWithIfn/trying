@@ -916,12 +916,37 @@ export interface EmptyShellSignals {
   walled: boolean;
 }
 
+/** Raw shape probed from the live DOM for the reload decision. */
+export interface ShellProbe {
+  hasArticle?: unknown;
+  videos?: unknown;
+  images?: unknown;
+  bodySnippet?: unknown;
+}
+
+/**
+ * True when exactly one bounded reload is worthwhile: the document shows no
+ * app content (no article, no media elements, tiny body) and declares no
+ * gate. Unknown probe shapes conservatively return false — a reload must be
+ * earned by positive evidence of emptiness, never guessed. Pure and
+ * unit-tested.
+ */
+export function isReloadableShell(probe: ShellProbe | null | undefined, walled: boolean): boolean {
+  if (walled || !probe) return false;
+  if (probe.hasArticle) return false;
+  if (!Array.isArray(probe.videos) || probe.videos.length !== 0) return false;
+  if (!Array.isArray(probe.images) || probe.images.length !== 0) return false;
+  const bodyLen =
+    typeof probe.bodySnippet === "string" ? probe.bodySnippet.trim().length : Number.MAX_SAFE_INTEGER;
+  return bodyLen < 200;
+}
+
 /**
  * True when Chromium rendered no app content at all: no <article>, no media
  * elements, no intercepted API media, and no declared gate. That is a
  * browser/page-pipeline failure (bot-mitigation shell, failed hydration,
  * interception breakage) — NOT proof the Reel lacks video. Pure and
- * unit-tested; callers map true → PROVIDER_UNAVAILABLE (retryable) instead
+ * unit-tested; callers map true → EMPTY_INSTAGRAM_SHELL (retryable) instead
  * of VIDEO_SOURCE_NOT_FOUND.
  */
 export function isEmptyShellRender(signals: EmptyShellSignals): boolean {
@@ -2760,6 +2785,25 @@ export class PuppeteerProvider extends BaseProvider {
       let jsonBytesRead = 0;
       let interceptedMediaRequestCount = 0;
       let capturedCdnMediaUrlCount = 0;
+      // Failure observability (§5 diagnostics): which subresources die before
+      // hydration, grouped by host/type/chromium-error. Host + type + error
+      // text only — never URLs, headers, or cookies. A "document" or
+      // "script"/"xhr"/"fetch" failure here is the empty-shell smoking gun;
+      // ERR_BLOCKED_BY_CLIENT on font/stylesheet/image is our own
+      // interceptor working as designed.
+      let failedRequestTotal = 0;
+      const failedRequestGroups: Record<string, number> = {};
+      let consoleErrorCount = 0;
+      let firstConsoleError: string | null = null;
+      let pageErrorCount = 0;
+      let firstPageError: string | null = null;
+      // Document navigation outcome (§1 diagnostics): status/final URL behind
+      // redirects, content type. No query strings, no headers, no cookies.
+      let navStatus: number | null = null;
+      let navFinalHost: string | null = null;
+      let navFinalPath: string | null = null;
+      let navContentType: string | null = null;
+      let navRedirectHops = 0;
 
       // Block heavy resources we never need, but NEVER abort video/media
       // requests: media delivery responses (resourceType "media",
@@ -2939,15 +2983,94 @@ export class PuppeteerProvider extends BaseProvider {
         }
       });
 
+      // Failure listeners: attached before navigation so nothing is missed.
+      // All three are defensive (never throw) and record safe scalars only.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      page.on("requestfailed", (failed: any) => {
+        try {
+          const furl = typeof failed?.url === "function" ? failed.url() : "";
+          const rtype = typeof failed?.resourceType === "function" ? failed.resourceType() : "unknown";
+          const failure = typeof failed?.failure === "function" ? failed.failure() : null;
+          const errText =
+            failure && typeof failure.errorText === "string" ? failure.errorText : "unknown";
+          let host = "(unparsable)";
+          try {
+            host = new URL(furl).hostname;
+          } catch {
+            /* keep placeholder */
+          }
+          failedRequestTotal++;
+          const key = `${host}|${rtype}|${errText}`.slice(0, 160);
+          if (failedRequestGroups[key] === undefined && Object.keys(failedRequestGroups).length >= 25) {
+            failedRequestGroups["(more)"] = (failedRequestGroups["(more)"] ?? 0) + 1;
+          } else {
+            failedRequestGroups[key] = (failedRequestGroups[key] ?? 0) + 1;
+          }
+        } catch {
+          /* diagnostics must never break extraction */
+        }
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      page.on("console", (msg: any) => {
+        try {
+          if (msg && typeof msg.type === "function" && msg.type() === "error") {
+            consoleErrorCount++;
+            if (firstConsoleError === null && typeof msg.text === "function") {
+              firstConsoleError = String(msg.text()).slice(0, 160) || null;
+            }
+          }
+        } catch {
+          /* diagnostics must never break extraction */
+        }
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      page.on("pageerror", (err: any) => {
+        try {
+          pageErrorCount++;
+          if (firstPageError === null) {
+            firstPageError = (err instanceof Error ? err.message : String(err)).slice(0, 160) || null;
+          }
+        } catch {
+          /* diagnostics must never break extraction */
+        }
+      });
+
       const navStart = Date.now();
       try {
         // domcontentloaded instead of networkidle2: Instagram never goes idle
         // (analytics/background polling), so networkidle would burn the full
-        // timeout on nearly every request.
-        await page.goto(url, {
+        // timeout on nearly every request. The navigation RESPONSE is kept:
+        // its status/final URL/redirect chain says whether Instagram served
+        // a document, a redirect, or nothing at all.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const navResponse: any = await page.goto(url, {
           waitUntil: "domcontentloaded",
           timeout: NAVIGATION_TIMEOUT_MS,
         });
+        if (navResponse && typeof navResponse.status === "function") {
+          navStatus = navResponse.status();
+          try {
+            const finalUrl = new URL(navResponse.url());
+            navFinalHost = finalUrl.hostname;
+            navFinalPath = finalUrl.pathname;
+          } catch {
+            /* keep nulls */
+          }
+          try {
+            const headers = typeof navResponse.headers === "function" ? navResponse.headers() : {};
+            const ct = headers["content-type"] || headers["Content-Type"] || "";
+            navContentType = String(ct).split(";")[0].slice(0, 80) || null;
+          } catch {
+            /* keep null */
+          }
+          try {
+            const chain =
+              typeof navResponse.request === "function" ? navResponse.request().redirectChain() : null;
+            navRedirectHops = Array.isArray(chain) ? chain.length : 0;
+          } catch {
+            navRedirectHops = 0;
+          }
+        }
       } catch (err) {
         logger.warn("Puppeteer PAGE_NAVIGATION_INTERRUPTED", {
           error: err instanceof Error ? err.message : String(err),
@@ -3034,6 +3157,8 @@ export class PuppeteerProvider extends BaseProvider {
         pageStatus: fetchMeta.pageStatus,
         loginWall: fetchMeta.loginWall,
         challenge: fetchMeta.hasChallenge,
+        docStatus: navStatus,
+        docFinalHost: navFinalHost,
         interceptedMediaCount: interceptedMedia.length,
         interceptedMediaTypes: [...new Set(interceptedMedia.map((m) => m.type))],
         videoCandidateCount: interceptedMedia.filter((m) => m.type === "video").length,
@@ -3077,6 +3202,51 @@ export class PuppeteerProvider extends BaseProvider {
       for (const item of initialVideos) {
         if (!interceptedMedia.some((m) => m.url === item.url)) {
           interceptedMedia.push(item);
+        }
+      }
+
+      // 1b. Empty-shell recovery, exactly once: when the document rendered no
+      // app content at all (no video signals, no intercepted API media, no
+      // <article>, tiny body) and declares no gate, the first load likely
+      // dropped a bundle or hydration raced. One bounded reload is the only
+      // recovery with a plausible payoff — linear flow, no loop, no retry
+      // counter needed because this block runs at most once per resolve.
+      // Skipped for declared gates (reload cannot lift a login wall or
+      // challenge) and whenever any media signal already exists.
+      if (!hasVideoBeenExtracted() && interceptedMedia.length === 0 && !signal?.aborted) {
+        try {
+          const [shellProbe, shellState] = await Promise.all([
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            page.evaluate(FETCH_META_FN).catch(() => null) as Promise<any>,
+            page.evaluate(PAGE_STATE_FN).catch(() => null) as Promise<{
+              hasUnavailableMessage?: boolean;
+              hasLoginWall?: boolean;
+              hasChallenge?: boolean;
+            } | null>,
+          ]);
+          const shellWalled = Boolean(
+            shellState &&
+              (shellState.hasUnavailableMessage || shellState.hasLoginWall || shellState.hasChallenge)
+          );
+          if (isReloadableShell(shellProbe, shellWalled)) {
+            logger.warn("Puppeteer empty shell detected, attempting one bounded reload", { url });
+            const reloadStart = Date.now();
+            await page.reload({ waitUntil: "domcontentloaded", timeout: 10_000 });
+            timings.shellReloadMs = Date.now() - reloadStart;
+            const retryVideos = await extractVideoCandidatesFromPage();
+            for (const item of retryVideos) {
+              if (!interceptedMedia.some((m) => m.url === item.url)) {
+                interceptedMedia.push(item);
+              }
+            }
+            logger.info("Puppeteer shell reload complete", {
+              url,
+              reloadMs: timings.shellReloadMs,
+              retryVideoCount: retryVideos.length,
+            });
+          }
+        } catch {
+          // Reload failed or frame detached: continue with what was captured.
         }
       }
 
@@ -3637,6 +3807,23 @@ export class PuppeteerProvider extends BaseProvider {
           pageChallenge: pageState.hasChallenge,
           pageUnavailableMessage: pageState.hasUnavailableMessage,
           emptyShell,
+          // Document navigation outcome: did Instagram serve a document at
+          // all, or redirect elsewhere, or nothing?
+          docStatus: navStatus,
+          docFinalHost: navFinalHost,
+          docFinalPath: navFinalPath,
+          docContentType: navContentType,
+          docRedirectHops: navRedirectHops,
+          // Pre-hydration failures: which subresources died (host/type/
+          // chromium-error only). document/script/xhr/fetch failures here
+          // are the empty-shell smoking gun; ERR_BLOCKED_BY_CLIENT on
+          // font/stylesheet/image is our own interceptor by design.
+          failedRequestTotal,
+          failedRequestGroups,
+          consoleErrorCount,
+          firstConsoleError,
+          pageErrorCount,
+          firstPageError,
           duration: Date.now() - startTime,
         });
         // A Reel/TV page with no discoverable video must NEVER degrade into
@@ -3655,15 +3842,17 @@ export class PuppeteerProvider extends BaseProvider {
         if (noVideoKind === "REEL" || noVideoKind === "VIDEO") {
           // Empty shell (computed above): the browser/page pipeline produced
           // no app content, so VIDEO_SOURCE_NOT_FOUND would blame the content
-          // for a provider-layer failure. PROVIDER_UNAVAILABLE names the real
-          // retryable layer. A declared gate (walled=true) never reaches here
-          // as empty-shell — it keeps its specific outcome below.
+          // and PROVIDER_UNAVAILABLE would blame the whole provider for what
+          // is specifically an empty Instagram document. EMPTY_INSTAGRAM_SHELL
+          // names exactly that condition and stays retryable. A declared gate
+          // (walled=true) never reaches here as empty-shell — it keeps its
+          // specific outcome below.
           if (emptyShell) {
-            const unavailable = createError("PROVIDER_UNAVAILABLE");
+            const empty = createError("EMPTY_INSTAGRAM_SHELL");
             throw new AppError(
-              unavailable.code,
-              unavailable.message,
-              unavailable.statusCode,
+              empty.code,
+              empty.message,
+              empty.statusCode,
               failureDiagnostics("assembly-empty-shell", {
                 count: validMedia.length,
                 types: [...new Set(validMedia.map((m) => m.type))],
