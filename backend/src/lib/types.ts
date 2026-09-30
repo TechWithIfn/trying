@@ -227,6 +227,44 @@ export interface CapacitySnapshot {
   uptimeSeconds: number;
 }
 
+/**
+ * Per-worker resolver state for the 3-worker load manager. Counts and
+ * percentages only — never URLs, cookies, session data, or internal
+ * handles — so it is safe to expose on the /capacity debug endpoint.
+ */
+export interface ResolverWorkerSnapshot {
+  id: number;
+  /** Eligible for new work right now (healthy, or cooldown elapsed). */
+  healthy: boolean;
+  /** Cooldown elapsed after a crash; next admission is a half-open trial. */
+  recovering: boolean;
+  active: number;
+  queued: number;
+  /** Max concurrent jobs on this worker. */
+  capacity: number;
+  maxQueue: number;
+  /** 0–100, computed from real active + queued work. */
+  loadPct: number;
+  admitted: number;
+  completed: number;
+  failed: number;
+  rejected: number;
+  reclaimed: number;
+  consecutiveFailures: number;
+  lastCompletedAt: number | null;
+}
+
+/** Sanitized resolver-pool picture for one process. */
+export interface ResolverPoolSnapshot {
+  workerCount: number;
+  loadThreshold: number;
+  draining: boolean;
+  workers: ResolverWorkerSnapshot[];
+  totalActive: number;
+  totalQueued: number;
+  totalCapacity: number;
+}
+
 export interface LoggerContext {
   requestId?: string;
   url?: string;

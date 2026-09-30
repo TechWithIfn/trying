@@ -7,6 +7,7 @@ import { resolveStoryUrl, isStoryOrHighlightUrl } from "../story-resolve.js";
 import { hashUrl } from "../crypto.js";
 import { logger } from "../logger.js";
 import { getGate } from "../capacity.js";
+import { getResolverPool } from "../resolver-pool.js";
 import { readBoundedInt } from "../env.js";
 import { inc, observe } from "../metrics.js";
 
@@ -244,13 +245,24 @@ export async function resolveUrl(
       url: url.slice(0, 80),
     });
     onProgress?.(25, "Starting resolution");
-    // The provider gate is the single choke point for expensive resolution
-    // work (browser pages, upstream API calls). It bounds concurrency and
-    // returns a controlled 503 when the queue window elapses.
-    const raw = await providerGate.run(() => {
+    // The 3-worker resolver pool is the choke point for expensive resolution
+    // work (browser pages, upstream API calls). It routes to the least-loaded
+    // healthy worker, bounds concurrency and queue depth per worker, and
+    // returns a controlled 503 when every worker is genuinely saturated.
+    // In-flight coalescing above guarantees one user action still creates one
+    // provider call; the pool executes each admitted job exactly once and
+    // never retries, so it can never duplicate an Instagram request.
+    // (Audio/story lookups below stay on the lightweight provider gate: they
+    // are pure-fetch work and must not consume browser-sized worker slots.)
+    const raw = await getResolverPool().run((execSignal) => {
       const providerStart = Date.now();
       inc("providerResolutions");
-      return resolver.resolve(url, onProgress).finally(() => {
+      // The pool hands down its own linked signal (caller cancel + job
+      // timeout); the provider already observes AbortSignal, so a dead client
+      // or an expired budget frees the browser page instead of finishing
+      // unseen. `signal` here is intentionally the pool's, not the caller's.
+      void signal;
+      return resolver.resolve(url, onProgress, { signal: execSignal }).finally(() => {
         observe("provider", Date.now() - providerStart);
       });
     }, { signal });

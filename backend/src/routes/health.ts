@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../lib/ffmpeg.js";
 import { audioProviderStatus } from "../lib/audio-provider.js";
 import { capacitySnapshot } from "../lib/capacity.js";
+import { getResolverPoolSnapshot } from "../lib/resolver-pool.js";
 import { currentDrainReason, drainMetrics, isDraining } from "../lib/shutdown.js";
 import { metricsSnapshot } from "../lib/metrics.js";
 import { isInstagramSessionConfigured } from "../lib/instagram-session.js";
@@ -75,6 +76,9 @@ router.get("/capacity", (_req: Request, res: Response) => {
     draining: isDraining(),
     drainReason: currentDrainReason(),
     capacity: capacitySnapshot(),
+    // 3-worker resolver pool: per-worker active/queued/load/health. Counts
+    // and percentages only — never URLs, cookies, or session data.
+    resolverPool: getResolverPoolSnapshot(),
     // Cache hit rate, provider/browser/transcode volumes, 429/503/5xx counts
     // and per-stage latency: the numbers needed to tell "slow" from "busy"
     // from "broken" without attaching a debugger.

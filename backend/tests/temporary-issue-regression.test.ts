@@ -12,6 +12,7 @@ vi.mock("@/lib/providers/index.js", () => ({
 
 import { createProvider } from "@/lib/providers/index.js";
 import { resetResolver } from "@/lib/resolvers/index.js";
+import { resetPoolForTests } from "@/lib/resolver-pool.js";
 import resolveRouter from "@/routes/resolve.js";
 import app from "@/app";
 import {
@@ -117,6 +118,9 @@ const ALL_ROUTE_ENV = [
 describe("root cause: generic TEMPORARY_ERROR must not mask known failures", () => {
   beforeEach(() => {
     resetResolver();
+    // Crash-class failures sideline a pool worker for a cooldown; reset so
+    // each test starts with all 3 workers healthy.
+    resetPoolForTests();
     mockCreateProvider().mockReset();
     vi.unstubAllGlobals();
     delete process.env.RESOLVER_TIMEOUT_MS;

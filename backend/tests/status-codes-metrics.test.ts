@@ -16,6 +16,7 @@ vi.mock("@/lib/providers/index.js", () => ({ createProvider: vi.fn() }));
 import { createProvider } from "@/lib/providers/index.js";
 import { resetResolver } from "@/lib/resolvers/index.js";
 import { resetRateLimitsForTests } from "@/lib/rate-limit.js";
+import { resetPoolForTests } from "@/lib/resolver-pool.js";
 import app from "@/app";
 import { metricsSnapshot, resetMetricsForTests } from "@/lib/metrics";
 
@@ -82,6 +83,9 @@ describe("HTTP status codes + funnel metrics", () => {
     resetMetricsForTests();
     resetResolver();
     resetRateLimitsForTests();
+    // Crash-class provider failures sideline a pool worker for a cooldown;
+    // reset so each test starts with all 3 workers healthy.
+    resetPoolForTests();
     vi.mocked(createProvider).mockReset();
     vi.unstubAllGlobals();
     vi.stubEnv("RATE_LIMIT_MAX_REQUESTS", "3");
