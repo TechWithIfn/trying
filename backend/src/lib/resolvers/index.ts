@@ -265,7 +265,22 @@ export async function resolveUrl(
       return resolver.resolve(url, onProgress, { signal: execSignal }).finally(() => {
         observe("provider", Date.now() - providerStart);
       });
-    }, { signal });
+    }, {
+      signal,
+      // Per-request pool trace: exactly one admission line per resolve job —
+      // worker, queue wait, and live load. The three legs that prove no
+      // duplicate job was created for one user action.
+      onAdmitted: (admission) => {
+        logger.info("[resolver-pool] job admitted", {
+          url: url.slice(0, 80),
+          workerId: admission.workerId,
+          queueWaitMs: admission.queueWaitMs,
+          activeJobs: admission.active,
+          queuedJobs: admission.queued,
+          loadPercent: admission.loadPct,
+        });
+      },
+    });
     const normalized = normalizeResultType(raw);
     // Collapse exact duplicates before probing so the same bytes are never
     // fetched twice, then fill gaps the provider left (size/format/dims)

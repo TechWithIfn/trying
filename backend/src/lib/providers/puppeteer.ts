@@ -1601,7 +1601,14 @@ export function parseRetryAfterSeconds(raw: string | null | undefined): number |
   return null;
 }
 
-async function fetchPageSnapshot(url: string, timeoutMs = 10_000): Promise<PageFetchResult> {
+/**
+ * Plain-fetch budget: 7s. Healthy Instagram page fetches finish in ~1s; a
+ * fetch still hanging past 7s means the path is struggling and the 15s
+ * overall resolver deadline is already unwinnable — fail the prefetch fast
+ * so the browser pass (or its honest fallback) starts sooner. Single-shot,
+ * never retried.
+ */
+async function fetchPageSnapshot(url: string, timeoutMs = 7_000): Promise<PageFetchResult> {
   try {
     // Instagram serves anonymous clients a video-stripped page (HTTP 200 but
     // no playable video data anywhere). When the operator configured the
@@ -1676,7 +1683,7 @@ async function fetchPageSnapshot(url: string, timeoutMs = 10_000): Promise<PageF
   }
 }
 
-export async function fetchPageHtml(url: string, timeoutMs = 10_000): Promise<string | null> {
+export async function fetchPageHtml(url: string, timeoutMs = 7_000): Promise<string | null> {
   return (await fetchPageSnapshot(url, timeoutMs)).html;
 }
 
@@ -3049,7 +3056,49 @@ export class PuppeteerProvider extends BaseProvider {
       // The condition MUST be whether an actual VIDEO candidate has been extracted.
       if (!hasVideoBeenExtracted()) {
         const settleStart = Date.now();
-        const budget = readBoundedInt("PUPPETEER_VIDEO_SETTLE_MS", 12_000, 500, 30_000);
+        const fullBudget = readBoundedInt("PUPPETEER_VIDEO_SETTLE_MS", 12_000, 500, 30_000);
+        // Fast path out (measured production waste): when the page already
+        // declares itself blocked (deleted post, login wall, challenge), the
+        // video graph is never coming — grant only a short grace for late
+        // hydration instead of burning the full budget against the 15s
+        // overall resolver deadline. The blocked-state handlers below still
+        // produce exactly the same honest outcome, just ~10s sooner.
+        let budget = fullBudget;
+        let shortenReason: string | null = null;
+        try {
+          const early = await page.evaluate(PAGE_STATE_FN).catch(() => null) as {
+            hasUnavailableMessage?: boolean;
+            hasLoginWall?: boolean;
+            hasChallenge?: boolean;
+          } | null;
+          if (
+            early &&
+            (early.hasUnavailableMessage === true ||
+              early.hasLoginWall === true ||
+              early.hasChallenge === true)
+          ) {
+            // Declared block: the video graph is never coming.
+            budget = Math.min(fullBudget, 2000);
+            shortenReason = "blocked-state";
+          } else if (interceptedMedia.length === 0 && initialVideos.length === 0) {
+            // No media signal of ANY kind after full navigation + data wait
+            // (no API media, no DOM video, no video graph): a healthy post
+            // page always exposes at least posters by now. Grant a short
+            // grace for very late hydration instead of the full budget.
+            budget = Math.min(fullBudget, 3000);
+            shortenReason = "no-media-signals";
+          }
+          if (shortenReason) {
+            logger.info("Puppeteer settle shortened", {
+              url,
+              reason: shortenReason,
+              fullBudgetMs: fullBudget,
+              shortenedBudgetMs: budget,
+            });
+          }
+        } catch {
+          // Evaluate failed (frame detached mid-navigation): keep full budget.
+        }
         while (Date.now() - settleStart < budget) {
           if (signal?.aborted) break;
 

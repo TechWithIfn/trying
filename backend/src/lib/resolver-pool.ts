@@ -77,9 +77,22 @@ export function resolvePoolConfig(): ResolverPoolConfig {
   };
 }
 
+/** Per-request admission telemetry: proves one job → one worker, no wait hidden. */
+export interface PoolAdmission {
+  workerId: number;
+  /** Wall time from pool entry to job start (queue + routing). */
+  queueWaitMs: number;
+  /** Worker active count including this job. */
+  active: number;
+  queued: number;
+  loadPct: number;
+}
+
 export interface PoolRunOptions {
   /** Caller cancellation (client disconnect / shutdown / route timeout). */
   signal?: AbortSignal;
+  /** Fired exactly once when the job starts executing on a worker. */
+  onAdmitted?: (info: PoolAdmission) => void;
 }
 
 interface Waiter {
@@ -240,8 +253,8 @@ export class ResolverWorker {
    */
   async execute<T>(fn: (signal: AbortSignal) => Promise<T>, options: PoolRunOptions = {}): Promise<T> {
     const { signal } = options;
-    const now = Date.now();
-    this.sweepStale(now);
+    const queueStart = Date.now();
+    this.sweepStale(queueStart);
 
     if (signal?.aborted) {
       this.rejected++;
@@ -249,7 +262,7 @@ export class ResolverWorker {
     }
 
     if (this.active < this.config.maxConcurrency) {
-      return this.runJob(fn, options);
+      return this.runJob(fn, options, queueStart);
     }
 
     if (this.queue.length >= this.config.maxQueue) {
@@ -263,7 +276,7 @@ export class ResolverWorker {
     }
 
     await this.enqueueWait(signal);
-    return this.runJob(fn, options);
+    return this.runJob(fn, options, queueStart);
   }
 
   private enqueueWait(signal?: AbortSignal): Promise<void> {
@@ -325,7 +338,11 @@ export class ResolverWorker {
     });
   }
 
-  private async runJob<T>(fn: (signal: AbortSignal) => Promise<T>, options: PoolRunOptions): Promise<T> {
+  private async runJob<T>(
+    fn: (signal: AbortSignal) => Promise<T>,
+    options: PoolRunOptions,
+    queueStart: number
+  ): Promise<T> {
     const { signal, config } = { signal: options.signal, config: this.config };
     const jobId = ++this.jobSeq;
     const recovering = !this.healthy;
@@ -333,6 +350,19 @@ export class ResolverWorker {
     this.active++;
     this.activeJobs.set(jobId, Date.now());
     this.admitted++;
+    // Admission telemetry for per-request tracing (job → worker → wait →
+    // live load). Fires exactly once per admitted job.
+    try {
+      options.onAdmitted?.({
+        workerId: this.id,
+        queueWaitMs: Date.now() - queueStart,
+        active: this.active,
+        queued: this.queue.length,
+        loadPct: this.loadPct(),
+      });
+    } catch {
+      // Telemetry must never break admission.
+    }
 
     // Caller cancellation aborts execution (a dead client must free its
     // browser page instead of finishing unseen). The job TIMEOUT deliberately

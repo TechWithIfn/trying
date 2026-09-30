@@ -98,6 +98,46 @@ describe("resolver pool routing", () => {
     expect(after.workers.every((w) => w.loadPct === 0)).toBe(true);
   });
 
+  it("fires admission telemetry exactly once per job (worker, wait, load)", async () => {
+    const pool = createResolverPool({ workerCount: 3, maxConcurrency: 1, maxQueue: 4 });
+    const admissions: Array<{ workerId: number; queueWaitMs: number; active: number; queued: number; loadPct: number }> = [];
+    const onAdmitted = (a: { workerId: number; queueWaitMs: number; active: number; queued: number; loadPct: number }) =>
+      admissions.push(a);
+    const first = heldJob();
+    const p1 = pool.run(first.fn, { onAdmitted });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(admissions).toHaveLength(1);
+    expect(admissions[0]).toMatchObject({ workerId: 0, active: 1 });
+    expect(admissions[0].queueWaitMs).toBeGreaterThanOrEqual(0);
+    // Second job does NOT queue behind worker 0: least-loaded routing puts
+    // it straight onto idle worker 1 with no wait.
+    const second = heldJob();
+    const p2 = pool.run(second.fn, { onAdmitted });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(admissions).toHaveLength(2);
+    expect(admissions[1].workerId).toBe(1);
+    // Fill all three workers, then queue a fourth: no admission until a slot
+    // frees, and the queued admission reports its measured wait.
+    const third = heldJob();
+    const p3 = pool.run(third.fn, { onAdmitted });
+    await new Promise((r) => setTimeout(r, 10));
+    const fourth = heldJob();
+    const p4 = pool.run(fourth.fn, { onAdmitted });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(admissions).toHaveLength(3);
+    expect(pool.snapshot().totalQueued).toBe(1);
+    first.gate.resolve("first");
+    await p1;
+    await new Promise((r) => setTimeout(r, 10));
+    expect(admissions).toHaveLength(4);
+    expect(admissions[3].workerId).toBe(0);
+    expect(admissions[3].queueWaitMs).toBeGreaterThanOrEqual(0);
+    second.gate.resolve("second");
+    third.gate.resolve("third");
+    fourth.gate.resolve("fourth");
+    await Promise.all([p2, p3, p4]);
+  });
+
   it("computes loadPct from real active + queued work", async () => {
     const pool = createResolverPool({ workerCount: 1, maxConcurrency: 2, maxQueue: 4 });
     expect(pool.snapshot().workers[0].loadPct).toBe(0);
