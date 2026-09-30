@@ -5,8 +5,9 @@
  * 2. `Retry-After` parsing is bounded and never NaN/negative/unbounded.
  * 3. A duplicate resolve that joins in-flight work consumes no quota and
  *    starts no second provider call (one user action = one Instagram request).
- * 4. The no-browser fast paths pair a split audio rendition (findSplitAudioUrl
- *    is bounded and prefers the largest audio-only candidate).
+ * 4. Ranked fast-path selection (selectReelVideo) prefers combined video+audio,
+ *    pairs split audio, never selects audio-only or DASH segments as video,
+ *    and stays bounded.
  * 5. `ffmpeg -i` output parsing detects a missing audio track without a binary.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -19,8 +20,20 @@ vi.mock("@/lib/providers/index.js", () => ({
 }));
 
 import { createProvider } from "@/lib/providers/index.js";
-import { parseRetryAfterSeconds, selectReelVideo } from "@/lib/providers/puppeteer.js";
+import {
+  parseRetryAfterSeconds,
+  selectReelVideo,
+  isDashSegmentUrl,
+  verifyVideoCandidate,
+} from "@/lib/providers/puppeteer.js";
 import { ffmpegOutputHasAudio } from "@/lib/ffmpeg.js";
+
+// Exact DASH audio-init URL shape from the production failure (Sep 2026):
+// efg vencode_tag "...dash_ln_heaac_vbr3_audio", duration_s 40,
+// bytestart=0&byteend=823 (824-byte init segment). Served as "video" it
+// produced duration 00:40 + Resolution Unknown + a player stuck mid-playback.
+const DASH_AUDIO_INIT =
+  "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m78/AQOzMW3-i8udvfTyaAO8LpmVsC6MQLRDvW0HIX0ZT8FMj0DXfon0lQ6RB72IDKkt_oEEAP4hFR6dRjvuBRuRoBTVSG0lqjMn5cdgQdc.mp4?_nc_cat=108&_nc_sid=9ca052&_nc_ht=scontent-iad3-1.cdninstagram.com&efg=eyJ2ZW5jb2RlX3RhZyI6ImlnLXhwdmRzLmNsaXBzLmlnd3d3LUMzLmRhc2hfbG5faGVhYWNfdmJyM19hdWRpbyIsInZpZGVvX2lkIjpudWxsLCJvaWxfdXJsZ2VuX2FwcF9pZCI6OTM2NjE5NzQzMzkyNDU5LCJjbGllbnRfbmFtZSI6ImlnIiwieHB2X2Fzc2V0X2lkIjo0NDUyMDgzMDkxNzMxODU1LCJhc3NldF9hZ2VfZGF5cyI6MCwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjQwLCJiaXRyYXRlIjo3MjI5NCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&oh=00_AQMzEj6Nc4OsO7D6SmTZbv3QrvsDNE9EJz9kmNb820mQ7g&oe=6ABE9505&bytestart=0&byteend=823";
 
 const JOIN_URL = "https://www.instagram.com/reel/JoinQuota001/";
 const OTHER_URL = "https://www.instagram.com/reel/JoinQuota002/";
@@ -150,6 +163,42 @@ describe("ffmpegOutputHasAudio", () => {
   });
 });
 
+describe("isDashSegmentUrl", () => {
+  it("flags the production DASH audio-init URL and ignores progressive URLs", () => {
+    expect(isDashSegmentUrl(DASH_AUDIO_INIT)).toBe(true);
+    // Same shape without the dash-tagged efg is not a segment.
+    expect(isDashSegmentUrl("https://scontent-iad3-1.cdninstagram.com/o1/v/t2/clip.mp4?bytestart=0&byteend=823")).toBe(
+      false
+    );
+    // Progressive efg label is not dash.
+    const progressiveEfg = Buffer.from(JSON.stringify({ vencode_tag: "progressive" })).toString("base64url");
+    expect(
+      isDashSegmentUrl(`https://scontent-iad3-1.cdninstagram.com/o1/v/t2/clip.mp4?efg=${progressiveEfg}`)
+    ).toBe(false);
+    expect(isDashSegmentUrl("not a url")).toBe(false);
+    expect(isDashSegmentUrl("")).toBe(false);
+  });
+
+  it("verifyVideoCandidate rejects a DASH segment with zero network traffic", async () => {
+    let fetchCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      (async () => {
+        fetchCalls++;
+        return new Response("must never be fetched", { status: 200 });
+      }) as never
+    );
+    try {
+      const check = await verifyVideoCandidate(DASH_AUDIO_INIT);
+      expect(check.ok).toBe(false);
+      expect(check.reason).toBe("dash-segment");
+      expect(fetchCalls).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe("selectReelVideo", () => {
   const VIDEO_ONLY = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/fast-video.mp4?sig=v";
   const PAIRED_AUDIO = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/fast-audio.mp4?sig=a";
@@ -226,6 +275,33 @@ describe("selectReelVideo", () => {
     } finally {
       for (const item of pool) bodies.delete(item.url);
     }
+  });
+
+  it("never selects a DASH segment, even when it leads the pool", async () => {
+    // The production failure: an 824-byte dash audio-init URL verified as
+    // "video" and became the Reel source. It is now rejected pre-network, so
+    // the audible rendition wins and the dash URL costs zero probes.
+    const before = probeCalls;
+    const selection = await selectReelVideo([{ url: DASH_AUDIO_INIT }, { url: COMBINED_SMALL }]);
+    expect(selection?.videoUrl).toBe(COMBINED_SMALL);
+    expect(selection?.combined).toBe(true);
+    expect(probeCalls - before).toBe(1);
+  });
+
+  it("returns null when the pool holds only a DASH segment", async () => {
+    // A pool of pure fragments is "no playable video" — the caller falls
+    // through to the browser instead of serving an init segment as MP4.
+    const selection = await selectReelVideo([{ url: DASH_AUDIO_INIT }]);
+    expect(selection).toBeNull();
+  });
+
+  it("carries the winning rendition dimensions for resolve-time Resolution", async () => {
+    const selection = await selectReelVideo([
+      { url: VIDEO_ONLY, width: 720, height: 1280 },
+    ]);
+    expect(selection?.videoUrl).toBe(VIDEO_ONLY);
+    expect(selection?.width).toBe(720);
+    expect(selection?.height).toBe(1280);
   });
 });
 

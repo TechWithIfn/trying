@@ -1029,6 +1029,47 @@ function withoutEmbeddedByteSlice(rawUrl: string): string {
   return parsed.toString();
 }
 
+/**
+ * Decode Instagram's `efg` URL param (base64url JSON carrying the encoder
+ * packaging label). Null when absent or undecodable — never throws.
+ */
+function decodeEfgTag(rawUrl: string): string | null {
+  let efg: string | null;
+  try {
+    efg = new URL(rawUrl).searchParams.get("efg");
+  } catch {
+    return null;
+  }
+  if (!efg) return null;
+  try {
+    const normalized = efg.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    return Buffer.from(padded, "base64").toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when a CDN URL is a DASH segment/fragment rather than a progressive
+ * MP4 — detected from Instagram's own `efg` packaging label (e.g.
+ * `vencode_tag: "...dash_ln_heaac_vbr3_audio"`).
+ *
+ * PRODUCTION ROOT CAUSE (Sep 2026, verified against the failing URL): a
+ * `...dash_..._audio` segment with `bytestart=0&byteend=823` passed as a
+ * "video" candidate. Served through the proxy it answered 206 with an
+ * 824-byte audio init segment: the player read a 40s duration from its moov
+ * (matching `duration_s:40`), reported Resolution Unknown (no video track),
+ * stalled mid-playback, and /api/audio received a fragment FFmpeg cannot
+ * decode. DASH segments are only playable through Instagram's own MSE player
+ * — a progressively-streamed `<video>` can never play them, so they are
+ * rejected before any probe traffic, not ranked.
+ */
+export function isDashSegmentUrl(raw: string): boolean {
+  const decoded = decodeEfgTag(raw);
+  return decoded !== null && /dash/i.test(decoded);
+}
+
 /** Leading ISO-BMFF box types that identify real MP4 media. */
 const MP4_BOX_TYPES = ["ftyp", "styp", "moov", "moof", "sidx", "emsg", "free", "skip"] as const;
 
@@ -1048,7 +1089,8 @@ export interface VideoVerification {
     | "probe-failed"
     | "degenerate-payload"
     | "not-mp4-payload"
-    | "audio-only-payload";
+    | "audio-only-payload"
+    | "dash-segment";
   /** Log-safe CDN identity (host + pathname, no query). */
   cdnHost: string | null;
   contentType: string | null;
@@ -1256,6 +1298,19 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
   } catch {
     return verifyFail("malformed-url");
   }
+  // DASH segments are rejected with zero network traffic: no probe of any
+  // byte window can make a fragment progressively playable, and probing the
+  // slice-stripped form only proves the WRONG bytes (the stream serves the
+  // sliced URL). Host-only tally, never the URL.
+  if (isDashSegmentUrl(current)) {
+    let host: string | null = null;
+    try {
+      host = new URL(current).hostname.toLowerCase();
+    } catch {
+      host = null;
+    }
+    return verifyFail("dash-segment", host);
+  }
   current = withoutEmbeddedByteSlice(current);
 
   for (let hop = 0; hop <= VERIFY_MAX_REDIRECTS; hop++) {
@@ -1405,6 +1460,13 @@ export interface ReelVideoSelection {
   /** Same-clip split audio rendition, paired when the video is not combined. */
   audioUrl: string | null;
   probedCount: number;
+  /**
+   * Rendition dimensions from the media graph (video_versions), when the
+   * winning candidate carried them. Surfaced on the result so Resolution is
+   * known at resolve time instead of staying Unknown until the element loads.
+   */
+  width: number | null;
+  height: number | null;
 }
 
 /**
@@ -1425,11 +1487,17 @@ export interface ReelVideoSelection {
  * Never throws: a probe failure just skips that candidate.
  */
 export async function selectReelVideo(
-  candidates: Array<{ url: string }>,
+  candidates: Array<{ url: string; width?: number | null; height?: number | null }>,
   maxProbes = MAX_FASTPATH_SELECTION_PROBES
 ): Promise<ReelVideoSelection | null> {
   const seen = new Set<string>();
-  const videos: Array<{ url: string; size: number; combined: boolean }> = [];
+  const videos: Array<{
+    url: string;
+    size: number;
+    combined: boolean;
+    width: number | null;
+    height: number | null;
+  }> = [];
   const audios: Array<{ url: string; size: number }> = [];
   let probed = 0;
   for (const candidate of candidates) {
@@ -1449,10 +1517,14 @@ export async function selectReelVideo(
       continue;
     }
     if (!check.ok) continue;
+    const width = typeof candidate.width === "number" && candidate.width > 0 ? candidate.width : null;
+    const height = typeof candidate.height === "number" && candidate.height > 0 ? candidate.height : null;
     videos.push({
       url: raw,
       size: check.contentLength ?? 0,
       combined: check.hasVideoTrack === true && check.hasAudioTrack === true,
+      width,
+      height,
     });
   }
   if (videos.length === 0) return null;
@@ -1467,6 +1539,8 @@ export async function selectReelVideo(
     combined: winner.combined,
     audioUrl: !winner.combined && audios.length > 0 ? audios[0].url : null,
     probedCount: probed,
+    width: winner.width,
+    height: winner.height,
   };
 }
 
@@ -2160,12 +2234,14 @@ export class PuppeteerProvider extends BaseProvider {
         }
       : null;
     const rawTitle = meta.title || meta.description;
+    // Rendition dimensions from the media graph when the winner carried them:
+    // Resolution is then known at resolve time instead of Unknown.
     const media: MediaItem[] = [
       {
         url: selection.videoUrl,
         type: "video",
-        width: null,
-        height: null,
+        width: selection.width,
+        height: selection.height,
         duration: null,
         thumbnail: meta.ogImage,
         format: "mp4",
@@ -2421,9 +2497,11 @@ export class PuppeteerProvider extends BaseProvider {
         } catch {
           // Embed fetch failed: the page-graph pool stands alone.
         }
-        const pool: Array<{ url: string }> = [{ url: fetchMeta.ogVideo }];
+        const pool: Array<{ url: string; width: number | null; height: number | null }> = [
+          { url: fetchMeta.ogVideo, width: null, height: null },
+        ];
         for (const item of [...fetchMeta.embeddedMedia, ...embedCands]) {
-          if (item.type === "video") pool.push({ url: item.url });
+          if (item.type === "video") pool.push({ url: item.url, width: item.width, height: item.height });
         }
         const selection = await selectReelVideo(pool);
         fastRankedSelectionDone = true;
@@ -3349,7 +3427,12 @@ export class PuppeteerProvider extends BaseProvider {
               return;
             }
             const origin = originByUrl.get(item.url);
-            if (origin && isTrustedNetworkCapture(origin)) {
+            // A DASH segment delivered with a media resourceType is still a
+            // fragment, never progressive video: the network delivery proves
+            // bytes arrived, not that they are playable. Excluded here so a
+            // dash init fragment can never become the Reel source through the
+            // fallback tier (its rejection is tallied as dash-segment below).
+            if (origin && !isDashSegmentUrl(item.url) && isTrustedNetworkCapture(origin)) {
               captureFallback.push({ item, origin });
               return;
             }
