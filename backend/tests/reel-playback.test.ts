@@ -674,6 +674,24 @@ describe("reel video playback pipeline", () => {
     expect(check.hasAudioTrack).toBeNull();
   });
 
+  it("8i2. A smaller combined video/audio rendition outranks a larger silent rendition (unit)", async () => {
+    // Selecting purely by byte count could choose a high-resolution video-only
+    // file when Instagram also offered a smaller file with both tracks. The
+    // preview's goal is an audible playable video, not the largest silent one.
+    const { compareReelVideoCandidates } = await import("@/lib/providers/puppeteer.js");
+    const silent = {
+      item: videoItem("https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/silent.mp4?sig=s"),
+      size: 4_000_000,
+      combined: false,
+    };
+    const audible = {
+      item: videoItem("https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/audible.mp4?sig=a"),
+      size: 500_000,
+      combined: true,
+    };
+    expect([silent, audible].sort(compareReelVideoCandidates)[0]?.item.url).toBe(audible.item.url);
+  });
+
   it("8j. A 429/login-wall page is a retryable block, a healthy page is not (unit)", async () => {
     // Production serverless egress gets HTTP 429 and is bounced onto
     // /accounts/login/ by Instagram. Neither page carries media, so the old

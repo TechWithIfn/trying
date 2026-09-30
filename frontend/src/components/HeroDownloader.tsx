@@ -29,6 +29,7 @@ import {
   getStreamUrl,
   getDownloadUrl,
   getApiBase,
+  logApiFailure,
   type ResolveData,
   type ResolveStreamHandle,
 } from "@/services/api";
@@ -320,6 +321,14 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
       syncState();
     };
     const onError = () => {
+      // Production-safe stream diagnostic: backend host, endpoint, and media
+      // error code only. The proxied stream URL's signed query is never logged.
+      logApiFailure({
+        requestType: "media-stream",
+        requestUrl: `${getApiBase()}/api/stream`,
+        status: null,
+        error: new Error(`media-stream-error-${v.error?.code ?? "unknown"}`),
+      });
       if (process.env.NODE_ENV === "development") {
         try {
           console.debug("[Downloadit Preview] video error", {
@@ -415,35 +424,56 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
       a.muted = v.muted;
     };
     const alignToVideo = (force: boolean) => {
-      if (!v || !Number.isFinite(v.currentTime)) return;
+      if (!v || !Number.isFinite(v.currentTime)) return false;
       if (force || Math.abs(a.currentTime - v.currentTime) > DRIFT_TOLERANCE) {
         try {
           a.currentTime = v.currentTime;
+          return true;
         } catch {
-          /* seeking before metadata is legal to fail */
+          // Seeking before metadata is legal to fail; fall through to play.
         }
       }
+      return false;
     };
     // Called from the video's own play event, i.e. still inside the user
     // gesture that started playback, which is what lets the browser permit
     // audible playback without a second gesture.
+    const playAudio = () => {
+      mirrorVolume();
+      a.play().catch((error: unknown) => {
+        // A policy refusal is actionable, not background noise: the user can
+        // press Play/Pause or Unmute, and those real gestures retry below.
+        // Never log the media URL; only the endpoint/host/category.
+        logApiFailure({
+          requestType: "media-stream",
+          requestUrl: `${getApiBase()}/api/stream`,
+          status: null,
+          error,
+        });
+      });
+    };
     const startAudio = () => {
       alignToVideo(true);
-      mirrorVolume();
-      a.play().catch(() => {
-        /* autoplay policy refused: the video's own track stays audible */
-      });
+      playAudio();
     };
     const onVideoPlay = () => startAudio();
     const onVideoPause = () => a.pause();
     const onVideoEnd = () => a.pause();
     const onVideoSeeked = () => alignToVideo(true);
     const onVideoTime = () => alignToVideo(false);
-    const onVolumeChange = () => mirrorVolume();
-    // The audio can finish loading after the video is already running.
+    const onVolumeChange = () => {
+      mirrorVolume();
+      // A successful gesture on the native speaker control is itself user
+      // activation. If autoplay policy had blocked the companion track, this
+      // retries it; if the video is paused, the companion stays paused.
+      if (v && !v.paused && !v.ended && a.paused) startAudio();
+    };
+    // The audio can finish loading after the video is already running. Align
+    // without forcing when already close: a forced seek from inside canplay
+    // can itself retrigger canplay and turn one blocked play() into a loop.
     const onAudioReady = () => {
-      alignToVideo(true);
-      if (v && !v.paused && !v.ended) startAudio();
+      if (alignToVideo(false)) return;
+      if (v && !v.paused && !v.ended) playAudio();
     };
 
     v?.addEventListener("play", onVideoPlay);
@@ -897,9 +927,10 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
 
     const controller = new AbortController();
     const API_BASE = getApiBase();
+    const requestUrl = `${API_BASE}/api/audio`;
     const fallback = audioFallbackRef.current;
 
-    fetch(`${API_BASE}/api/audio`, {
+    fetch(requestUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: result.sourceUrl }),
@@ -908,15 +939,27 @@ function MediaResult({ result, mode, onReset }: MediaResultProps) {
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => null);
+          logApiFailure({
+            requestType: "audio-post",
+            requestUrl,
+            status: res.status,
+            error: new Error(
+              typeof body?.error?.code === "string" ? `audio-post-${body.error.code}` : "audio-post-http-error"
+            ),
+          });
           throw new Error(body?.error?.message || fallback);
         }
         const blob = await res.blob();
         if (Number.isFinite(blob.size) && blob.size > 0) setAudioSize(blob.size);
         setAudioUrl(URL.createObjectURL(blob));
       })
-      .catch((err) => {
-        if (err.name !== "AbortError") {
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        logApiFailure({ requestType: "audio-post", requestUrl, status: null, error: err });
+        if (err instanceof Error) {
           setAudioError(err.message || fallback);
+        } else {
+          setAudioError(fallback);
         }
       })
       .finally(() => setAudioLoading(false));
@@ -1493,22 +1536,37 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       setProgress(0);
       setProgressStage(t.hero.analyzing);
       setState("PREPARING");
-      // Watchdog only: fires if the backend goes completely silent. It never
-      // touches the progress value itself.
-      watchdogRef.current = window.setTimeout(() => {
-        if (requestSeqRef.current !== seq) return;
-        requestSeqRef.current++;
-        closeStream();
-        postAbortRef.current?.abort();
-        postAbortRef.current = null;
-        setError(t.errors.unreachable);
-        setState("ERROR");
-      }, 25000);
+      // Silence watchdog, not a total-request timer. It fires only when the backend
+      // sends no SSE stage, error, or completion for this long. Resetting it on
+      // every real backend event prevents a slow-but-working serverless resolve
+      // from being misreported as "Could not reach the server." Sixty seconds
+      // matches the backend's maximum serverless invocation budget.
+      const RESOLVE_SILENCE_TIMEOUT_MS = 60_000;
+      const armSilenceWatchdog = (seq: number) => {
+        clearWatchdog();
+        watchdogRef.current = window.setTimeout(() => {
+          if (requestSeqRef.current !== seq) return;
+          logApiFailure({
+            requestType: "resolve-sse",
+            requestUrl: `${getApiBase()}/api/resolve/stream`,
+            status: null,
+            error: new Error("resolve-sse-silence-timeout"),
+          });
+          requestSeqRef.current++;
+          closeStream();
+          postAbortRef.current?.abort();
+          postAbortRef.current = null;
+          setError(t.errors.unreachable);
+          setState("ERROR");
+        }, RESOLVE_SILENCE_TIMEOUT_MS);
+      };
       const postController = new AbortController();
       postAbortRef.current = postController;
+      armSilenceWatchdog(seq);
       const handle = startResolveStream(trimmed, {
         onProgress: (p, stage) => {
           if (requestSeqRef.current !== seq) return;
+          armSilenceWatchdog(seq);
           setProgress(p);
           if (stage) setProgressStage(stage);
         },
@@ -1534,7 +1592,9 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
           if (requestSeqRef.current !== seq) return;
           // The event stream dropped without a server verdict — fall back to
           // one plain POST resolve (same URL coalesces server-side) instead
-          // of reporting a false connection failure.
+          // of reporting a false connection failure. Restart silence timing
+          // because the fallback is a new request that can also be slow.
+          armSilenceWatchdog(seq);
           resolveInstagramUrl(trimmed, postController.signal)
             .then((data) => {
               if (requestSeqRef.current !== seq) return;

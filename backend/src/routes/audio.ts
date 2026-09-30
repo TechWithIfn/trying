@@ -11,8 +11,8 @@ import type { ParsedInstagramUrl } from "../lib/validators/instagram-url.js";
 import { resolveUrl } from "../lib/resolvers/index.js";
 import { checkRateLimit, routeRateLimitConfig } from "../lib/rate-limit.js";
 import { logger } from "../lib/logger.js";
-import { AppError, createError, createErrorResponse, toAppError } from "../lib/errors.js";
-import { isFfmpegAvailable, runFfmpeg, getFfmpegVersionSync } from "../lib/ffmpeg.js";
+import { AppError, createError, createErrorResponse, isNetworkError, isTimeoutError, toAppError } from "../lib/errors.js";
+import { FfmpegAbortedError, isFfmpegAvailable, runFfmpeg, getFfmpegVersionSync } from "../lib/ffmpeg.js";
 import { scheduleBackgroundTask } from "../lib/background.js";
 import { KeyedConcurrency, getGate } from "../lib/capacity.js";
 import { readBoundedInt } from "../lib/env.js";
@@ -23,7 +23,7 @@ import {
   isHtmlContent,
 } from "../lib/media-proxy.js";
 import { isTrustedProviderMediaUrl } from "../lib/audio-provider.js";
-import type { ErrorCode } from "../lib/types.js";
+import type { ErrorCode, MediaItem } from "../lib/types.js";
 
 const router = Router();
 
@@ -189,6 +189,68 @@ router.post("/", async (req: Request, res: ExpressResponse): Promise<void> => {
   }
 });
 
+type AudioFailureStage = "ffmpeg-check" | "resolve" | "source-select" | "source-download" | "transcode" | "delivery";
+type AudioFailureCategory = "timeout" | "network" | "cancelled" | "transcode" | "unknown";
+
+/**
+ * Classify an otherwise-unknown audio failure into a safe client diagnostic.
+ * The category names the failure family; the route logs retain the underlying
+ * message. Nothing derived from URLs, signed query strings, headers, cookies,
+ * or FFmpeg stderr is ever included in the HTTP response.
+ */
+function classifyAudioFailure(error: unknown): AudioFailureCategory {
+  if (error instanceof FfmpegAbortedError) {
+    return error.reason === "timeout" ? "timeout" : "cancelled";
+  }
+  if (error instanceof Error && error.name === "AbortError") return "cancelled";
+  if (isTimeoutError(error)) return "timeout";
+  if (isNetworkError(error)) return "network";
+  if (error instanceof Error && error.message.includes("FFmpeg failed")) return "transcode";
+  return "unknown";
+}
+
+/**
+ * Build an AUDIO_UNAVAILABLE response with a safe production diagnostic. The
+ * stage and failure category identify what the backend was doing; signed URLs,
+ * headers, FFmpeg stderr, and filesystem paths are never included.
+ */
+function audioUnavailableResponse(stage: AudioFailureStage, failure: AudioFailureCategory) {
+  const error = createError("AUDIO_UNAVAILABLE");
+  const response = error.toResponse();
+  response.error.diagnostics = { audioStage: stage, audioFailure: failure };
+  return { status: error.statusCode, response };
+}
+
+export interface AudioSourceSelection {
+  item: MediaItem;
+  /** Same-clip paired audio rendition when available, otherwise the item URL. */
+  sourceUrl: string;
+  usePairedAudio: boolean;
+}
+
+/**
+ * Choose an audio extractor source without assuming the first video has sound.
+ *
+ * A split-track Reel's first rendition can be valid video-only MP4. An audio
+ * extractor must prefer either a direct audio file or a video with a resolver
+ * paired `audioUrl`; otherwise FFmpeg receives no audio stream and the route
+ * reports AUDIO_UNAVAILABLE.
+ */
+export function selectAudioSource(media: MediaItem[]): AudioSourceSelection | null {
+  const candidates = media.filter(
+    (m) => (m.type === "video" || m.type === "audio") && m.url && typeof m.url === "string"
+  );
+  const item =
+    candidates.find((m) => m.type === "video" && typeof m.audioUrl === "string" && m.audioUrl.length > 0) ??
+    candidates.find((m) => m.type === "audio") ??
+    candidates[0];
+  if (!item) return null;
+  if (typeof item.audioUrl === "string" && item.audioUrl.length > 0) {
+    return { item, sourceUrl: item.audioUrl, usePairedAudio: true };
+  }
+  return { item, sourceUrl: item.url, usePairedAudio: false };
+}
+
 async function handleAudioRequest(
   req: Request,
   res: ExpressResponse,
@@ -202,6 +264,7 @@ async function handleAudioRequest(
   const inputPath = join(tmpDir, "input.mp4");
   const outputPath = join(tmpDir, "output.mp3");
   let dirCreated = false;
+  let audioStage: AudioFailureStage = "ffmpeg-check";
 
   try {
     logger.info("[AUDIO] requested", { requestId, ip });
@@ -226,6 +289,7 @@ async function handleAudioRequest(
     // Body shape, rate limit and URL validation already ran before this slot
     // was acquired.
     logger.info("[AUDIO] resolving", { requestId, url: parsed.normalized.slice(0, 100) });
+    audioStage = "resolve";
     const result = await resolveUrl(parsed.normalized, undefined, { signal });
     const hasVideo = result.media.some((m) => m.type === "video");
     logger.info("[AUDIO] resolver result", {
@@ -240,10 +304,15 @@ async function handleAudioRequest(
       videoSourceFound: hasVideo,
     });
 
-    // --- 3. First usable source: direct audio file preferred, else video ---
-    const sourceItem = result.media.find(
-      (m) => (m.type === "video" || m.type === "audio") && m.url && typeof m.url === "string"
-    );
+    // --- 3. First usable source: direct audio file preferred, else a video
+    // known to have sound, else video ---
+    // A split-track Reel's first rendition can be a valid video-only MP4. An
+    // audio extractor must not silently select that file: FFmpeg would then
+    // fail with no audio stream and the route would report AUDIO_UNAVAILABLE.
+    // A resolver-paired `audioUrl` is the same clip's sound, so use it.
+    audioStage = "source-select";
+    const selection = selectAudioSource(result.media);
+    const sourceItem = selection?.item;
     const videoItem = sourceItem;
     if (!videoItem) {
       logger.warn("[AUDIO] no usable video found", { requestId });
@@ -269,9 +338,20 @@ async function handleAudioRequest(
     // Video sources keep the strict Instagram-CDN allowlist. Direct audio
     // files from the configured audio provider are server-resolved (never
     // user-supplied), so they need https + public-host validation instead.
+    // A resolver-paired split-track audio URL is also an Instagram CDN asset
+    // and passes the same strict validation as a video URL.
+    const pairedAudioUrl =
+      typeof videoItem.audioUrl === "string" && videoItem.audioUrl.length > 0 ? videoItem.audioUrl : null;
+    const pairedAudio = pairedAudioUrl ? validateProxyUrl(pairedAudioUrl) : null;
+    if (pairedAudioUrl && !pairedAudio?.ok) {
+      logger.warn("[AUDIO] paired audio source blocked", { requestId, error: pairedAudio?.error });
+    }
     let sourceUrl: string;
     let sourceHost: string;
-    if (videoItem.type === "audio") {
+    if (pairedAudio?.ok) {
+      sourceUrl = pairedAudio.value.url;
+      sourceHost = pairedAudio.value.hostname;
+    } else if (videoItem.type === "audio") {
       if (!isTrustedProviderMediaUrl(videoItem.url)) {
         logger.warn("[AUDIO] audio source blocked", { requestId });
         res.status(403).json(createErrorResponse("CONTENT_UNAVAILABLE"));
@@ -290,6 +370,7 @@ async function handleAudioRequest(
       sourceHost = mediaValidation.value.hostname;
     }
     logger.info("[AUDIO] source validated", { requestId, hostname: sourceHost });
+    audioStage = "source-download";
 
     // --- 8. Download the source video safely ---
     //
@@ -491,6 +572,7 @@ async function handleAudioRequest(
         res.status(413).json(createErrorResponse("REQUEST_TOO_LARGE"));
         return;
       }
+      audioStage = "delivery";
       const safeHandle = sanitizeHandle(result.author?.username);
       const filename = `${safeHandle}-audio.mp3`;
       logger.info("[AUDIO] complete", {
@@ -518,6 +600,7 @@ async function handleAudioRequest(
     // --- 9. FFmpeg extraction (audio only) ---
     // The ffmpeg gate is the real child-process ceiling. Waiting for a slot is
     // bounded; a full queue yields a controlled 503, never a process pile-up.
+    audioStage = "transcode";
     logger.info("[AUDIO] ffmpeg starting", { requestId });
     try {
       await ffmpegGate.run(
@@ -552,7 +635,8 @@ async function handleAudioRequest(
         inputContentType: sourceCT,
         inputBytes,
       });
-      res.status(502).json(createErrorResponse("AUDIO_UNAVAILABLE"));
+      const failed = audioUnavailableResponse("transcode", "transcode");
+      res.status(failed.status).json(failed.response);
       return;
     }
     logger.info("[AUDIO] ffmpeg completed", { requestId });
@@ -563,7 +647,8 @@ async function handleAudioRequest(
     const outputBytes = outputStat?.size ?? 0;
     if (outputBytes === 0) {
       logger.error("[AUDIO] ffmpeg produced no output", { requestId });
-      res.status(502).json(createErrorResponse("AUDIO_UNAVAILABLE"));
+      const failed = audioUnavailableResponse("transcode", "transcode");
+      res.status(failed.status).json(failed.response);
       return;
     }
     if (outputBytes > MAX_OUTPUT_BYTES) {
@@ -575,6 +660,7 @@ async function handleAudioRequest(
     const safeHandle = sanitizeHandle(result.author?.username);
     const filename = `${safeHandle}-audio.mp3`;
 
+    audioStage = "delivery";
     logger.info("[AUDIO] complete", { requestId, duration: Date.now() - startTime, outputSize: outputBytes });
 
     res.setHeader("Content-Type", "audio/mpeg");
@@ -608,11 +694,18 @@ async function handleAudioRequest(
     const mapped = toAppError(error, "AUDIO_UNAVAILABLE");
     logger.error("[AUDIO] unexpected error", {
       requestId,
+      audioStage,
       errorCode: mapped.code,
       error: error instanceof Error ? error.message : "unknown",
     });
     if (!res.headersSent) {
-      res.status(mapped.statusCode).json(mapped.toResponse());
+      const response = mapped.toResponse();
+      response.error.diagnostics = {
+        ...(response.error.diagnostics ?? {}),
+        audioStage,
+        audioFailure: classifyAudioFailure(error),
+      };
+      res.status(mapped.statusCode).json(response);
     } else {
       res.destroy();
     }

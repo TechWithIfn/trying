@@ -771,6 +771,30 @@ function extractDescriptionFromHtml(html: string): string | null {
  * first (discovery order preserved), everything else untouched. Other
  * content types keep provider order (carousels keep per-item types/order).
  */
+/**
+ * Ranked probe result for a Reel/video candidate.
+ *
+ * `combined` means the probe observed both a video and an audio track. Such a
+ * file can be heard without relying on a separately paired audio rendition.
+ */
+export interface RankedVideoCandidate {
+  item: MediaItem;
+  size: number;
+  combined: boolean;
+}
+
+/**
+ * Prefer an audible video candidate, then the largest file.
+ *
+ * Instagram may publish a smaller combined video/audio rendition alongside a
+ * larger video-only rendition. Silent files look better on paper but produce a
+ * silent preview, so audible evidence always outranks byte count.
+ */
+export function compareReelVideoCandidates(a: RankedVideoCandidate, b: RankedVideoCandidate): number {
+  if (a.combined !== b.combined) return a.combined ? -1 : 1;
+  return b.size - a.size;
+}
+
 export function sortVideoFirst(media: MediaItem[], contentType: InstagramContentType): MediaItem[] {
   if (contentType !== "REEL" && contentType !== "VIDEO") return media;
   const videos = media.filter((m) => m.type === "video");
@@ -3044,7 +3068,7 @@ export class PuppeteerProvider extends BaseProvider {
       let selectedCandidateSource: string | null = null;
       if (contentType === "REEL" || contentType === "VIDEO") {
         const videoCandidates = validMedia.filter((item) => item.type === "video");
-        const probePassed: Array<{ item: MediaItem; size: number }> = [];
+        const probePassed: RankedVideoCandidate[] = [];
         const captureFallback: Array<{ item: MediaItem; origin: ExtractedMedia }> = [];
         // Instagram split renditions: audio-only MP4s that belong to the same
         // clip. They can never be a video source, so they are diverted here
@@ -3059,7 +3083,11 @@ export class PuppeteerProvider extends BaseProvider {
               return;
             }
             if (check.ok) {
-              probePassed.push({ item, size: check.contentLength ?? 0 });
+              probePassed.push({
+                item,
+                size: check.contentLength ?? 0,
+                combined: check.hasVideoTrack === true && check.hasAudioTrack === true,
+              });
               return;
             }
             const origin = originByUrl.get(item.url);
@@ -3071,7 +3099,7 @@ export class PuppeteerProvider extends BaseProvider {
             rejectionReasons[check.reason] = (rejectionReasons[check.reason] ?? 0) + 1;
           })
         );
-        probePassed.sort((a, b) => b.size - a.size);
+        probePassed.sort(compareReelVideoCandidates);
         audioOnly.sort((a, b) => b.size - a.size);
         verifiedByProbeCount = probePassed.length;
         trustedCaptureCount = probePassed.length === 0 ? captureFallback.length : 0;
@@ -3105,18 +3133,23 @@ export class PuppeteerProvider extends BaseProvider {
             verifyTally,
           });
         }
-        // Pair the split audio rendition onto the video. Every entry in
-        // playableMedia is a rendition of the SAME clip, so they share one audio
-        // track; the largest is the most complete encode.
+        // Pair the split audio rendition onto probe-verified, video-only files.
+        // Every entry in playableMedia is a rendition of the SAME clip, so
+        // they share one audio track; the largest is the most complete encode.
+        // A combined file already contains sound: adding the companion would
+        // play the same audio twice. Unverified fallback files are also left
+        // alone because their track layout is unknown.
         const pairedAudio = audioOnly[0];
-        if (pairedAudio && playableMedia.length > 0) {
-          for (const item of playableMedia) {
-            if (item.type === "video") item.audioUrl = pairedAudio.item.url;
+        if (pairedAudio && probePassed.length > 0) {
+          for (const entry of probePassed) {
+            if (!entry.combined && entry.item.type === "video") {
+              entry.item.audioUrl = pairedAudio.item.url;
+            }
           }
           logger.info("Puppeteer paired split audio rendition", {
             contentType,
             audioOnlyCount: audioOnly.length,
-            pairedVideoCount: playableMedia.filter((m) => m.type === "video").length,
+            pairedVideoCount: probePassed.filter((entry) => !entry.combined && entry.item.type === "video").length,
             audioCdnHost: hostnameOf(pairedAudio.item.url),
           });
         }

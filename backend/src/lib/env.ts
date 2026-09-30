@@ -28,6 +28,22 @@ function cap(value: number, max?: number): number {
 }
 
 /**
+ * Whether proxy forwarding headers may be trusted for client-IP attribution.
+ *
+ * Vercel always fronts serverless functions with its own edge proxy chain, so
+ * `X-Forwarded-For` is infrastructure-supplied there. Without trusting it, all
+ * production traffic shares one socket-derived IP and every per-IP rate-limit
+ * and concurrency bucket becomes a global bucket. An explicit operator value
+ * always wins; `TRUST_PROXY=false` disables even on Vercel.
+ */
+export function proxyHeadersTrusted(): boolean {
+  const raw = (process.env.TRUST_PROXY || "").trim().toLowerCase();
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  return Boolean(process.env.VERCEL);
+}
+
+/**
  * Safe build identifier for diagnostics (proves which code an instance runs).
  * Set BUILD_VERSION=<git SHA> at deploy time; Vercel injects
  * VERCEL_GIT_COMMIT_SHA automatically. Never a secret — safe to expose.

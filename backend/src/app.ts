@@ -7,7 +7,7 @@ import audioRouter from "./routes/audio.js";
 import healthRouter from "./routes/health.js";
 import { logger } from "./lib/logger.js";
 import { createError, createErrorResponse, toAppError, AppError } from "./lib/errors.js";
-import { readNonNegativeInt, readPositiveInt } from "./lib/env.js";
+import { readNonNegativeInt, readPositiveInt, proxyHeadersTrusted } from "./lib/env.js";
 import { getGate } from "./lib/capacity.js";
 import { beginRequest, isDraining } from "./lib/shutdown.js";
 import { inc, observe } from "./lib/metrics.js";
@@ -23,11 +23,11 @@ app.disable("x-powered-by");
 
 /**
  * Only trust forwarding headers when this process actually sits behind a proxy
- * that rewrites them. Without this, `X-Forwarded-For` is client-supplied and
+ * that rewrites them. Vercel is trusted automatically; every other deployment
+ * must opt in explicitly. Without this, `X-Forwarded-For` is client-supplied and
  * every rate-limit / per-IP concurrency bucket can be trivially rotated.
  */
-const trustProxyEnabled =
-  process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1";
+const trustProxyEnabled = proxyHeadersTrusted();
 if (trustProxyEnabled) {
   const hops = readPositiveInt("TRUST_PROXY_HOPS", 1);
   app.set("trust proxy", hops);

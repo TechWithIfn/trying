@@ -30,6 +30,7 @@ vi.mock("@/lib/resolvers/index", async (importOriginal) => {
 });
 
 import app from "@/app";
+import { selectAudioSource } from "@/routes/audio";
 
 const MP3_SIZE = 64 * 1024;
 const MP3 = (() => {
@@ -267,6 +268,50 @@ describe("/api/audio source download", () => {
       expect(body.error.code).toBe("VIDEO_SOURCE_NOT_FOUND");
       // The resolver failing means nothing was ever downloaded.
       expect(stub.attempts).toBe(0);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("7. a silent first video does not become the extraction source when paired audio exists (unit)", () => {
+    // Production's first rendition for the reported Reel was a valid video-only
+    // MP4. Selecting it for extraction sent a file with no audio stream to
+    // FFmpeg, producing a bare 502. The paired rendition is the same clip's
+    // sound and must be selected instead.
+    const silentVideo = "https://scontent-ord5-2.xx.fbcdn.net/o1/v/t16/silent-video.mp4?sig=silent";
+    const pairedAudio = "https://scontent-ord5-2.xx.fbcdn.net/o1/v/t16/paired-audio.mp4?sig=paired";
+    const selection = selectAudioSource([
+      {
+        url: silentVideo,
+        type: "video",
+        width: 720,
+        height: 1280,
+        duration: 10,
+        size: 959159,
+        thumbnail: null,
+        format: "mp4",
+        audioUrl: pairedAudio,
+      },
+    ]);
+    expect(selection?.item.url).toBe(silentVideo);
+    expect(selection?.sourceUrl).toBe(pairedAudio);
+    expect(selection?.usePairedAudio).toBe(true);
+  });
+
+  it("8. an unknown failure reports its safe audio stage instead of a bare 502", async () => {
+    resolveMock.mockRejectedValueOnce(new Error("synthetic failure"));
+    const { server, base } = await startServer();
+    try {
+      const res = await post(base);
+      expect(res.status).toBe(502);
+      const body = (await res.json()) as {
+        error: { code: string; diagnostics?: Record<string, unknown> };
+      };
+      expect(body.error.code).toBe("AUDIO_UNAVAILABLE");
+      expect(body.error.diagnostics).toMatchObject({
+        audioStage: "resolve",
+        audioFailure: "unknown",
+      });
     } finally {
       await closeServer(server);
     }

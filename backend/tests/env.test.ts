@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { getBuildVersion, readPositiveInt, validateServerEnv } from "@/lib/env";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { getBuildVersion, proxyHeadersTrusted, readPositiveInt, validateServerEnv } from "@/lib/env";
+import { getClientIp } from "@/lib/media-proxy";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 describe("readPositiveInt", () => {
@@ -141,5 +142,40 @@ describe("getBuildVersion", () => {
       if (prevVercel === undefined) delete process.env.VERCEL_GIT_COMMIT_SHA;
       else process.env.VERCEL_GIT_COMMIT_SHA = prevVercel;
     }
+  });
+});
+
+describe("proxy headers for production client attribution", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function proxiedRequest() {
+    return {
+      headers: { "x-forwarded-for": "203.0.113.10, 198.51.100.20" },
+      ip: "127.0.0.1",
+      socket: { remoteAddress: "127.0.0.1" },
+    } as never;
+  }
+
+  it("trusts Vercel edge headers by default", () => {
+    vi.stubEnv("TRUST_PROXY", "");
+    vi.stubEnv("VERCEL", "1");
+    expect(proxyHeadersTrusted()).toBe(true);
+    expect(getClientIp(proxiedRequest())).toBe("203.0.113.10");
+  });
+
+  it("lets an explicit operator value disable Vercel trust", () => {
+    vi.stubEnv("TRUST_PROXY", "false");
+    vi.stubEnv("VERCEL", "1");
+    expect(proxyHeadersTrusted()).toBe(false);
+    expect(getClientIp(proxiedRequest())).toBe("127.0.0.1");
+  });
+
+  it("ignores forwarding headers on a direct deployment by default", () => {
+    vi.stubEnv("TRUST_PROXY", "");
+    vi.stubEnv("VERCEL", "");
+    expect(proxyHeadersTrusted()).toBe(false);
+    expect(getClientIp(proxiedRequest())).toBe("127.0.0.1");
   });
 });

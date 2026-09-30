@@ -77,21 +77,176 @@ export interface ResolveError {
 
 export type ResolveResponse = ResolveSuccess | ResolveError;
 
-export async function resolveInstagramUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
-  const response = await fetch(`${getApiBase()}/api/resolve`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-    signal,
+export type ApiRequestType =
+  | "resolve-post"
+  | "resolve-sse"
+  | "media-stream"
+  | "media-download"
+  | "audio-post";
+
+export type ApiFailureCategory = "network" | "timeout" | "aborted" | "server" | "malformed-response";
+
+export interface ApiFailureDiagnostic {
+  requestType: ApiRequestType;
+  backendHost: string;
+  configuredHost: string | null;
+  usedProductionFallback: boolean;
+  status: number | null;
+  category: ApiFailureCategory;
+}
+
+function hostOf(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).hostname.toLowerCase() || null;
+  } catch {
+    return null;
+  }
+}
+
+function failureMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof DOMException !== "undefined" && error instanceof DOMException) return error.message;
+  return "";
+}
+
+function failureCategory(status: number | null, error: unknown): ApiFailureCategory {
+  if (status !== null) return "server";
+  if (error instanceof DOMException && error.name === "TimeoutError") return "timeout";
+  if (error instanceof DOMException && error.name === "AbortError") return "aborted";
+  const message = failureMessage(error);
+  if (/play\(\) request was interrupted|not allowed|autoplay/i.test(message)) return "aborted";
+  if (/timeout|timed out|deadline exceeded/i.test(message)) return "timeout";
+  return "network";
+}
+
+/**
+ * Safe failure telemetry for production connection diagnosis.
+ *
+ * Only the API endpoint path, backend/configured hosts, HTTP status, and a
+ * failure category are logged. Query strings are never logged because stream
+ * and download URLs contain signed Instagram CDN URLs.
+ */
+export function logApiFailure(input: {
+  requestType: ApiRequestType;
+  requestUrl: string;
+  status: number | null;
+  error: unknown;
+  category?: ApiFailureCategory;
+}): ApiFailureDiagnostic {
+  let endpoint = "(invalid-request-url)";
+  try {
+    endpoint = new URL(input.requestUrl).pathname || "/";
+  } catch {
+    /* keep the placeholder */
+  }
+  const configured = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/+$/, "");
+  const isBrowser = typeof window !== "undefined";
+  const browserHost = isBrowser ? window.location.hostname : null;
+  const browserIsLocalHost =
+    browserHost === "localhost" || browserHost === "127.0.0.1" || browserHost === "[::1]";
+  const diagnostic: ApiFailureDiagnostic = {
+    requestType: input.requestType,
+    backendHost: hostOf(getApiBase()) ?? "(unknown-backend-host)",
+    configuredHost: configured ? hostOf(configured) : null,
+    usedProductionFallback:
+      isBrowser && !browserIsLocalHost && configured ? pointsAtLocalhost(configured) : false,
+    status: input.status,
+    category: input.category ?? failureCategory(input.status, input.error),
+  };
+  console.warn("[Downloadit API] request failed", {
+    requestType: diagnostic.requestType,
+    endpoint,
+    backendHost: diagnostic.backendHost,
+    configuredHost: diagnostic.configuredHost,
+    usedProductionFallback: diagnostic.usedProductionFallback,
+    status: diagnostic.status,
+    category: diagnostic.category,
   });
+  return diagnostic;
+}
+
+export function isResolveResponse(value: unknown): value is ResolveResponse {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as {
+    success?: unknown;
+    data?: unknown;
+    error?: unknown;
+  };
+  if (candidate.success === true) {
+    const data = candidate.data as { media?: unknown } | null;
+    return typeof data === "object" && data !== null && Array.isArray(data.media);
+  }
+  if (candidate.success === false) {
+    const error = candidate.error as { code?: unknown; message?: unknown } | null;
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      typeof error.code === "string" &&
+      typeof error.message === "string"
+    );
+  }
+  return false;
+}
+
+export async function resolveInstagramUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
+  const requestUrl = `${getApiBase()}/api/resolve`;
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      signal,
+    });
+  } catch (error) {
+    logApiFailure({ requestType: "resolve-post", requestUrl, status: null, error });
+    throw error;
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    if (body && !body.success && body.error) {
-      return body as ResolveError;
+    if (isResolveResponse(body) && !body.success) {
+      logApiFailure({
+        requestType: "resolve-post",
+        requestUrl,
+        status: response.status,
+        error: new Error(`resolve-post-${body.error.code}`),
+      });
+      return body;
     }
+    logApiFailure({
+      requestType: "resolve-post",
+      requestUrl,
+      status: response.status,
+      error: new Error("resolve-post-malformed-response"),
+      category: "malformed-response",
+    });
     return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
   }
-  return response.json();
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (error) {
+    logApiFailure({
+      requestType: "resolve-post",
+      requestUrl,
+      status: response.status,
+      error,
+      category: "malformed-response",
+    });
+    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+  }
+  if (!isResolveResponse(body)) {
+    logApiFailure({
+      requestType: "resolve-post",
+      requestUrl,
+      status: response.status,
+      error: new Error("resolve-post-malformed-response"),
+      category: "malformed-response",
+    });
+    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+  }
+  return body;
 }
 
 export interface ResolveStreamHandlers {

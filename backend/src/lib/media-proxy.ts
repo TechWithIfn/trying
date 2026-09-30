@@ -5,6 +5,7 @@ import { validateInstagramUrl } from "./validators/instagram-url.js";
 import { logger } from "./logger.js";
 import { withRetry } from "./retry.js";
 import { redactMediaUrl } from "./text.js";
+import { proxyHeadersTrusted } from "./env.js";
 
 function isInstagramHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
@@ -102,10 +103,9 @@ function sameCdnIdentity(a: string, b: string): boolean {
  * Client IP for rate limiting and per-client concurrency.
  *
  * `X-Forwarded-For` / `X-Real-IP` are attacker-controlled unless a trusted
- * proxy actually rewrites them, so they are read ONLY when this process is
- * explicitly configured to sit behind one (`TRUST_PROXY=true`, which makes
- * Express resolve `req.ip` through the proxy chain via `app.set("trust
- * proxy")`). With no proxy configured — the default — the socket address is
+ * proxy actually rewrites them, so they are read ONLY when proxy headers are
+ * trusted (`TRUST_PROXY=true`, or automatically on Vercel unless explicitly
+ * disabled). With no proxy configured — the default — the socket address is
  * the only trustworthy value, and forwarding headers are ignored entirely.
  *
  * Without this, one client could rotate the header to mint unlimited rate
@@ -113,7 +113,7 @@ function sameCdnIdentity(a: string, b: string): boolean {
  * abuse hole and a way to defeat the backpressure.
  */
 export function getClientIp(req: Request): string {
-  if (process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY === "1") {
+  if (proxyHeadersTrusted()) {
     const forwarded = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
     if (forwarded) return forwarded;
     const realIp = (req.headers["x-real-ip"] as string | undefined)?.trim();

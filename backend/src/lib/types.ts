@@ -94,6 +94,10 @@ export interface ResolveDiagnostics {
   /** Candidates proven by an active probe vs trusted network capture. */
   verifiedByProbeCount?: number;
   trustedCaptureCount?: number;
+  /** Audio-route stage where a failure occurred (never a URL or secret). */
+  audioStage?: string;
+  /** Audio-route failure category (never a URL or secret). */
+  audioFailure?: "timeout" | "network" | "cancelled" | "transcode" | "unknown";
 }
 
 export interface ResolveErrorResponse {
