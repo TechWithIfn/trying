@@ -1390,48 +1390,101 @@ async function isVerifiedVideoUrl(raw: string): Promise<boolean> {
 }
 
 /**
- * Bounded number of extra CDN probes the no-browser fast paths may spend
- * looking for a split audio rendition. One bounded ranged GET per candidate —
- * never a fan-out, never a loop.
+ * Bounded number of CDN probes the no-browser fast paths may spend ranking
+ * video candidates. One bounded ranged GET per candidate — never a fan-out,
+ * never a loop, never a new Instagram page request (the pool is built only
+ * from documents already fetched).
  */
-const MAX_FASTPATH_AUDIO_PROBES = 6;
+const MAX_FASTPATH_SELECTION_PROBES = 6;
+
+export interface ReelVideoSelection {
+  videoUrl: string;
+  size: number;
+  /** True when the probe saw both a video and an audio track in one file. */
+  combined: boolean;
+  /** Same-clip split audio rendition, paired when the video is not combined. */
+  audioUrl: string | null;
+  probedCount: number;
+}
 
 /**
- * Bounded search for a Reel's split audio rendition among already-collected
- * candidates (fast-path pairing).
+ * Ranked Reel/video candidate selection for the no-browser fast paths.
  *
- * Instagram publishes split-track Reels as a video-only MP4 plus a separate
- * audio-only MP4 for the same clip. The full browser assembly pairs them via
- * probes, but the no-browser fast paths (og:video, embed) used to return the
- * video alone: the preview then played silent and /api/audio received a file
- * with no audio stream (FFmpeg failed → AUDIO_UNAVAILABLE). This reuses the
- * same verifier the assembly uses to find the pool's audio-only rendition and
- * returns the largest one, or null when the pool holds none. Never throws:
- * a probe failure just skips that candidate.
+ * EXACT POINT WHERE AUDIO WAS LOST: the fast paths returned the FIRST
+ * verified video URL (og:video, then embed order) with no audio ranking, so a
+ * video-only rendition won while an audible rendition for the same clip sat
+ * later in the pool — the preview played silent behind a visible speaker
+ * icon, and /api/audio received a file with no audio stream.
+ *
+ * Rules (same as the browser assembly, enforced here for the fast paths):
+ *  - an audio-only rendition is NEVER selected as the video;
+ *  - a combined (video+audio) rendition outranks a larger silent one;
+ *  - otherwise the largest verified video wins, with the largest split audio
+ *    rendition paired as `audioUrl` when the winner is not combined;
+ *  - null when no candidate verifies (caller falls through to the browser).
+ * Never throws: a probe failure just skips that candidate.
  */
-export async function findSplitAudioUrl(
-  pool: ExtractedMedia[],
-  excludeUrl?: string
-): Promise<{ url: string; size: number } | null> {
-  let best: { url: string; size: number } | null = null;
+export async function selectReelVideo(
+  candidates: Array<{ url: string }>,
+  maxProbes = MAX_FASTPATH_SELECTION_PROBES
+): Promise<ReelVideoSelection | null> {
+  const seen = new Set<string>();
+  const videos: Array<{ url: string; size: number; combined: boolean }> = [];
+  const audios: Array<{ url: string; size: number }> = [];
   let probed = 0;
-  for (const item of pool) {
-    if (item.type !== "video") continue;
-    if (excludeUrl && item.url === excludeUrl) continue;
-    if (probed >= MAX_FASTPATH_AUDIO_PROBES) break;
+  for (const candidate of candidates) {
+    const raw = candidate?.url;
+    if (typeof raw !== "string" || raw.length === 0 || seen.has(raw)) continue;
+    seen.add(raw);
+    if (probed >= maxProbes) break;
     probed++;
     let check: VideoVerification;
     try {
-      check = await verifyVideoCandidate(item.url);
+      check = await verifyVideoCandidate(raw);
     } catch {
       continue;
     }
     if (check.reason === "audio-only-payload") {
-      const size = check.contentLength ?? 0;
-      if (!best || size > best.size) best = { url: item.url, size };
+      audios.push({ url: raw, size: check.contentLength ?? 0 });
+      continue;
+    }
+    if (!check.ok) continue;
+    videos.push({
+      url: raw,
+      size: check.contentLength ?? 0,
+      combined: check.hasVideoTrack === true && check.hasAudioTrack === true,
+    });
+  }
+  if (videos.length === 0) return null;
+  // Audible outranks bytes (same rule as compareReelVideoCandidates); size
+  // breaks ties within each tier.
+  videos.sort((a, b) => Number(b.combined) - Number(a.combined) || b.size - a.size);
+  audios.sort((a, b) => b.size - a.size);
+  const winner = videos[0];
+  return {
+    videoUrl: winner.url,
+    size: winner.size,
+    combined: winner.combined,
+    audioUrl: !winner.combined && audios.length > 0 ? audios[0].url : null,
+    probedCount: probed,
+  };
+}
+
+/**
+ * Merge the embed endpoint's structured sidecar items and tag-scraped media
+ * into one deduplicated candidate list (first-seen order). Shared by the
+ * og:video fast path and the embed fast path so both rank the same pool.
+ */
+function collectEmbedCandidates(embedHtml: string): ExtractedMedia[] {
+  const embedSidecar = extractSidecarFromEmbedHtml(embedHtml);
+  const embedMedia = extractMediaFromHtml(embedHtml);
+  const combined: ExtractedMedia[] = [...embedSidecar.items];
+  for (const item of embedMedia) {
+    if (!combined.some((m) => m.url === item.url)) {
+      combined.push(item);
     }
   }
-  return best;
+  return combined;
 }
 
 /**
@@ -2025,19 +2078,14 @@ export class PuppeteerProvider extends BaseProvider {
 
   /**
    * Fast path: plain-HTML metadata already yielded a direct video URL.
-   *
-   * `audioPool` carries the other already-collected video candidates for this
-   * page (embedded media graph, embed HTML). When the verified video is not
-   * positively combined (video+audio in one file), the pool is searched for
-   * the clip's split audio rendition and paired as `audioUrl` — the same
-   * pairing the browser assembly performs. Without this the fast path
-   * returned silent video-only files while the paired sound existed.
+   * Used for Story and audio-clip recoveries, where a single verified video
+   * is the whole result. REEL/VIDEO pages use the ranked selectReelVideo()
+   * path instead, which compares every collected rendition for audio.
    */
   private async buildResultFromVideo(
     url: string,
     videoUrl: string,
-    meta: { ogImage: string | null; title: string | null; description: string | null; author: Author | null },
-    audioPool?: ExtractedMedia[]
+    meta: { ogImage: string | null; title: string | null; description: string | null; author: Author | null }
   ): Promise<ResolverResult | null> {
     // Safe diagnostic: WHY a fast-path video was accepted or dropped. Only
     // the CDN host (no query/token) is logged, never the signed URL.
@@ -2071,25 +2119,8 @@ export class PuppeteerProvider extends BaseProvider {
         format: "mp4",
       },
     ];
-    // A combined file already carries sound; anything else (video-only or
-    // unknown track layout) gets the split rendition when the pool has one.
-    // This mirrors the browser assembly's `!combined` pairing rule.
     const combined =
       verification.hasVideoTrack === true && verification.hasAudioTrack === true;
-    if (!combined && audioPool && audioPool.length > 0) {
-      try {
-        const paired = await findSplitAudioUrl(audioPool, videoUrl);
-        if (paired) {
-          media[0].audioUrl = paired.url;
-          logger.info("Puppeteer fast-path paired split audio rendition", {
-            contentType,
-            audioCdnHost: hostnameOf(paired.url),
-          });
-        }
-      } catch {
-        // Pairing is best-effort: the verified video stands on its own.
-      }
-    }
     logger.info("Puppeteer resolve via fast metadata path (no browser)", {
       contentType,
       verifyReason: verification.reason,
@@ -2097,8 +2128,66 @@ export class PuppeteerProvider extends BaseProvider {
       upstreamContentType: verification.contentType,
       mediaCount: 1,
       selectedMediaType: "video",
-      audioPaired: Boolean(media[0].audioUrl),
+      combined,
     });
+    return {
+      type: contentType,
+      sourceUrl: url,
+      thumbnail: meta.ogImage,
+      title: rawTitle ? decodeHtmlEntities(rawTitle) : null,
+      author: decodedAuthor,
+      media,
+    };
+  }
+
+  /**
+   * Build a REEL/VIDEO result from a ranked selection. The video URL is
+   * already probe-verified by selectReelVideo; the paired split audio (when
+   * present) rides along as `audioUrl` so the preview plays sound through the
+   * hidden companion track and /api/audio extracts the real clip audio.
+   */
+  private buildReelResult(
+    url: string,
+    selection: ReelVideoSelection,
+    meta: { ogImage: string | null; title: string | null; description: string | null; author: Author | null }
+  ): ResolverResult {
+    const contentType = this.detectContentType(url);
+    const author = meta.author || extractAuthorFromUrl(url);
+    const decodedAuthor: Author | null = author
+      ? {
+          username: author.username,
+          displayName: author.displayName ? decodeHtmlEntities(author.displayName) : null,
+        }
+      : null;
+    const rawTitle = meta.title || meta.description;
+    const media: MediaItem[] = [
+      {
+        url: selection.videoUrl,
+        type: "video",
+        width: null,
+        height: null,
+        duration: null,
+        thumbnail: meta.ogImage,
+        format: "mp4",
+        ...(selection.audioUrl ? { audioUrl: selection.audioUrl } : {}),
+      },
+    ];
+    if (!selection.combined && !selection.audioUrl) {
+      // Honest signal, not an error: verified playable video, but no audible
+      // rendition was found in the collected pool.
+      logger.warn("Puppeteer fast-path video-only, no paired audio in pool", {
+        contentType,
+        probed: selection.probedCount,
+      });
+    } else {
+      logger.info("Puppeteer fast-path audible selection", {
+        contentType,
+        combined: selection.combined,
+        audioPaired: Boolean(selection.audioUrl),
+        probed: selection.probedCount,
+        selectedMediaHost: hostnameOf(selection.videoUrl),
+      });
+    }
     return {
       type: contentType,
       sourceUrl: url,
@@ -2310,14 +2399,36 @@ export class PuppeteerProvider extends BaseProvider {
       // Skips Chromium entirely when the direct video URL is already known.
       // Audio pages are included: when their sound page exposes a playable
       // source the audio flow can proceed without launching the browser.
+      //
+      // The pool ranks EVERY already-collected rendition (page graph plus the
+      // embed document, which is already fetching in parallel — awaiting it
+      // starts no new Instagram request). selectReelVideo prefers an audible
+      // rendition over a larger silent one and pairs split audio, which is
+      // what used to be lost when the first URL won unconditionally.
       const isVideoPage =
         url.includes("/reel/") ||
         url.includes("/reels/") ||
         url.includes("/tv/") ||
         url.includes("/reels/audio/");
+      // Set once the ranked fast selection has run: the embed block below
+      // must not re-probe the same pool (bounded work stays bounded).
+      let fastRankedSelectionDone = false;
       if (isVideoPage && fetchMeta.ogVideo && !fetchMeta.loginWall) {
-        const result = await this.buildResultFromVideo(url, fetchMeta.ogVideo, fetchMeta, fetchMeta.embeddedMedia);
-        if (result) {
+        let embedCands: ExtractedMedia[] = [];
+        try {
+          const earlyEmbed = embedHtmlPromise ? await embedHtmlPromise : null;
+          if (earlyEmbed) embedCands = collectEmbedCandidates(earlyEmbed);
+        } catch {
+          // Embed fetch failed: the page-graph pool stands alone.
+        }
+        const pool: Array<{ url: string }> = [{ url: fetchMeta.ogVideo }];
+        for (const item of [...fetchMeta.embeddedMedia, ...embedCands]) {
+          if (item.type === "video") pool.push({ url: item.url });
+        }
+        const selection = await selectReelVideo(pool);
+        fastRankedSelectionDone = true;
+        if (selection) {
+          const result = this.buildReelResult(url, selection, fetchMeta);
           timings.totalMs = Date.now() - startTime;
           logger.info("[resolve] fast path complete", { ...timings, mediaCount: 1 });
           return result;
@@ -2332,14 +2443,7 @@ export class PuppeteerProvider extends BaseProvider {
         const embedHtml = embedHtmlPromise ? await embedHtmlPromise : null;
         timings.embedMs = Date.now() - embedStart;
         if (embedHtml) {
-          const embedSidecar = extractSidecarFromEmbedHtml(embedHtml);
-          const embedMedia = extractMediaFromHtml(embedHtml);
-          const combinedEmbedMedia: ExtractedMedia[] = [...embedSidecar.items];
-          for (const item of embedMedia) {
-            if (!combinedEmbedMedia.some((m) => m.url === item.url)) {
-              combinedEmbedMedia.push(item);
-            }
-          }
+          const combinedEmbedMedia: ExtractedMedia[] = collectEmbedCandidates(embedHtml);
 
           if (combinedEmbedMedia.length > 0) {
             const validEmbed: MediaItem[] = [];
@@ -2359,10 +2463,21 @@ export class PuppeteerProvider extends BaseProvider {
 
             const currentType = this.detectContentType(url);
             if (currentType === "REEL" || currentType === "VIDEO") {
-              const videoCandidates = validEmbed.filter((m) => m.type === "video");
-              for (const cand of videoCandidates) {
-                const res = await this.buildResultFromVideo(url, cand.url, fetchMeta, combinedEmbedMedia);
-                if (res) {
+              if (fastRankedSelectionDone) {
+                // The og:video fast path above already ranked this same pool
+                // (page graph + embed candidates) and found nothing playable:
+                // re-probing it would double the CDN probe traffic for zero
+                // new information. Continue to the browser instead.
+                logger.info("Embed candidates already ranked, continuing to browser", {
+                  contentType: currentType,
+                  discovered: combinedEmbedMedia.length,
+                });
+              } else {
+                const selection = await selectReelVideo(
+                  validEmbed.filter((m) => m.type === "video")
+                );
+                if (selection) {
+                  const res = this.buildReelResult(url, selection, fetchMeta);
                   timings.totalMs = Date.now() - startTime;
                   logger.info("Puppeteer resolve via embed video fast path (no browser)", {
                     contentType: currentType,

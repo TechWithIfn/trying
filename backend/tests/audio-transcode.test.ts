@@ -27,6 +27,7 @@ vi.mock("@/lib/resolvers/index", async (importOriginal) => {
 
 import app from "@/app";
 import { getFfmpegPath } from "@/lib/ffmpeg.js";
+import { mp4TrackKinds } from "@/lib/providers/puppeteer.js";
 
 const SOURCE = "https://www.instagram.com/reel/ReelTranscode001/";
 const CDN_VIDEO = "https://scontent-ord5-2.xx.fbcdn.net/o1/v/t16/transcode-clip.mp4?sig=t";
@@ -91,6 +92,9 @@ describe("/api/audio real transcode", () => {
       "-f", "lavfi", "-i", "testsrc=size=128x128:rate=10:duration=1",
       "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
       "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+      // faststart moves moov first so the track scan sees the layout in the
+      // probe window, exactly like a streamable Instagram rendition.
+      "-movflags", "+faststart",
       withAudio,
     ]);
     await runExe(ffmpeg, [
@@ -161,6 +165,29 @@ describe("/api/audio real transcode", () => {
       const bytes = Buffer.from(await res.arrayBuffer());
       // A 1s 192k MP3 is tens of KB: proves FFmpeg really decoded audio.
       expect(bytes.length).toBeGreaterThan(5_000);
+    } finally {
+      await closeServer(server);
+    }
+  }, 60_000);
+
+  it("streams byte-identical media with the audio track intact (proxy preserves sound)", async () => {
+    // The actual downloaded bytes — not the UI — must carry the audio track.
+    // Serves the audible fixture through the REAL /api/stream pipe (Range,
+    // Content-Type, validation) and inspects the container that arrives.
+    currentFixture = withAudioBytes;
+    const { server, base } = await startServer();
+    try {
+      const res = await fetch(`${base}/api/stream?url=${encodeURIComponent(CDN_VIDEO)}`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("video/mp4");
+      expect(res.headers.get("accept-ranges")).toBe("bytes");
+      const bytes = Buffer.from(await res.arrayBuffer());
+      // Byte-identical: the proxy never decodes, strips, or replaces media.
+      expect(bytes.length).toBe((withAudioBytes as Buffer).length);
+      expect(bytes.equals(withAudioBytes as Buffer)).toBe(true);
+      // The streamed container really holds both tracks: video AND audio.
+      const tracks = mp4TrackKinds(new Uint8Array(bytes.subarray(0, 65_536)));
+      expect(tracks).toEqual({ video: true, audio: true });
     } finally {
       await closeServer(server);
     }

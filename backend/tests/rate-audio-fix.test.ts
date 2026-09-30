@@ -19,7 +19,7 @@ vi.mock("@/lib/providers/index.js", () => ({
 }));
 
 import { createProvider } from "@/lib/providers/index.js";
-import { parseRetryAfterSeconds, findSplitAudioUrl } from "@/lib/providers/puppeteer.js";
+import { parseRetryAfterSeconds, selectReelVideo } from "@/lib/providers/puppeteer.js";
 import { ffmpegOutputHasAudio } from "@/lib/ffmpeg.js";
 
 const JOIN_URL = "https://www.instagram.com/reel/JoinQuota001/";
@@ -64,24 +64,32 @@ function closeServer(server: Server): Promise<void> {
   );
 }
 
-/** Minimal ISO-BMFF ftyp + moov prefix carrying one trak with a hdlr type. */
-function mp4WithTrack(handler: "vide" | "soun", totalBytes: number): Buffer {
-  const hdlr = Buffer.alloc(32);
-  hdlr.writeUInt32BE(hdlr.length, 0);
-  hdlr.write("hdlr", 4, "latin1");
-  hdlr.write(handler, 16, "latin1");
-  const mdia = Buffer.alloc(8 + hdlr.length);
-  mdia.writeUInt32BE(mdia.length, 0);
-  mdia.write("mdia", 4, "latin1");
-  hdlr.copy(mdia, 8);
-  const trak = Buffer.alloc(8 + mdia.length);
-  trak.writeUInt32BE(trak.length, 0);
-  trak.write("trak", 4, "latin1");
-  mdia.copy(trak, 8);
-  const moov = Buffer.alloc(8 + trak.length);
+/**
+ * Minimal ISO-BMFF ftyp + moov prefix carrying one trak per handler type
+ * (`vide` and/or `soun`). Mirrors exactly the container part the track scan
+ * uses to tell a combined file from a video-only or audio-only rendition.
+ */
+function mp4WithTracks(handlers: Array<"vide" | "soun">, totalBytes: number): Buffer {
+  const traks = handlers.map((handler) => {
+    const hdlr = Buffer.alloc(32);
+    hdlr.writeUInt32BE(hdlr.length, 0);
+    hdlr.write("hdlr", 4, "latin1");
+    hdlr.write(handler, 16, "latin1");
+    const mdia = Buffer.alloc(8 + hdlr.length);
+    mdia.writeUInt32BE(mdia.length, 0);
+    mdia.write("mdia", 4, "latin1");
+    hdlr.copy(mdia, 8);
+    const trak = Buffer.alloc(8 + mdia.length);
+    trak.writeUInt32BE(trak.length, 0);
+    trak.write("trak", 4, "latin1");
+    mdia.copy(trak, 8);
+    return trak;
+  });
+  const moovPayload = Buffer.concat(traks);
+  const moov = Buffer.alloc(8 + moovPayload.length);
   moov.writeUInt32BE(moov.length, 0);
   moov.write("moov", 4, "latin1");
-  trak.copy(moov, 8);
+  moovPayload.copy(moov, 8);
   const ftyp = Buffer.alloc(24);
   ftyp.writeUInt32BE(24, 0);
   ftyp.write("ftyp", 4, "latin1");
@@ -93,6 +101,10 @@ function mp4WithTrack(handler: "vide" | "soun", totalBytes: number): Buffer {
     mdat.write("mdat", 4, "latin1");
   }
   return Buffer.concat([head, mdat]);
+}
+
+function mp4WithTrack(handler: "vide" | "soun", totalBytes: number): Buffer {
+  return mp4WithTracks([handler], totalBytes);
 }
 
 describe("parseRetryAfterSeconds", () => {
@@ -138,12 +150,14 @@ describe("ffmpegOutputHasAudio", () => {
   });
 });
 
-describe("findSplitAudioUrl", () => {
+describe("selectReelVideo", () => {
   const VIDEO_ONLY = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/fast-video.mp4?sig=v";
   const PAIRED_AUDIO = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/fast-audio.mp4?sig=a";
+  const COMBINED_SMALL = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/fast-combined.mp4?sig=c";
   const bodies = new Map<string, Buffer>([
-    [VIDEO_ONLY, mp4WithTrack("vide", 24_576)],
+    [VIDEO_ONLY, mp4WithTrack("vide", 40_960)],
     [PAIRED_AUDIO, mp4WithTrack("soun", 28_672)],
+    [COMBINED_SMALL, mp4WithTracks(["vide", "soun"], 24_576)],
   ]);
   let probeCalls = 0;
 
@@ -174,39 +188,40 @@ describe("findSplitAudioUrl", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns the paired audio rendition, skipping the video itself", async () => {
-    const found = await findSplitAudioUrl(
-      [
-        { url: VIDEO_ONLY, type: "video", width: null, height: null },
-        { url: PAIRED_AUDIO, type: "video", width: null, height: null },
-      ],
-      VIDEO_ONLY
-    );
-    expect(found?.url).toBe(PAIRED_AUDIO);
-    expect(found?.size).toBe(28_672);
+  it("prefers a smaller combined rendition over a larger silent one", async () => {
+    // The exact reported bug: first-verified-wins chose the big silent file
+    // while the audible rendition sat later in the pool.
+    const selection = await selectReelVideo([{ url: VIDEO_ONLY }, { url: COMBINED_SMALL }]);
+    expect(selection?.videoUrl).toBe(COMBINED_SMALL);
+    expect(selection?.combined).toBe(true);
+    // A combined file needs no companion track.
+    expect(selection?.audioUrl).toBeNull();
   });
 
-  it("returns null when the pool holds no audio rendition", async () => {
-    const found = await findSplitAudioUrl([
-      { url: VIDEO_ONLY, type: "video", width: null, height: null },
-    ]);
-    expect(found).toBeNull();
+  it("pairs split audio onto a video-only winner and never selects audio as video", async () => {
+    const selection = await selectReelVideo([{ url: VIDEO_ONLY }, { url: PAIRED_AUDIO }]);
+    expect(selection?.videoUrl).toBe(VIDEO_ONLY);
+    expect(selection?.combined).toBe(false);
+    expect(selection?.audioUrl).toBe(PAIRED_AUDIO);
+  });
+
+  it("returns null when no candidate verifies as video", async () => {
+    const selection = await selectReelVideo([{ url: PAIRED_AUDIO }]);
+    expect(selection).toBeNull();
   });
 
   it("is bounded: never probes more than a handful of candidates", async () => {
     const pool = Array.from({ length: 8 }, (_, i) => ({
       url: `https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/pool-${i}.mp4?sig=${i}`,
-      type: "video" as const,
-      width: null,
-      height: null,
     }));
     for (const item of pool) bodies.set(item.url, mp4WithTrack("vide", 24_576));
     bodies.set(pool[7].url, mp4WithTrack("soun", 28_672));
     try {
-      const found = await findSplitAudioUrl(pool);
+      const selection = await selectReelVideo(pool);
       // The audio rendition sits past the probe budget: bounded work wins over
-      // exhaustive search, so it is (honestly) not found.
-      expect(found).toBeNull();
+      // exhaustive search. The winner is still an honest verified video.
+      expect(selection?.videoUrl).toBe(pool[0].url);
+      expect(selection?.audioUrl).toBeNull();
       expect(probeCalls).toBeLessThanOrEqual(6);
     } finally {
       for (const item of pool) bodies.delete(item.url);
