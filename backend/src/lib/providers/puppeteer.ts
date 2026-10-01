@@ -1115,6 +1115,38 @@ export function shouldAttemptRedirectFallback(args: {
 }
 
 /**
+ * Redirect-retry mode per bounded re-navigation attempt. Pure and unit-tested.
+ *
+ * Attempt 1 ALWAYS preserves browser state (same page, cookies intact): a
+ * transient 302 clears on its own and a valid session — even one whose
+ * acceptance markers were merely absent (`null`, unknown) — gets its chance
+ * instead of being thrown away. Only attempt 2 may strip the session, and
+ * then only when it was never positively accepted: a proven-accepted session
+ * is never deleted (its bounce is mitigation/transient, not credential), and
+ * without a configured session there is nothing to strip, so no second
+ * navigation is earned. Null when no (further) attempt is worthwhile.
+ */
+export type RedirectRetryMode = "with-session" | "anonymous";
+
+export function decideRedirectRetryMode(args: {
+  sessionConfigured: boolean;
+  sessionAccepted: boolean | null;
+  cookiesPresent: boolean;
+  attempt: number;
+}): RedirectRetryMode | null {
+  if (args.attempt === 1) {
+    if (!args.sessionConfigured || !args.cookiesPresent) return "with-session";
+    return args.sessionAccepted === false ? "anonymous" : "with-session";
+  }
+  if (args.attempt === 2) {
+    if (!args.sessionConfigured || !args.cookiesPresent) return null;
+    if (args.sessionAccepted === true) return null;
+    return "anonymous";
+  }
+  return null;
+}
+
+/**
  * Candidate sources fetched FOR the requested URL (server-side page graph),
  * as opposed to evidence captured from a loaded browser document. Pure and
  * unit-tested. After a redirect these are the ONLY candidates that may
@@ -1480,6 +1512,8 @@ export interface VideoVerification {
   /** Log-safe CDN identity (host + pathname, no query). */
   cdnHost: string | null;
   contentType: string | null;
+  /** Probe HTTP status (200/206/403/...) — safe scalar for stale-URL triage. */
+  status: number | null;
   /** Total upstream size in bytes when the CDN reported it (null = unknown). */
   contentLength: number | null;
   /**
@@ -1500,6 +1534,7 @@ function verifyFail(
     reason,
     cdnHost,
     contentType: null,
+    status: null,
     contentLength: null,
     hasVideoTrack: null,
     hasAudioTrack: null,
@@ -1746,39 +1781,83 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
     const contentType = (response.headers.get("content-type") || "").toLowerCase();
 
     if (status === 200 || status === 206) {
-      // Embedded-slice symptom on a mid-file window: these bytes are not the
-      // file head and can never verify a container — retry once with only
-      // the window removed. A bytestart=0 window IS the file head, so it
-      // falls through and verifies directly below (Content-Range carries the
-      // real total, and /api/stream already serves such URLs correctly).
-      if (
-        !sliceRetried &&
-        embeddedWindow !== null &&
-        embeddedWindow.start > 0 &&
-        responseMatchesEmbeddedWindow(response, embeddedWindow)
-      ) {
-        const stripped = withoutEmbeddedByteSlice(current);
-        if (stripped !== current) {
-          sliceRetried = true;
-          await response.body?.cancel().catch(() => {});
-          current = stripped;
-          continue;
-        }
-      }
-      // Read at most the probe window, then cancel: the point is to see the
-      // container header, never to buffer the video.
-      let head = new Uint8Array(0);
+      // Read up to the probe window, then cancel: the point is to see the
+      // container header, never to buffer the video. The window is
+      // ACCUMULATED across chunks — a single reader.read() may return a
+      // truncated first chunk (a few bytes under load), and judging the
+      // container from those bytes alone falsely rejected real videos as
+      // "not-mp4-payload". Bounded by VERIFY_PROBE_BYTES with an iteration
+      // cap so a chatty stream can neither spin nor balloon memory.
+      let head: Uint8Array = new Uint8Array(0);
+      let bodyEnded = false;
       try {
         const reader = response.body?.getReader();
         if (reader) {
-          const first = await reader.read();
-          if (first.value) head = first.value.slice(0, VERIFY_PROBE_BYTES);
+          const chunks: Uint8Array[] = [];
+          let total = 0;
+          for (let reads = 0; reads < 32 && total < VERIFY_PROBE_BYTES; reads++) {
+            const next = await reader.read();
+            if (next.done) {
+              bodyEnded = true;
+              break;
+            }
+            const value = next.value;
+            if (!value || value.length === 0) continue;
+            const room = VERIFY_PROBE_BYTES - total;
+            chunks.push(value.length > room ? value.slice(0, room) : value);
+            total += Math.min(value.length, room);
+          }
+          if (chunks.length === 1) {
+            head = chunks[0] as Uint8Array;
+          } else if (chunks.length > 1) {
+            head = new Uint8Array(total);
+            let offset = 0;
+            for (const chunk of chunks) {
+              head.set(chunk, offset);
+              offset += chunk.length;
+            }
+          }
           await reader.cancel().catch(() => {});
         }
       } catch {
         // Body already consumed/unavailable: fall through to the header checks.
       }
       await response.body?.cancel().catch(() => {});
+      // Embedded-slice symptom on a mid-file window: these bytes are not the
+      // file head and can never verify a container — retry once with only
+      // the window removed. A bytestart=0 window IS the file head, so it
+      // falls through and verifies directly below (Content-Range carries the
+      // real total, and /api/stream already serves such URLs correctly).
+      //
+      // Two detectors, header first then body: the edge sometimes answers
+      // with the slice while sending NO Content-Range/Content-Length at all
+      // (headers carry no verdict). In that case the ONLY evidence is the
+      // body itself — a stream that ends with exactly the window's byte count
+      // is the slice, never a complete video (a real one clears the 16 KB
+      // playable floor by orders of magnitude).
+      const windowLength =
+        embeddedWindow !== null ? embeddedWindow.end - embeddedWindow.start + 1 : null;
+      const sliceByHeaders =
+        !sliceRetried &&
+        embeddedWindow !== null &&
+        embeddedWindow.start > 0 &&
+        responseMatchesEmbeddedWindow(response, embeddedWindow);
+      const sliceByBody =
+        !sliceRetried &&
+        embeddedWindow !== null &&
+        embeddedWindow.start > 0 &&
+        windowLength !== null &&
+        bodyEnded &&
+        head.length === windowLength &&
+        !response.headers.get("content-range");
+      if (sliceByHeaders || sliceByBody) {
+        const stripped = withoutEmbeddedByteSlice(current);
+        if (stripped !== current) {
+          sliceRetried = true;
+          current = stripped;
+          continue;
+        }
+      }
 
       // A 200/206 that is NOT video (HTML login page, thumbnail, JSON error) is
       // precisely the "wrong media candidate" case: reject, do not degrade.
@@ -1787,11 +1866,11 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
         ((contentType.includes("octet-stream") || contentType === "") &&
           (head.length === 0 || looksLikeMp4(head) || /\.mp4(?:$|[?#])/i.test(parsed.pathname + parsed.search)));
       if (!isVideoContentType) {
-        return verifyFail("unexpected-status", cdnHost);
+        return { ...verifyFail("unexpected-status", cdnHost), status };
       }
       const totalSize = totalSizeFrom(response);
       if (head.length > 0 && !looksLikeMp4(head)) {
-        return verifyFail("not-mp4-payload", cdnHost);
+        return { ...verifyFail("not-mp4-payload", cdnHost), status, contentType: contentType.split(";")[0] || null, contentLength: totalSize };
       }
       // Split-track detection: a valid container with an audio track and no
       // video track is Instagram's separate audio rendition for a Reel, never a
@@ -1804,6 +1883,7 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
       if (tracks && !tracks.video && tracks.audio) {
         return {
           ...verifyFail("audio-only-payload", cdnHost),
+          status,
           contentType: contentType.split(";")[0] || null,
           contentLength: totalSize,
           hasVideoTrack,
@@ -1811,7 +1891,7 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
         };
       }
       if (totalSize !== null && totalSize < MIN_PLAYABLE_VIDEO_BYTES) {
-        return verifyFail("degenerate-payload", cdnHost);
+        return { ...verifyFail("degenerate-payload", cdnHost), status };
       }
       return {
         ok: true,
@@ -1819,6 +1899,7 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
           ? "verified-mp4-path"
           : "verified-content-type",
         cdnHost,
+        status,
         contentType: contentType.split(";")[0],
         contentLength: totalSize,
         hasVideoTrack,
@@ -1827,27 +1908,28 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
     }
     if (status >= 300 && status < 400) {
       const location = response.headers.get("location");
-      if (!location) return verifyFail("unsafe-redirect", cdnHost);
+      if (!location) return { ...verifyFail("unsafe-redirect", cdnHost), status };
       let next: string;
       try {
         next = new URL(location, current).toString();
       } catch {
-        return verifyFail("unsafe-redirect", cdnHost);
+        return { ...verifyFail("unsafe-redirect", cdnHost), status };
       }
-      if (hop === VERIFY_MAX_REDIRECTS) return verifyFail("too-many-redirects", cdnHost);
+      if (hop === VERIFY_MAX_REDIRECTS) return { ...verifyFail("too-many-redirects", cdnHost), status };
       current = next;
       continue;
     }
     if (status === 401 || status === 403 || status === 404 || status === 410) {
       return {
         ...verifyFail(status === 404 ? "not-found" : "expired-or-forbidden", cdnHost),
+        status,
         contentType: contentType || null,
       };
     }
     if (status === 429) {
-      return verifyFail("unexpected-status", cdnHost);
+      return { ...verifyFail("unexpected-status", cdnHost), status };
     }
-    return verifyFail("unexpected-status", cdnHost);
+    return { ...verifyFail("unexpected-status", cdnHost), status };
   }
   return verifyFail("too-many-redirects");
 }
@@ -3670,13 +3752,17 @@ export class PuppeteerProvider extends BaseProvider {
       // Redirect-away gate: if Instagram bounced the navigation off the
       // requested content (homepage, off-domain, shortcode lost), the wrong
       // document must never be treated as the Reel. A 302-to-home is often
-      // transient rotation rather than a dead Reel, so ONE bounded
-      // re-navigation of the SAME public URL is attempted first (same page:
-      // session cookies and interception listeners persist). Only if the
-      // target still does not load do data-wait, settle polls, the shell
-      // reload and carousel clicks get skipped in favor of the redirect
+      // transient rotation rather than a dead Reel, so bounded re-navigation
+      // of the SAME public URL is attempted (same page: interception
+      // listeners persist across attempts). Attempt 1 ALWAYS preserves the
+      // session cookies — a transient bounce clears on its own and a valid
+      // session gets its chance. Attempt 2 (anonymous, session stripped) runs
+      // only when the session was never positively accepted AND budget
+      // remains. At most two re-navigations per resolve — never a loop. Only
+      // if the target still does not load do data-wait, settle polls, the
+      // shell reload and carousel clicks get skipped in favor of the redirect
       // verdict (which still reads one page-state + the document for the
-      // session verdict). Exactly one retry per resolve — never a loop.
+      // session verdict).
       const checkRedirectedAway = (): boolean => {
         try {
           return isRedirectedAwayFromTarget(url, {
@@ -3689,7 +3775,6 @@ export class PuppeteerProvider extends BaseProvider {
         }
       };
       let redirectedAway = checkRedirectedAway();
-      let anonymousFallbackAttempted = false;
       if (redirectedAway) {
         logger.warn("Puppeteer redirected away from target", {
           requestId,
@@ -3712,79 +3797,114 @@ export class PuppeteerProvider extends BaseProvider {
         !signal?.aborted
       ) {
         // Captures belonging to the bounced load are dropped if — and only
-        // if — the retry lands on the target. Until then they stay counted
+        // if — a retry lands on the target. Until then they stay counted
         // in diagnostics but out of the candidate pool (see combine below).
         const bouncedCaptureCount = interceptedMedia.length;
-        onProgress?.(66, "Retrying target page");
-        logger.info("Puppeteer redirect fallback re-navigation", {
-          requestId,
-          requestedUrl: url.slice(0, 100),
-          remainingMs: RESOLVE_DEADLINE_MS - (Date.now() - startTime),
-        });
-        const fallbackStart = Date.now();
+        const sessionConfigured = isInstagramSessionConfigured();
+        let sessionCookiesPresent = false;
         try {
-          // A stale session can make Instagram redirect an otherwise public
-          // Reel to `/` before any media request is issued. When the document
-          // has not positively accepted the session, retry once without the
-          // configured session cookie. This is not an auth bypass: public
-          // content may resolve anonymously, while private content remains
-          // unavailable and the bounded retry never loops.
+          sessionCookiesPresent = sessionConfigured && parseSessionCookies().length > 0;
+        } catch {
+          sessionCookiesPresent = false;
+        }
+        let sessionStripped = false;
+        for (let attempt = 1; attempt <= 2 && redirectedAway && !signal?.aborted; attempt++) {
+          // The second navigation must not eat assembly/probe time: it needs
+          // its own navigation window plus room for the verdict below.
           if (
-            isInstagramSessionConfigured() &&
-            fetchMeta.sessionAccepted !== true &&
-            !anonymousFallbackAttempted
+            attempt === 2 &&
+            RESOLVE_DEADLINE_MS - (Date.now() - startTime) < FALLBACK_NAV_TIMEOUT_MS + 8_000
           ) {
+            break;
+          }
+          const mode = decideRedirectRetryMode({
+            sessionConfigured,
+            sessionAccepted: fetchMeta.sessionAccepted,
+            cookiesPresent: sessionCookiesPresent && !sessionStripped,
+            attempt,
+          });
+          if (!mode) break;
+          if (mode === "anonymous") {
+            // A session that has now failed twice (initial load + first
+            // retry) is what bounces this Reel to `/`: retry once without
+            // it. This is not an auth bypass: public content may resolve
+            // anonymously, while private content remains unavailable and the
+            // bounded retry never loops.
             try {
               const jar = parseSessionCookies();
               if (jar.length > 0) {
                 await page.deleteCookie(...jar);
-                anonymousFallbackAttempted = true;
-                logger.info("Puppeteer retrying redirected Reel anonymously", {
-                  requestId,
-                  reason: "session-not-accepted",
-                });
               }
+              sessionStripped = true;
+              onProgress?.(67, "Retrying without session");
+              logger.info("Puppeteer retrying redirected Reel anonymously", {
+                requestId,
+                reason: fetchMeta.sessionAccepted === false ? "session-rejected" : "session-not-accepted",
+                attempt,
+              });
             } catch {
               // Cookie cleanup failure leaves the original bounded retry intact.
             }
+          } else {
+            onProgress?.(66, "Retrying target page");
+            logger.info("Puppeteer redirect fallback re-navigation", {
+              requestId,
+              requestedUrl: url.slice(0, 100),
+              remainingMs: RESOLVE_DEADLINE_MS - (Date.now() - startTime),
+              attempt,
+            });
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const retryResponse: any = await page.goto(url, {
-            waitUntil: "domcontentloaded",
-            timeout: FALLBACK_NAV_TIMEOUT_MS,
-          });
-          recordNavResponse(retryResponse);
-        } catch (err) {
-          logger.warn("Puppeteer fallback navigation interrupted", {
-            requestId,
-            error: err instanceof Error ? err.message : String(err),
-          });
+          const fallbackStart = Date.now();
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const retryResponse: any = await page.goto(url, {
+              waitUntil: "domcontentloaded",
+              timeout: FALLBACK_NAV_TIMEOUT_MS,
+            });
+            recordNavResponse(retryResponse);
+          } catch (err) {
+            logger.warn("Puppeteer fallback navigation interrupted", {
+              requestId,
+              attempt,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+          if (attempt === 1) {
+            timings.fallbackNavigationMs = Date.now() - fallbackStart;
+          } else {
+            timings.fallbackAnonymousMs = Date.now() - fallbackStart;
+          }
+          redirectedAway = checkRedirectedAway();
+          if (!redirectedAway) {
+            // Target loaded: forget the bounced load's captures and any
+            // sidecar cursor it planted, then run the normal flow below
+            // against the RIGHT document.
+            interceptedMedia.splice(bouncedCaptureCount);
+            sidecarState.page = null;
+            timings.navigationMs = Date.now() - navStart;
+            onProgress?.(65, "Page loaded");
+            logger.info("Puppeteer redirect fallback landed on target", {
+              requestId,
+              finalHost: navFinalHost,
+              finalPath: navFinalPath,
+              redirectHops: navRedirectHops,
+              attempt,
+              anonymous: sessionStripped,
+            });
+          } else {
+            logger.warn("Puppeteer redirect fallback still away from target", {
+              requestId,
+              finalHost: navFinalHost,
+              finalPath: navFinalPath,
+              redirectHops: navRedirectHops,
+              redirectStatuses: navRedirectStatuses,
+              attempt,
+              anonymous: sessionStripped,
+            });
+          }
         }
-        timings.fallbackNavigationMs = Date.now() - fallbackStart;
-        redirectedAway = checkRedirectedAway();
-        if (!redirectedAway) {
-          // Target loaded: forget the bounced load's captures and any
-          // sidecar cursor it planted, then run the normal flow below
-          // against the RIGHT document.
-          interceptedMedia.splice(bouncedCaptureCount);
-          sidecarState.page = null;
-          timings.navigationMs = Date.now() - navStart;
-          onProgress?.(65, "Page loaded");
-          logger.info("Puppeteer redirect fallback landed on target", {
-            requestId,
-            finalHost: navFinalHost,
-            finalPath: navFinalPath,
-            redirectHops: navRedirectHops,
-          });
-        } else {
+        if (redirectedAway) {
           onProgress?.(68, "Target not loaded");
-          logger.warn("Puppeteer redirect fallback still away from target", {
-            requestId,
-            finalHost: navFinalHost,
-            finalPath: navFinalPath,
-            redirectHops: navRedirectHops,
-            redirectStatuses: navRedirectStatuses,
-          });
         }
       } else if (redirectedAway) {
         onProgress?.(68, "Target not loaded");
@@ -4500,6 +4620,10 @@ export class PuppeteerProvider extends BaseProvider {
       let audioOnlyCount = 0;
       // Provenance of the finally selected video (source + host only).
       let selectedCandidateSource: string | null = null;
+      // Winning rank evidence (§12): bytes + combined flag of the top-ranked
+      // probe-verified rendition (null unless a probe verified a winner).
+      let selectedVideoBytes: number | null = null;
+      let selectedCombined: boolean | null = null;
       if (contentType === "REEL" || contentType === "VIDEO") {
         const videoCandidates = validMedia.filter((item) => item.type === "video");
         const probePassed: RankedVideoCandidate[] = [];
@@ -4515,13 +4639,25 @@ export class PuppeteerProvider extends BaseProvider {
         await mapWithLimit(videoCandidates, VERIFY_CONCURRENCY, async (item) => {
             const check = await verifyVideoCandidate(item.url);
             verifyTally[check.reason] = (verifyTally[check.reason] ?? 0) + 1;
+            const origin = originByUrl.get(item.url);
+            // Structured per-candidate diagnostics (§12): every field that
+            // decides selection, host-only scalars — never the signed URL.
             logger.debug("Puppeteer candidate verification", {
               requestId,
               host: check.cdnHost,
-              source: originByUrl.get(item.url)?.source ?? null,
+              source: origin?.source ?? null,
               reason: check.reason,
               ok: check.ok,
+              status: check.status,
+              probeContentType: check.contentType,
               contentLength: check.contentLength,
+              capturedResourceType: origin?.capturedResourceType ?? null,
+              capturedStatus: origin?.capturedStatus ?? null,
+              capturedContentType: origin?.capturedContentType ?? null,
+              isDashSegment: isDashSegmentUrl(item.url),
+              trustedCapture: origin ? isTrustedNetworkCapture(origin) : false,
+              hasVideoTrack: check.hasVideoTrack,
+              hasAudioTrack: check.hasAudioTrack,
             });
             if (check.reason === "audio-only-payload") {
               audioOnly.push({ item, size: check.contentLength ?? 0 });
@@ -4535,7 +4671,6 @@ export class PuppeteerProvider extends BaseProvider {
               });
               return;
             }
-            const origin = originByUrl.get(item.url);
             // A DASH segment delivered with a media resourceType is still a
             // fragment, never progressive video: the network delivery proves
             // bytes arrived, not that they are playable. Excluded here so a
@@ -4553,6 +4688,11 @@ export class PuppeteerProvider extends BaseProvider {
         verifiedByProbeCount = probePassed.length;
         trustedCaptureCount = probePassed.length === 0 ? captureFallback.length : 0;
         audioOnlyCount = audioOnly.length;
+        // Winning rank evidence (§12): the score that selected the result —
+        // largest combined (video+audio) rendition wins, else largest video.
+        const winningEntry = probePassed.length > 0 ? probePassed[0] : null;
+        selectedVideoBytes = winningEntry ? winningEntry.size : null;
+        selectedCombined = winningEntry ? winningEntry.combined : null;
         if (probePassed.length > 0) {
           playableMedia = probePassed.map((entry) => entry.item);
           const firstOrigin = originByUrl.get(playableMedia[0].url);
@@ -4911,6 +5051,8 @@ export class PuppeteerProvider extends BaseProvider {
         selectedCandidateHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
         selectedCandidateType: orderedMedia[0]?.type ?? null,
         selectedCandidate: orderedMedia.length > 0,
+        selectedVideoBytes,
+        selectedCombined,
         selection: selectionSummary,
         selectedMediaHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
         videoCandidateCount: validMedia.filter((m) => m.type === "video").length,
