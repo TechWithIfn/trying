@@ -169,6 +169,10 @@ export interface ExtractedMedia {
   capturedResourceType?: string | null;
   /** HTTP status observed at capture time (200/206 for a real delivery). */
   capturedStatus?: number | null;
+  /** Safe subset of the original browser request headers, never serialized. */
+  capturedRequestHeaders?: Record<string, string>;
+  /** Media response headers needed to reason about the original delivery. */
+  capturedResponseHeaders?: Record<string, string>;
 }
 
 /** Log-safe hostname (no query, no tokens, no cookies). Null when unparsable. */
@@ -1201,6 +1205,7 @@ export function classifyNormalizationRejection(raw: unknown): NormalizationRejec
 export function isTrustedNetworkCapture(item: ExtractedMedia): boolean {
   if (item.source !== "network-video-response") return false;
   if (item.capturedStatus !== 200 && item.capturedStatus !== 206) return false;
+  if (isDashSegmentUrl(item.url)) return false;
   let parsed: URL;
   try {
     parsed = new URL(item.url);
@@ -3294,23 +3299,53 @@ export class PuppeteerProvider extends BaseProvider {
               });
               if (
                 isTrustedCdnUrl(resUrl) &&
-                (resourceType === "media" || ctLower.startsWith("video/") || isStory) &&
-                !interceptedMedia.some((m) => m.url === resUrl)
+                (resourceType === "media" || ctLower.startsWith("video/") || isStory)
               ) {
                 capturedCdnMediaUrlCount++;
+                const requestHeaders: Record<string, string> = {};
+                if (req && typeof req.headers === "function") {
+                  const originalHeaders = req.headers() as Record<string, string>;
+                  for (const name of ["accept", "accept-language", "origin", "range", "referer", "user-agent"]) {
+                    const value = originalHeaders[name];
+                    if (typeof value === "string" && value.length > 0) requestHeaders[name] = value;
+                  }
+                }
+                const responseHeaders: Record<string, string> = {};
+                const rawResponseHeaders = res.headers() as Record<string, string>;
+                for (const name of ["accept-ranges", "content-length", "content-range", "content-type"]) {
+                  const value = rawResponseHeaders[name];
+                  if (typeof value === "string" && value.length > 0) responseHeaders[name] = value;
+                }
                 // Preserve the signed query string EXACTLY (resUrl untouched):
-                // only the host/content-type/resource-type/status are recorded
-                // as the authoritative media-type signal for final assembly.
-                interceptedMedia.push({
-                  url: resUrl,
-                  type: ctLower.startsWith("video/") || resourceType === "media" ? "video" : "image",
-                  width: null,
-                  height: null,
-                  source: "network-video-response",
-                  capturedContentType: ctLower.slice(0, 80) || null,
-                  capturedResourceType: resourceType || null,
-                  capturedStatus: statusCode,
-                });
+                // Upgrade an API/DOM candidate when the browser has actually
+                // delivered that exact URL. This is the trusted-capture path:
+                // discovery provenance must never hide stronger response evidence.
+                if (statusCode === 200 || statusCode === 206) {
+                  const captured: ExtractedMedia = {
+                    url: resUrl,
+                    type: ctLower.startsWith("video/") || resourceType === "media" ? "video" : "image",
+                    width: null,
+                    height: null,
+                    source: "network-video-response",
+                    capturedContentType: ctLower.slice(0, 80) || null,
+                    capturedResourceType: resourceType || null,
+                    capturedStatus: statusCode,
+                    capturedRequestHeaders: requestHeaders,
+                    capturedResponseHeaders: responseHeaders,
+                  };
+                  const existing = interceptedMedia.find((m) => m.url === resUrl);
+                  if (existing) {
+                    existing.source = captured.source;
+                    existing.type = captured.type;
+                    existing.capturedContentType = captured.capturedContentType;
+                    existing.capturedResourceType = captured.capturedResourceType;
+                    existing.capturedStatus = captured.capturedStatus;
+                    existing.capturedRequestHeaders = captured.capturedRequestHeaders;
+                    existing.capturedResponseHeaders = captured.capturedResponseHeaders;
+                  } else {
+                    interceptedMedia.push(captured);
+                  }
+                }
               }
             }
           } catch {

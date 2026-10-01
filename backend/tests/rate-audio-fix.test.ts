@@ -25,6 +25,7 @@ import {
   selectReelVideo,
   isDashSegmentUrl,
   verifyVideoCandidate,
+  isTrustedNetworkCapture,
 } from "@/lib/providers/puppeteer.js";
 import { ffmpegOutputHasAudio } from "@/lib/ffmpeg.js";
 
@@ -202,6 +203,42 @@ describe("isDashSegmentUrl", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("isTrustedNetworkCapture", () => {
+  it("trusts a successful extensionless browser 206 independently of probe results", () => {
+    expect(
+      isTrustedNetworkCapture({
+        url: "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/clip?sig=browser",
+        type: "video",
+        width: null,
+        height: null,
+        source: "network-video-response",
+        capturedContentType: "video/mp4; codecs=avc1",
+        capturedResourceType: "media",
+        capturedStatus: 206,
+        capturedResponseHeaders: {
+          "content-range": "bytes 0-65535/4000000",
+          "content-length": "65536",
+        },
+      })
+    ).toBe(true);
+  });
+
+  it("does not trust a DASH byte fragment even when Chromium delivered it", () => {
+    expect(
+      isTrustedNetworkCapture({
+        url: DASH_AUDIO_INIT,
+        type: "video",
+        width: null,
+        height: null,
+        source: "network-video-response",
+        capturedContentType: "video/mp4",
+        capturedResourceType: "media",
+        capturedStatus: 206,
+      })
+    ).toBe(false);
   });
 });
 
