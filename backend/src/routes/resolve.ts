@@ -354,6 +354,12 @@ async function performResolve(
  * percentages: every `progress` event is emitted only after the
  * corresponding backend stage has actually finished.
  *
+ * Lifecycle: the request deadline (RESOLVER_TIMEOUT_MS) owns the whole
+ * operation — on expiry the resolver job is aborted (pool slot, provider
+ * work, browser page) and exactly one STREAM_TIMEOUT error is sent. Client
+ * disconnect aborts the same way. A comment heartbeat keeps idle streams
+ * alive through intermediaries. No resolver work outlives this response.
+ *
  * Events:
  *   progress  { progress: 0-99, stage: string }
  *   complete  { progress: 100, stage: "Media ready!", data: ResolvedMedia }
@@ -380,6 +386,7 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
     if (settled) return;
     settled = true;
     clearTimeout(timer);
+    clearInterval(heartbeat);
     try {
       res.end();
     } catch {
@@ -416,9 +423,28 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
   const timer = setTimeout(() => {
     if (settled) return;
     logger.warn("Resolve stream timeout", { requestId, timeoutMs });
-    send("error", createErrorResponse("RESOLVER_TIMEOUT").error);
+    // The request deadline owns the whole operation: abort the resolver job
+    // (pool slot, provider work, browser page) so nothing outlives this
+    // response, then answer once with the stream-specific timeout code.
+    controller.abort();
+    send("error", createErrorResponse("STREAM_TIMEOUT").error);
     finish();
   }, timeoutMs);
+
+  // Idle-stream heartbeat: SSE comment frames are ignored by EventSource but
+  // reset idle timers on proxies/serverless frontends, so a quiet browser
+  // phase is never mistaken for a dead connection ("could not reach the
+  // server"). Carries no stage — the frontend silence watchdog is unaffected.
+  const heartbeat = setInterval(() => {
+    if (settled || res.writableEnded) return;
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      /* closed underneath us; the close handler owns cleanup */
+    }
+  }, 10_000);
+  // A heartbeat must never keep the process alive on its own.
+  heartbeat.unref?.();
 
   // The SSE connection is a long-lived client: on disconnect the provider work
   // must stop (and its browser page be freed) instead of running unseen.

@@ -235,6 +235,11 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     status: 503,
     retryable: true,
   },
+  STREAM_TIMEOUT: {
+    message: "The media stream took too long to start. Please try again.",
+    status: 504,
+    retryable: true,
+  },
 };
 
 /**

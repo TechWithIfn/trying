@@ -139,7 +139,12 @@ export type ResolutionState =
   | "CONTENT_UNAVAILABLE"
   | "TEMPORARY_NO_MEDIA"
   | "PROVIDER_TIMEOUT"
-  | "AUTH_INVALID";
+  | "AUTH_INVALID"
+  | "REDIRECTED_AWAY_FROM_TARGET"
+  | "REQUEST_ABORTED"
+  | "CLIENT_DISCONNECTED"
+  | "STREAM_TIMEOUT"
+  | "SERVER_ERROR";
 
 export interface ResolveErrorResponse {
   success: false;
@@ -190,6 +195,7 @@ export type ErrorCode =
   | "STORY_PRIVATE"
   | "INSTAGRAM_RATE_LIMITED"
   | "INSTAGRAM_PROVIDER_ERROR"
+  | "STREAM_TIMEOUT"
   | "EMPTY_INSTAGRAM_SHELL";
 
 export interface ResolverResult {

@@ -1030,6 +1030,51 @@ export function assemblyFailureStage(
   return walled ? "assembly-no-playable-video" : "assembly-temporary-no-media";
 }
 
+export interface RedirectAwaySignals {
+  /** Final document URL after navigation (null when navigation failed). */
+  finalUrl: string | null;
+  /** Final document host (null when unknown). */
+  finalHost: string | null;
+  /** Final document pathname (null when unknown). */
+  finalPath: string | null;
+}
+
+/**
+ * True when the browser did not remain on the requested content: Instagram
+ * bounced the navigation off-target (homepage, off-domain, or a path that no
+ * longer carries the requested shortcode). Pure and unit-tested.
+ *
+ * A redirect-away is NEVER followed with extraction work: running settle
+ * polls, reloads and carousel clicks against the wrong document only burns
+ * the serverless budget and misattributes homepage assets to the Reel.
+ * Callers must jump straight to the redirect verdict instead.
+ */
+export function isRedirectedAwayFromTarget(
+  requestedUrl: string,
+  signals: RedirectAwaySignals
+): boolean {
+  if (!signals.finalUrl || !signals.finalHost || signals.finalPath === null) return false;
+  const host = signals.finalHost.toLowerCase();
+  // Off Instagram entirely (login interstitials stay on instagram.com and are
+  // gates, not redirect-aways — PAGE_STATE_FN owns those).
+  if (host !== "instagram.com" && !host.endsWith(".instagram.com")) return true;
+  // The classic bounce: requested /reel/<id>/ answered by the homepage.
+  if (signals.finalPath === "/") {
+    try {
+      const requestedPath = new URL(requestedUrl).pathname;
+      if (requestedPath !== "/") return true;
+    } catch {
+      return true;
+    }
+  }
+  // Shortcode lost: the final document is some other page. Stories and
+  // highlights carry no shortcode here and are resolved elsewhere, so only
+  // post-style URLs participate.
+  const shortcode = /(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i.exec(requestedUrl)?.[1];
+  if (shortcode && !signals.finalPath.includes(shortcode)) return true;
+  return false;
+}
+
 /**
  * True when exactly one bounded reload is worthwhile: the document shows no
  * app content (no article, no media elements, tiny body) and declares no
@@ -3000,12 +3045,16 @@ export class PuppeteerProvider extends BaseProvider {
       let pageErrorCount = 0;
       let firstPageError: string | null = null;
       // Document navigation outcome (§1 diagnostics): status/final URL behind
-      // redirects, content type. No query strings, no headers, no cookies.
+      // redirects, content type, per-hop redirect statuses/hosts. No query
+      // strings, no locations, no headers, no cookies.
       let navStatus: number | null = null;
       let navFinalHost: string | null = null;
       let navFinalPath: string | null = null;
+      let navFinalUrl: string | null = null;
       let navContentType: string | null = null;
       let navRedirectHops = 0;
+      let navRedirectStatuses: number[] = [];
+      let navRedirectHosts: string[] = [];
 
       // Block heavy resources we never need, but NEVER abort video/media
       // requests: media delivery responses (resourceType "media",
@@ -3253,6 +3302,7 @@ export class PuppeteerProvider extends BaseProvider {
           navStatus = navResponse.status();
           try {
             const finalUrl = new URL(navResponse.url());
+            navFinalUrl = finalUrl.toString();
             navFinalHost = finalUrl.hostname;
             navFinalPath = finalUrl.pathname;
           } catch {
@@ -3269,6 +3319,22 @@ export class PuppeteerProvider extends BaseProvider {
             const chain =
               typeof navResponse.request === "function" ? navResponse.request().redirectChain() : null;
             navRedirectHops = Array.isArray(chain) ? chain.length : 0;
+            if (Array.isArray(chain)) {
+              // Per-hop status + host only (never Location URLs/queries):
+              // proves whether Instagram bounced the target to the homepage.
+              for (const hop of chain.slice(0, 8)) {
+                try {
+                  const hopRes = hop && typeof hop.response === "function" ? hop.response() : null;
+                  const hopStatus = hopRes && typeof hopRes.status === "function" ? hopRes.status() : null;
+                  if (typeof hopStatus === "number") navRedirectStatuses.push(hopStatus);
+                  const hopUrl = hop && typeof hop.url === "function" ? hop.url() : "";
+                  const hopHost = new URL(hopUrl).hostname;
+                  if (hopHost) navRedirectHosts.push(hopHost);
+                } catch {
+                  /* per-hop best effort */
+                }
+              }
+            }
           } catch {
             navRedirectHops = 0;
           }
@@ -3282,15 +3348,49 @@ export class PuppeteerProvider extends BaseProvider {
       timings.navigationMs = Date.now() - navStart;
       onProgress?.(65, "Page loaded");
 
+      // Redirect-away gate: if Instagram bounced the navigation off the
+      // requested content (homepage, off-domain, shortcode lost), NOTHING
+      // below may treat the wrong document as the Reel. Data-wait, settle
+      // polls, the shell reload and carousel clicks against the wrong page
+      // only burn the serverless budget, so they are all skipped and the
+      // resolve jumps straight to the redirect verdict (which still reads
+      // one page-state + the document for the session verdict).
+      let redirectedAway = false;
+      try {
+        redirectedAway = isRedirectedAwayFromTarget(url, {
+          finalUrl: navFinalUrl,
+          finalHost: navFinalHost,
+          finalPath: navFinalPath,
+        });
+      } catch {
+        redirectedAway = false;
+      }
+      if (redirectedAway) {
+        onProgress?.(68, "Target not loaded");
+        logger.warn("Puppeteer redirected away from target", {
+          requestId,
+          requestedUrl: url.slice(0, 100),
+          finalHost: navFinalHost,
+          finalPath: navFinalPath,
+          redirectHops: navRedirectHops,
+          redirectStatuses: navRedirectStatuses,
+          redirectHosts: navRedirectHosts,
+          docStatus: navStatus,
+        });
+      }
+
       // Wait only for the data we actually need (video tag, article, or
-      // video meta) instead of a blind multi-second sleep.
+      // video meta) instead of a blind multi-second sleep. Skipped when the
+      // navigation already proved the target never loaded.
       const waitStart = Date.now();
-      await page
-        .waitForFunction(
-          `!!document.querySelector('${isStory ? "video[src], img[src]," : "video[src],"} article, meta[property="og:video"]')`,
-          { timeout: DATA_WAIT_TIMEOUT_MS }
-        )
-        .catch(() => {});
+      if (!redirectedAway) {
+        await page
+          .waitForFunction(
+            `!!document.querySelector('${isStory ? "video[src], img[src]," : "video[src],"} article, meta[property="og:video"]')`,
+            { timeout: DATA_WAIT_TIMEOUT_MS }
+          )
+          .catch(() => {});
+      }
       timings.dataWaitMs = Date.now() - waitStart;
 
       // Helper: extract video candidates from current page DOM & scripts.
@@ -3414,12 +3514,19 @@ export class PuppeteerProvider extends BaseProvider {
         );
       };
 
-      // 1. Initial media inspection from page DOM & scripts
-      extractionPasses++;
-      const initialVideos = await extractVideoCandidatesFromPage();
-      for (const item of initialVideos) {
-        if (!interceptedMedia.some((m) => m.url === item.url)) {
-          interceptedMedia.push(item);
+      // 1. Initial media inspection from page DOM & scripts. Skipped when
+      // redirected away: the loaded document is not the requested content and
+      // its assets must never enter the candidate pool (see eligibleMedia).
+      let initialVideos: ExtractedMedia[] = [];
+      if (!redirectedAway) {
+        // Extraction phase 1 of at most 3 (initial → settle → 2nd attempt):
+        // phases are counted, never polls, so the counter cannot run away.
+        extractionPasses++;
+        initialVideos = await extractVideoCandidatesFromPage();
+        for (const item of initialVideos) {
+          if (!interceptedMedia.some((m) => m.url === item.url)) {
+            interceptedMedia.push(item);
+          }
         }
       }
 
@@ -3431,7 +3538,7 @@ export class PuppeteerProvider extends BaseProvider {
       // counter needed because this block runs at most once per resolve.
       // Skipped for declared gates (reload cannot lift a login wall or
       // challenge) and whenever any media signal already exists.
-      if (!hasVideoBeenExtracted() && interceptedMedia.length === 0 && !signal?.aborted) {
+      if (!hasVideoBeenExtracted() && interceptedMedia.length === 0 && !signal?.aborted && !redirectedAway) {
         try {
           const [shellProbe, shellState] = await Promise.all([
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -3481,7 +3588,9 @@ export class PuppeteerProvider extends BaseProvider {
       // itself blocked gets a short grace (the video graph is never coming,
       // and the blocked-state handlers below produce the same honest outcome
       // sooner).
-      if (!hasVideoBeenExtracted()) {
+      if (!hasVideoBeenExtracted() && !redirectedAway) {
+        // Extraction phase 2 (final value 2): one bounded hydration wait.
+        extractionPasses++;
         const settleStart = Date.now();
         const fullBudget = readBoundedInt("PUPPETEER_VIDEO_SETTLE_MS", 12_000, 500, 30_000);
         let budget = fullBudget;
@@ -3527,8 +3636,8 @@ export class PuppeteerProvider extends BaseProvider {
           // Check if intercepted media received a video from network responses
           if (hasVideoBeenExtracted()) break;
 
-          // Re-extract from hydrated page DOM and scripts
-          extractionPasses++;
+          // Re-extract from hydrated page DOM and scripts (polls are not
+          // extraction attempts — the phase was counted once on entry).
           const pageVideos = await extractVideoCandidatesFromPage();
           if (pageVideos.length > 0) {
             for (const item of pageVideos) {
@@ -3549,7 +3658,10 @@ export class PuppeteerProvider extends BaseProvider {
       // hydration may simply be late. Poll DOM/scripts once more within a
       // hard cap that never reaches past the resolve deadline (room is kept
       // for assembly and candidate verification). One attempt, then conclude.
-      if (!hasVideoBeenExtracted() && !signal?.aborted) {
+      if (!hasVideoBeenExtracted() && !signal?.aborted && !redirectedAway) {
+        // Extraction phase 3 (final value 3): the single controlled second
+        // attempt. After this the extraction story is over — assembly decides.
+        extractionPasses++;
         const gate = await page.evaluate(PAGE_STATE_FN).catch(() => null) as {
           hasUnavailableMessage?: boolean;
           hasLoginWall?: boolean;
@@ -3569,7 +3681,6 @@ export class PuppeteerProvider extends BaseProvider {
             let secondPasses = 0;
             while (Date.now() - secondStart < secondBudget) {
               if (signal?.aborted || hasVideoBeenExtracted()) break;
-              extractionPasses++;
               secondPasses++;
               const more = await extractVideoCandidatesFromPage();
               for (const item of more) {
@@ -3585,6 +3696,7 @@ export class PuppeteerProvider extends BaseProvider {
               requestId,
               url,
               budgetMs: secondBudget,
+              remainingBudgetMs: Math.max(0, RESOLVE_DEADLINE_MS - (Date.now() - startTime)),
               passes: secondPasses,
               foundVideo: hasVideoBeenExtracted(),
               interceptedMediaCount: interceptedMedia.length,
@@ -3718,7 +3830,7 @@ export class PuppeteerProvider extends BaseProvider {
       // posts. For /p/ URLs, click the carousel "Next" control (bounded:
       // stop after the carousel reports no next control or two consecutive
       // advances with no new media, and accumulate every exposed item.
-      if (url.includes("/p/")) {
+      if (url.includes("/p/") && !redirectedAway) {
         const seenDom = new Set<string>([...domResult.videos, ...domResult.images]);
         let quietClicks = 0;
         for (let step = 0; step < 100 && quietClicks < 2; step++) {
@@ -3867,15 +3979,22 @@ export class PuppeteerProvider extends BaseProvider {
         allMedia.push(item);
       };
 
-      for (const item of interceptedMedia) addUnique(item);
-      for (const item of pagedMedia) addUnique({ ...item, source: item.source ?? "api-json" });
-      for (const item of renderedHtmlMedia) addUnique({ ...item, source: item.source ?? "rendered-html" });
+      // Redirect-away containment (see the gate above): browser-document
+      // evidence belongs to the WRONG page and must never become the
+      // requested Reel's result — not even a verified homepage clip. Only
+      // evidence fetched FOR the requested URL (the prefetch seeds below)
+      // stays eligible. Observed counts above still describe everything.
+      if (!redirectedAway) {
+        for (const item of interceptedMedia) addUnique(item);
+        for (const item of pagedMedia) addUnique({ ...item, source: item.source ?? "api-json" });
+        for (const item of renderedHtmlMedia) addUnique({ ...item, source: item.source ?? "rendered-html" });
 
-      for (const src of domResult.videos) {
-        addUnique({ url: src, type: "video", width: null, height: null, source: "dom" });
-      }
-      for (const src of domResult.images) {
-        addUnique({ url: src, type: "image", width: null, height: null, source: "dom" });
+        for (const src of domResult.videos) {
+          addUnique({ url: src, type: "video", width: null, height: null, source: "dom" });
+        }
+        for (const src of domResult.images) {
+          addUnique({ url: src, type: "image", width: null, height: null, source: "dom" });
+        }
       }
 
       // Server-side metadata may already hold a trusted video URL (og:video
@@ -4067,18 +4186,27 @@ export class PuppeteerProvider extends BaseProvider {
           interceptedCount: interceptedMedia.length,
           walled: shellWalled,
         });
-        const noMediaState = classifyResolutionState({
-          loginWall: pageState.hasLoginWall,
-          challenge: pageState.hasChallenge,
-          unavailable: pageState.hasUnavailableMessage,
-          emptyShell,
-        });
+        // A bounce off the requested content is its own verdict — never
+        // "temporary" (which would invite pointless retries against the same
+        // bounce) and never a content-deleted claim without proof.
+        const noMediaState: ResolutionState = redirectedAway
+          ? "REDIRECTED_AWAY_FROM_TARGET"
+          : classifyResolutionState({
+              loginWall: pageState.hasLoginWall,
+              challenge: pageState.hasChallenge,
+              unavailable: pageState.hasUnavailableMessage,
+              emptyShell,
+            });
         logger.error("Puppeteer NO_MEDIA_FOUND", {
           requestId,
           url: url.slice(0, 100),
           contentType,
           finalResolutionState: noMediaState,
           extractionAttempt: extractionPasses,
+          redirectedAway,
+          finalUrl: navFinalHost ? `${navFinalHost}${navFinalPath ?? ""}` : null,
+          redirectHops: navRedirectHops,
+          redirectStatuses: navRedirectStatuses,
           isServerless: isServerlessRuntime(),
           browserLaunchStatus: this.browser ? "launched" : "not-launched",
           status: fetchMeta.pageStatus,
@@ -4197,19 +4325,33 @@ export class PuppeteerProvider extends BaseProvider {
               sessionAccepted: docSessionAccepted,
               redirectHome: navFinalPath === "/",
             });
-            const shellState: ResolutionState =
+            let shellStage = shellDecision.stage;
+            let shellState: ResolutionState =
               shellDecision.code === "INSTAGRAM_AUTH_INVALID"
                 ? "AUTH_INVALID"
                 : shellDecision.code === "EMPTY_INSTAGRAM_SHELL"
                   ? "TEMPORARY_NO_MEDIA"
                   : "CONTENT_UNAVAILABLE";
-            throw shellError(shellDecision.code, shellDecision.stage, shellState);
+            // Bounced off-target without stronger evidence: name the bounce.
+            // Codes stay retryable; only the state/stage become precise.
+            if (
+              redirectedAway &&
+              shellDecision.code !== "INSTAGRAM_AUTH_INVALID" &&
+              shellDecision.code !== "CONTENT_NOT_FOUND"
+            ) {
+              if (shellDecision.code === "EMPTY_INSTAGRAM_SHELL") {
+                shellStage = "assembly-redirected-away";
+              }
+              shellState = "REDIRECTED_AWAY_FROM_TARGET";
+            }
+            throw shellError(shellDecision.code, shellStage, shellState);
           }
           // No gate evidence here means the video simply never materialized
           // within the bounded wait: TEMPORARY_NO_MEDIA via the existing
           // retryable VIDEO_SOURCE_NOT_FOUND — never CONTENT_UNAVAILABLE.
+          // A bounce off-target is named instead (still retryable).
           throw videoFailure(
-            assemblyFailureStage(shellWalled),
+            redirectedAway ? "assembly-redirected-away" : assemblyFailureStage(shellWalled),
             {
               count: validMedia.length,
               types: [...new Set(validMedia.map((m) => m.type))],
@@ -4221,12 +4363,14 @@ export class PuppeteerProvider extends BaseProvider {
               verifiedByProbe: verifiedByProbeCount,
               trustedCapture: trustedCaptureCount,
             },
-            classifyResolutionState({
-              loginWall: pageState.hasLoginWall,
-              challenge: pageState.hasChallenge,
-              unavailable: pageState.hasUnavailableMessage,
-              emptyShell: false,
-            })
+            redirectedAway
+              ? "REDIRECTED_AWAY_FROM_TARGET"
+              : classifyResolutionState({
+                  loginWall: pageState.hasLoginWall,
+                  challenge: pageState.hasChallenge,
+                  unavailable: pageState.hasUnavailableMessage,
+                  emptyShell: false,
+                })
           );
         }
         if (noVideoKind === "STORY") {
