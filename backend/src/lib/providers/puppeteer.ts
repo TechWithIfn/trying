@@ -3689,6 +3689,7 @@ export class PuppeteerProvider extends BaseProvider {
         }
       };
       let redirectedAway = checkRedirectedAway();
+      let anonymousFallbackAttempted = false;
       if (redirectedAway) {
         logger.warn("Puppeteer redirected away from target", {
           requestId,
@@ -3722,6 +3723,31 @@ export class PuppeteerProvider extends BaseProvider {
         });
         const fallbackStart = Date.now();
         try {
+          // A stale session can make Instagram redirect an otherwise public
+          // Reel to `/` before any media request is issued. When the document
+          // has not positively accepted the session, retry once without the
+          // configured session cookie. This is not an auth bypass: public
+          // content may resolve anonymously, while private content remains
+          // unavailable and the bounded retry never loops.
+          if (
+            isInstagramSessionConfigured() &&
+            fetchMeta.sessionAccepted !== true &&
+            !anonymousFallbackAttempted
+          ) {
+            try {
+              const jar = parseSessionCookies();
+              if (jar.length > 0) {
+                await page.deleteCookie(...jar);
+                anonymousFallbackAttempted = true;
+                logger.info("Puppeteer retrying redirected Reel anonymously", {
+                  requestId,
+                  reason: "session-not-accepted",
+                });
+              }
+            } catch {
+              // Cookie cleanup failure leaves the original bounded retry intact.
+            }
+          }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const retryResponse: any = await page.goto(url, {
             waitUntil: "domcontentloaded",
