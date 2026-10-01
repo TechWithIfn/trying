@@ -175,6 +175,12 @@ describe("isDashSegmentUrl", () => {
     expect(
       isDashSegmentUrl(`https://scontent-iad3-1.cdninstagram.com/o1/v/t2/clip.mp4?efg=${progressiveEfg}`)
     ).toBe(false);
+    // A DASH manifest/playback URL is not a byte-sliced fragment; it is a
+    // normal media source and must not be rejected as a segment.
+    const dashManifestEfg = Buffer.from(JSON.stringify({ vencode_tag: "dash_manifest" })).toString("base64url");
+    expect(
+      isDashSegmentUrl(`https://scontent-iad3-1.cdninstagram.com/o1/v/t2/clip.mp4?efg=${dashManifestEfg}`)
+    ).toBe(false);
     expect(isDashSegmentUrl("not a url")).toBe(false);
     expect(isDashSegmentUrl("")).toBe(false);
   });

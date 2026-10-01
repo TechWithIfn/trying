@@ -1315,8 +1315,16 @@ function decodeEfgTag(rawUrl: string): string | null {
  * rejected before any probe traffic, not ranked.
  */
 export function isDashSegmentUrl(raw: string): boolean {
-  const decoded = decodeEfgTag(raw);
-  return decoded !== null && /dash/i.test(decoded);
+  try {
+    const parsed = new URL(raw);
+    const params = parsed.searchParams;
+    const hasSliceMarkers = params.has("bytestart") || params.has("byteend");
+    if (!hasSliceMarkers) return false;
+    const decoded = decodeEfgTag(raw);
+    return decoded !== null && /dash/i.test(decoded);
+  } catch {
+    return false;
+  }
 }
 
 /** Leading ISO-BMFF box types that identify real MP4 media. */
