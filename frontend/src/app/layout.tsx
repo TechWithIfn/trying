@@ -137,22 +137,8 @@ export default function RootLayout({
           }}
         />
 
-        {/* Organization Structured Data */}
-        <Script
-          id="organization-structured-data"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: BRAND_NAME,
-              url: SITE_URL,
-              logo: `${SITE_URL}/apple-touch-icon.png`,
-            }),
-          }}
-        />
-
-        {/* Web Application Structured Data */}
+        {/* Web Application Structured Data (factual claims only: no ratings,
+            reviews, prices, awards, or social profiles) */}
         <Script
           id="webapp-structured-data"
           type="application/ld+json"
@@ -163,13 +149,8 @@ export default function RootLayout({
               name: BRAND_NAME,
               url: SITE_URL,
               applicationCategory: "MultimediaApplication",
-              operatingSystem: "Any",
+              operatingSystem: "Web",
               description: BRAND_DESCRIPTION,
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-              },
             }),
           }}
         />

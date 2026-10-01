@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
+const DISCLAIMER_TITLE = "Disclaimer | Downloadit";
+const DISCLAIMER_DESCRIPTION =
+  "Read the Downloadit disclaimer covering third-party content, Instagram links and responsible use of the service.";
+
 export const metadata: Metadata = {
-  title: "Disclaimer — Downloadit",
-  description: "Downloadit disclaimer.",
+  title: { absolute: DISCLAIMER_TITLE },
+  description: DISCLAIMER_DESCRIPTION,
   alternates: { canonical: "/disclaimer" },
   openGraph: {
-    title: "Disclaimer — Downloadit",
-    description: "Downloadit disclaimer.",
+    title: DISCLAIMER_TITLE,
+    description: DISCLAIMER_DESCRIPTION,
     type: "website",
     siteName: "Downloadit",
     url: `${SITE_URL}/disclaimer`,
@@ -16,15 +20,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Disclaimer — Downloadit",
-    description: "Downloadit disclaimer.",
+    title: DISCLAIMER_TITLE,
+    description: DISCLAIMER_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
 
 export default function DisclaimerPage() {
   return (
-    <LegalPage title="Disclaimer" updated="September 2026">
+    <LegalPage title="Disclaimer" updated="September 2026" crumbPath="/disclaimer">
       <p>Downloadit is not affiliated with Instagram or Meta.</p>
       <p>
         The tool only works with publicly available content and does not bypass logins,

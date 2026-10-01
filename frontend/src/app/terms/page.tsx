@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
+const TERMS_TITLE = "Terms of Service | Downloadit";
+const TERMS_DESCRIPTION =
+  "Read the Downloadit Terms of Service covering acceptable use and limitations of the service.";
+
 export const metadata: Metadata = {
-  title: "Terms of Service — Downloadit",
-  description: "Downloadit terms of service.",
+  title: { absolute: TERMS_TITLE },
+  description: TERMS_DESCRIPTION,
   alternates: { canonical: "/terms" },
   openGraph: {
-    title: "Terms of Service — Downloadit",
-    description: "Downloadit terms of service.",
+    title: TERMS_TITLE,
+    description: TERMS_DESCRIPTION,
     type: "website",
     siteName: "Downloadit",
     url: `${SITE_URL}/terms`,
@@ -16,15 +20,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Terms of Service — Downloadit",
-    description: "Downloadit terms of service.",
+    title: TERMS_TITLE,
+    description: TERMS_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="September 2026">
+    <LegalPage title="Terms of Service" updated="September 2026" crumbPath="/terms">
       <p>
         Downloadit is a tool for downloading publicly available media that you have the right
         to save, for personal use.

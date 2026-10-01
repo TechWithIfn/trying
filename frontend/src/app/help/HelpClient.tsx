@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   ChevronDown,
   ShieldCheck,
@@ -98,13 +98,8 @@ export default function HelpClient() {
   const h = t.help;
   const typeNames = [t.tabs.reels, t.tabs.videos, t.tabs.photos, t.tabs.stories, t.tabs.audio];
 
-  useEffect(() => {
-    try {
-      document.title = h.metaTitle;
-    } catch {
-      /* non-DOM environment */
-    }
-  }, [h.metaTitle]);
+  // NOTE: document.title is intentionally NOT set here. The <title> comes
+  // from the page metadata API (single source of truth for crawlers and tabs).
 
   return (
     <>

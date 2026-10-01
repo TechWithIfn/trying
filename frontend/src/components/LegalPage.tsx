@@ -1,18 +1,45 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { SUPPORT_GMAIL_URL, SUPPORT_EMAIL } from "@/config/site";
+import Script from "next/script";
+import { SUPPORT_GMAIL_URL, SUPPORT_EMAIL, SITE_URL } from "@/config/site";
 
 export default function LegalPage({
   title,
   updated,
   children,
+  crumbPath,
 }: {
   title: string;
   updated: string;
   children: ReactNode;
+  /** Canonical path of this page (e.g. "/privacy") for BreadcrumbList markup. */
+  crumbPath: string;
 }) {
+  const breadcrumbJson = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: `${SITE_URL}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: title,
+        item: `${SITE_URL}${crumbPath}`,
+      },
+    ],
+  });
   return (
     <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
+      <Script
+        id={`breadcrumb-${crumbPath.replace(/\//g, "") || "home"}`}
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: breadcrumbJson }}
+      />
       <Link
         href="/"
         className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"

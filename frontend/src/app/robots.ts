@@ -6,7 +6,7 @@ export default function robots() {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/_next/webpack-hmr"],
+        disallow: ["/api/", "/download/", "/stream/", "/_next/webpack-hmr"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

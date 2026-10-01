@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
+const DMCA_TITLE = "DMCA Policy | Downloadit";
+const DMCA_DESCRIPTION =
+  "Read the Downloadit DMCA policy for copyright and content removal requests.";
+
 export const metadata: Metadata = {
-  title: "DMCA / Copyright — Downloadit",
-  description: "Downloadit copyright and DMCA information.",
+  title: { absolute: DMCA_TITLE },
+  description: DMCA_DESCRIPTION,
   alternates: { canonical: "/dmca" },
   openGraph: {
-    title: "DMCA / Copyright — Downloadit",
-    description: "Downloadit copyright and DMCA information.",
+    title: DMCA_TITLE,
+    description: DMCA_DESCRIPTION,
     type: "website",
     siteName: "Downloadit",
     url: `${SITE_URL}/dmca`,
@@ -16,15 +20,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DMCA / Copyright — Downloadit",
-    description: "Downloadit copyright and DMCA information.",
+    title: DMCA_TITLE,
+    description: DMCA_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
 
 export default function DmcaPage() {
   return (
-    <LegalPage title="DMCA / Copyright" updated="September 2026">
+    <LegalPage title="DMCA / Copyright" updated="September 2026" crumbPath="/dmca">
       <p>
         Downloadit respects the intellectual property rights of others. Only download content
         you own or have permission to save.

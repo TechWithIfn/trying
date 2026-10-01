@@ -2,13 +2,17 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
+const PRIVACY_TITLE = "Privacy Policy | Downloadit";
+const PRIVACY_DESCRIPTION =
+  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram downloader.";
+
 export const metadata: Metadata = {
-  title: "Privacy Policy — Downloadit",
-  description: "Downloadit privacy policy.",
+  title: { absolute: PRIVACY_TITLE },
+  description: PRIVACY_DESCRIPTION,
   alternates: { canonical: "/privacy" },
   openGraph: {
-    title: "Privacy Policy — Downloadit",
-    description: "Downloadit privacy policy.",
+    title: PRIVACY_TITLE,
+    description: PRIVACY_DESCRIPTION,
     type: "website",
     siteName: "Downloadit",
     url: `${SITE_URL}/privacy`,
@@ -16,15 +20,15 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Privacy Policy — Downloadit",
-    description: "Downloadit privacy policy.",
+    title: PRIVACY_TITLE,
+    description: PRIVACY_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="September 2026">
+    <LegalPage title="Privacy Policy" updated="September 2026" crumbPath="/privacy">
       <p>
         Downloadit does not require an account, sign-up, or login. We do not keep a download
         history in your browser.

@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import HelpClient from "./HelpClient";
 import { SITE_URL } from "@/config/site";
 
+const HELP_TITLE = "How to Download Instagram Reels, Videos & Photos | Downloadit";
+const HELP_DESCRIPTION =
+  "Learn how to use Downloadit to download public Instagram Reels, videos, photos, Stories and audio quickly and easily.";
+
 export const metadata: Metadata = {
-  title: "Help & Guide | Downloadit",
-  description:
-    "Learn how to use Downloadit, troubleshoot common download issues, and find answers to frequently asked questions.",
+  title: { absolute: HELP_TITLE },
+  description: HELP_DESCRIPTION,
   alternates: { canonical: "/help" },
   openGraph: {
-    title: "Help & Guide | Downloadit",
-    description:
-      "Learn how to use Downloadit, troubleshoot common download issues, and find answers to frequently asked questions.",
+    title: HELP_TITLE,
+    description: HELP_DESCRIPTION,
     type: "website",
     siteName: "Downloadit",
     url: `${SITE_URL}/help`,
@@ -25,13 +28,40 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Help & Guide | Downloadit",
-    description:
-      "Learn how to use Downloadit, troubleshoot common download issues, and find answers to frequently asked questions.",
+    title: HELP_TITLE,
+    description: HELP_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
 
 export default function HelpPage() {
-  return <HelpClient />;
+  return (
+    <>
+      <Script
+        id="breadcrumb-help"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: `${SITE_URL}/`,
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Help",
+                item: `${SITE_URL}/help`,
+              },
+            ],
+          }),
+        }}
+      />
+      <HelpClient />
+    </>
+  );
 }
