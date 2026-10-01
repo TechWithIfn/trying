@@ -268,6 +268,17 @@ describe("extractDashVideoRepresentations", () => {
       height: null,
     });
   });
+
+  it("handles HTML-encoded MPD attributes and codec-only video adaptations", () => {
+    const manifest =
+      "&lt;MPD&gt;&lt;Period&gt;" +
+      "&lt;AdaptationSet mimeType=&quot;audio/mp4&quot;&gt;&lt;BaseURL&gt;https://scontent-iad3-1.cdninstagram.com/audio&lt;/BaseURL&gt;&lt;/AdaptationSet&gt;" +
+      "&lt;AdaptationSet codecs=&quot;avc1.640028&quot;&gt;&lt;BaseURL&gt;https://scontent-iad3-1.cdninstagram.com/video?sig=v&lt;/BaseURL&gt;&lt;/AdaptationSet&gt;" +
+      "&lt;/Period&gt;&lt;/MPD&gt;";
+    expect(extractDashVideoRepresentations(manifest)).toEqual([
+      "https://scontent-iad3-1.cdninstagram.com/video?sig=v",
+    ]);
+  });
 });
 
 describe("selectReelVideo", () => {

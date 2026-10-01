@@ -230,11 +230,21 @@ function normalizeEmbeddedJson(text: string): string {
  * the normal candidate validation and ranking pipeline.
  */
 export function extractDashVideoRepresentations(text: string): string[] {
-  const scan = normalizeEmbeddedJson(text).replace(/&amp;/g, "&");
+  const scan = normalizeEmbeddedJson(text)
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
   const urls: string[] = [];
   const seen = new Set<string>();
-  const adaptationRe = /<AdaptationSet\b[^>]*(?:contentType\s*=\s*["']video["']|mimeType\s*=\s*["']video\/)[^>]*>[\s\S]*?<\/AdaptationSet>/gi;
+  const adaptationRe = /<AdaptationSet\b[^>]*>[\s\S]*?<\/AdaptationSet>/gi;
   for (const adaptation of scan.matchAll(adaptationRe)) {
+    const attributes = adaptation[0].slice(0, adaptation[0].indexOf(">") + 1);
+    const isVideoAdaptation =
+      /(?:contentType\s*=\s*["']video["']|mimeType\s*=\s*["']video\/)/i.test(attributes) ||
+      /codecs\s*=\s*["'][^"']*(?:avc|av01|hev|hvc|vp0)[^"']*["']/i.test(attributes);
+    if (!isVideoAdaptation) continue;
     for (const base of adaptation[0].matchAll(/<BaseURL\b[^>]*>([^<]+)<\/BaseURL>/gi)) {
       const url = unescapeInstagramString(base[1].trim());
       if (url.startsWith("https://") && !seen.has(url)) {
