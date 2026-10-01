@@ -141,6 +141,7 @@ const IG_APP_ID = "936619743392459";
 
 export type CandidateSource =
   | "network-video-response"
+  | "dash-manifest"
   | "api-json"
   | "video-graph"
   | "dom"
@@ -3418,6 +3419,42 @@ export class PuppeteerProvider extends BaseProvider {
               }
             } catch {
               // Response body may not be available
+            }
+          }
+
+          // Some public Reels expose DASH only through a separate MPD
+          // response rather than embedding `video_dash_manifest` in JSON or
+          // HTML. Capture that bounded XML response and feed its video
+          // representations into the same candidate pipeline; raw media
+          // segments remain rejected below.
+          const isDashManifestResponse =
+            /dash\+xml|application\/xml|text\/xml/i.test(resContentType) ||
+            /(?:^|[/?._-])(?:manifest|stream)\.mpd(?:[?#]|$)/i.test(resUrl);
+          if (isDashManifestResponse && (isTrustedCdnUrl(resUrl) || isMediaBearingApiUrl(resUrl))) {
+            try {
+              const manifestText = await res.text();
+              if (manifestText.length <= MAX_INTERCEPT_BODY_BYTES) {
+                const representations = extractDashVideoRepresentations(manifestText);
+                for (const representation of representations) {
+                  if (!interceptedMedia.some((m) => m.url === representation)) {
+                    interceptedMedia.push({
+                      url: representation,
+                      type: "video",
+                      width: null,
+                      height: null,
+                      source: "dash-manifest",
+                    });
+                  }
+                }
+                if (representations.length > 0) {
+                  logger.debug("Captured DASH manifest representations", {
+                    host: hostnameOf(resUrl),
+                    count: representations.length,
+                  });
+                }
+              }
+            } catch {
+              // A manifest body can disappear when the page is torn down.
             }
           }
 
