@@ -62,6 +62,13 @@ describe("instagram session helper", () => {
     expect(isInstagramSessionConfigured()).toBe(true);
   });
 
+  it("removes dashboard-style surrounding quotes before forwarding the cookie", () => {
+    process.env.INSTAGRAM_SESSIONID = '"abc123value"';
+    expect(getInstagramSessionCookie()).toBe("sessionid=abc123value");
+    process.env.INSTAGRAM_COOKIE = '"sessionid=abc123; csrftoken=xyz"';
+    expect(getInstagramSessionCookie()).toBe("sessionid=abc123; csrftoken=xyz");
+  });
+
   it("prefers full cookie vars over sessionid vars", () => {
     process.env.INSTAGRAM_SESSIONID = "abc123value";
     process.env.IG_COOKIE = "sessionid=fromcookie; csrftoken=t";

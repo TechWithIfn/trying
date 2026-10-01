@@ -46,6 +46,18 @@ function hasHeaderInjection(value: string): boolean {
   return value.includes("\r") || value.includes("\n");
 }
 
+function normalizeConfiguredCookie(raw: string): string {
+  const value = raw.trim();
+  if (value.length >= 2) {
+    const first = value[0];
+    const last = value[value.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return value.slice(1, -1).trim();
+    }
+  }
+  return value;
+}
+
 /**
  * Raw `Cookie` header value from the environment, or undefined when no
  * session is configured. Accepts a full cookie string (`a=b; c=d`) or a bare
@@ -56,7 +68,7 @@ export function getInstagramSessionCookie(): string | undefined {
   for (const name of SESSION_COOKIE_SOURCES) {
     const raw = process.env[name];
     if (raw && raw.trim().length > 0) {
-      const value = raw.trim();
+      const value = normalizeConfiguredCookie(raw);
       if (hasHeaderInjection(value)) return undefined;
       return value;
     }
@@ -64,7 +76,7 @@ export function getInstagramSessionCookie(): string | undefined {
   for (const name of SESSION_ID_SOURCES) {
     const raw = process.env[name];
     if (raw && raw.trim().length > 0) {
-      const value = raw.trim();
+      const value = normalizeConfiguredCookie(raw);
       if (hasHeaderInjection(value)) return undefined;
       if (value.includes("=")) return value;
       return `sessionid=${value}`;
