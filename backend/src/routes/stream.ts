@@ -273,6 +273,45 @@ function concatChunks(chunks: Uint8Array[], total: number): Uint8Array {
   return combined;
 }
 
+/**
+ * Bounded backpressure wait: resolves true when the socket drains, false
+ * when the client went away (request/response close or error) or the server
+ * aborted. An UNBOUNDED drain wait hangs forever when a video client cancels
+ * a preload — the `drain` event never fires on a dead socket while
+ * cancellation is otherwise only checked between reads — leaking the
+ * per-client slot until every preview 503s. This bounds every wait.
+ */
+export function waitForDrainOrGone(
+  req: Request,
+  res: ExpressResponse,
+  signal?: AbortSignal
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const done = (ok: boolean): void => {
+      if (settled) return;
+      settled = true;
+      req.off("close", onGone);
+      res.off("close", onGone);
+      res.off("error", onGone);
+      signal?.removeEventListener("abort", onGone);
+      resolve(ok);
+    };
+    const onGone = (): void => done(false);
+    req.on("close", onGone);
+    res.on("close", onGone);
+    res.on("error", onGone);
+    if (signal) {
+      if (signal.aborted) {
+        done(false);
+        return;
+      }
+      signal.addEventListener("abort", onGone, { once: true });
+    }
+    res.once("drain", () => done(true));
+  });
+}
+
 async function pipeWithValidation(
   req: Request,
   res: ExpressResponse,
@@ -353,7 +392,13 @@ async function pipeWithValidation(
     try {
       const canContinue = res.write(chunk);
       if (!canContinue) {
-        await new Promise<void>((resolve) => res.once("drain", () => resolve()));
+        const drained = await waitForDrainOrGone(req, res, signal);
+        if (!drained) {
+          finished = true;
+          clientGone = true;
+          await reader.cancel().catch(() => {});
+          return false;
+        }
       }
       return true;
     } catch {
@@ -536,7 +581,13 @@ async function pipeRangeSlice(
       try {
         const canContinue = res.write(chunk);
         if (!canContinue) {
-          await new Promise<void>((resolve) => res.once("drain", () => resolve()));
+          const drained = await waitForDrainOrGone(req, res, signal);
+          if (!drained) {
+            finished = true;
+            clientGone = true;
+            await reader.cancel().catch(() => {});
+            return sent;
+          }
         }
       } catch {
         finished = true;
