@@ -211,11 +211,39 @@ function unescapeInstagramString(s: string): string {
  */
 function normalizeEmbeddedJson(text: string): string {
   return text
+    .replace(/\\"/g, '"')
+    .replace(/\\u0022/gi, '"')
+    .replace(/\\u0027/gi, "'")
     .replace(/\\\//g, "/")
     .replace(/\\u0026/gi, "&")
     .replace(/\\u002F/gi, "/")
     .replace(/\\u003D/gi, "=")
-    .replace(/\\u003A/gi, ":");
+    .replace(/\\u003A/gi, ":")
+    .replace(/\\u003C/gi, "<")
+    .replace(/\\u003E/gi, ">");
+}
+
+/**
+ * Extract playable video representations from inline DASH MPD XML. The MPD
+ * itself is not a progressive source and DASH fragments must never be
+ * returned as a Reel URL; only BaseURL values inside video adaptations enter
+ * the normal candidate validation and ranking pipeline.
+ */
+export function extractDashVideoRepresentations(text: string): string[] {
+  const scan = normalizeEmbeddedJson(text).replace(/&amp;/g, "&");
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const adaptationRe = /<AdaptationSet\b[^>]*(?:contentType\s*=\s*["']video["']|mimeType\s*=\s*["']video\/)[^>]*>[\s\S]*?<\/AdaptationSet>/gi;
+  for (const adaptation of scan.matchAll(adaptationRe)) {
+    for (const base of adaptation[0].matchAll(/<BaseURL\b[^>]*>([^<]+)<\/BaseURL>/gi)) {
+      const url = unescapeInstagramString(base[1].trim());
+      if (url.startsWith("https://") && !seen.has(url)) {
+        seen.add(url);
+        urls.push(url);
+      }
+    }
+  }
+  return urls;
 }
 
 /**
@@ -318,6 +346,10 @@ export function extractMediaFromJson(text: string): ExtractedMedia[] {
     if (seen.has(item.url)) continue;
     seen.add(item.url);
     media.push(item);
+  }
+
+  for (const url of extractDashVideoRepresentations(text)) {
+    add(url, "video");
   }
 
   // Scan a slash-normalized copy so escaped URLs ("https:\/\/…") are visible

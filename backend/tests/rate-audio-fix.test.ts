@@ -26,6 +26,7 @@ import {
   isDashSegmentUrl,
   verifyVideoCandidate,
   isTrustedNetworkCapture,
+  extractDashVideoRepresentations,
 } from "@/lib/providers/puppeteer.js";
 import { ffmpegOutputHasAudio } from "@/lib/ffmpeg.js";
 
@@ -239,6 +240,19 @@ describe("isTrustedNetworkCapture", () => {
         capturedStatus: 206,
       })
     ).toBe(false);
+  });
+});
+
+describe("extractDashVideoRepresentations", () => {
+  it("extracts video BaseURL values from an inline MPD and ignores audio", () => {
+    const manifest =
+      '{"video_dash_manifest":"<MPD><Period>' +
+      '<AdaptationSet contentType=\\"audio\\"><BaseURL>https://scontent-iad3-1.cdninstagram.com/audio</BaseURL></AdaptationSet>' +
+      '<AdaptationSet mimeType=\\"video/mp4\\"><Representation><BaseURL>https:\\/\\/scontent-iad3-1.cdninstagram.com\\/video?sig=v</BaseURL></Representation></AdaptationSet>' +
+      '</Period></MPD>"}';
+    expect(extractDashVideoRepresentations(manifest)).toEqual([
+      "https://scontent-iad3-1.cdninstagram.com/video?sig=v",
+    ]);
   });
 });
 
