@@ -10,6 +10,13 @@ import { getBuildVersion } from "../lib/env.js";
 
 const router = Router();
 
+// Health/readiness answers describe this instant (uptime, draining,
+// capacity): caching them anywhere would serve stale orchestration signals.
+router.use((_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
 /**
  * Liveness: the process is running and able to answer. Deliberately does NOT
  * depend on capacity or dependencies, so a busy instance is not killed by an

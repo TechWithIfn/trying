@@ -24,6 +24,13 @@ import {
   secondAttemptBudgetMs,
   decideEmptyShellError,
   assemblyFailureStage,
+  shouldAttemptRedirectFallback,
+  isRedirectSafeCandidate,
+  classifyNormalizationRejection,
+  FALLBACK_NAV_TIMEOUT_MS,
+  MIN_FALLBACK_REMAINING_MS,
+  LAUNCH_TIMEOUT_MS,
+  RESOLVE_DEADLINE_MS,
 } from "@/lib/providers/puppeteer.js";
 
 describe("puppeteer settle budget", () => {
@@ -171,5 +178,101 @@ describe("assembly failure stage", () => {
 
   it("no gate means temporary-no-media (retryable, never 'currently unavailable')", () => {
     expect(assemblyFailureStage(false)).toBe("assembly-temporary-no-media");
+  });
+});
+
+describe("redirect fallback decision", () => {
+  it("bounced Reel with healthy session and budget earns one retry", () => {
+    expect(
+      shouldAttemptRedirectFallback({ redirectedAway: true, sessionRejected: false, remainingMs: 30_000 })
+    ).toBe(true);
+  });
+
+  it("no bounce means no fallback", () => {
+    expect(
+      shouldAttemptRedirectFallback({ redirectedAway: false, sessionRejected: false, remainingMs: 30_000 })
+    ).toBe(false);
+  });
+
+  it("rejected session cannot be fixed by re-navigation", () => {
+    expect(
+      shouldAttemptRedirectFallback({ redirectedAway: true, sessionRejected: true, remainingMs: 30_000 })
+    ).toBe(false);
+  });
+
+  it("insufficient remaining budget skips the fallback (fast verdict instead)", () => {
+    expect(
+      shouldAttemptRedirectFallback({
+        redirectedAway: true,
+        sessionRejected: false,
+        remainingMs: MIN_FALLBACK_REMAINING_MS - 1,
+      })
+    ).toBe(false);
+    expect(
+      shouldAttemptRedirectFallback({
+        redirectedAway: true,
+        sessionRejected: false,
+        remainingMs: MIN_FALLBACK_REMAINING_MS,
+      })
+    ).toBe(true);
+  });
+
+  it("fallback navigation cap is serverless-safe", () => {
+    expect(FALLBACK_NAV_TIMEOUT_MS).toBeLessThanOrEqual(10_000);
+    expect(MIN_FALLBACK_REMAINING_MS).toBeGreaterThan(FALLBACK_NAV_TIMEOUT_MS);
+  });
+});
+
+describe("candidate normalization rejection (trust gate, no extension rule)", () => {
+  it("rejects non-http schemes without fetching", () => {
+    expect(classifyNormalizationRejection("blob:https://example.com/x")).toBe("non-http-url");
+    expect(classifyNormalizationRejection("data:video/mp4;base64,AAAA")).toBe("non-http-url");
+    expect(classifyNormalizationRejection("javascript:alert(1)")).toBe("non-http-url");
+  });
+
+  it("rejects localhost/private/loopback hosts", () => {
+    expect(classifyNormalizationRejection("https://localhost/x.mp4")).toBe("localhost-or-private-url");
+    expect(classifyNormalizationRejection("https://127.0.0.1/x.mp4")).toBe("localhost-or-private-url");
+    expect(classifyNormalizationRejection("https://10.0.0.1/x.mp4")).toBe("localhost-or-private-url");
+    expect(classifyNormalizationRejection("https://192.168.1.10/x.mp4")).toBe("localhost-or-private-url");
+  });
+
+  it("rejects credential-bearing URLs", () => {
+    expect(classifyNormalizationRejection("https://user:pass@cdn.example.com/x.mp4")).toBe(
+      "credential-url"
+    );
+  });
+
+  it("does not reject valid CDN URLs (extension-less included)", () => {
+    // "invalid-url" here means "no normalization rejection" — these pass to
+    // content verification, which never requires a .mp4 extension.
+    expect(
+      classifyNormalizationRejection("https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/clip?sig=a")
+    ).toBe("invalid-url");
+    expect(classifyNormalizationRejection("not a url")).toBe("invalid-url");
+  });
+});
+
+describe("timeout hierarchy invariants", () => {
+  it("launch budget defaults leave room for page work inside the deadline", () => {
+    expect(LAUNCH_TIMEOUT_MS).toBe(30_000);
+    expect(RESOLVE_DEADLINE_MS).toBe(45_000);
+    expect(LAUNCH_TIMEOUT_MS).toBeLessThan(RESOLVE_DEADLINE_MS);
+  });
+});
+
+describe("redirect-safe candidates", () => {
+  it("prefetch seeds (requested-URL evidence) stay eligible after a bounce", () => {
+    expect(isRedirectSafeCandidate("prefetch-og")).toBe(true);
+    expect(isRedirectSafeCandidate("prefetch-embed")).toBe(true);
+  });
+
+  it("bounced-document evidence is never eligible, even when verified", () => {
+    expect(isRedirectSafeCandidate("network-video-response")).toBe(false);
+    expect(isRedirectSafeCandidate("dom")).toBe(false);
+    expect(isRedirectSafeCandidate("video-graph")).toBe(false);
+    expect(isRedirectSafeCandidate("api-json")).toBe(false);
+    expect(isRedirectSafeCandidate("rendered-html")).toBe(false);
+    expect(isRedirectSafeCandidate(undefined)).toBe(false);
   });
 });

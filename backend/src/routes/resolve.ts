@@ -27,6 +27,18 @@ const perIpResolve = new KeyedConcurrency(readBoundedInt("MAX_CONCURRENT_RESOLVE
  * requestId/build/provider/duration. Provider stage fields (if any) are
  * preserved — this only fills in request scope. Scalars only, no secrets.
  */
+/**
+ * Effective route timeout with a serverless safety margin: Vercel
+ * terminates the function at maxDuration (60s in vercel.json), so answering
+ * just under that lets the client receive our structured timeout error
+ * instead of a platform 504 with no body. Never raises a configured value.
+ */
+function resolveTimeoutMs(): number {
+  const configured = readPositiveInt("RESOLVER_TIMEOUT_MS", 15_000);
+  if (process.env.VERCEL && configured > 55_000) return 55_000;
+  return configured;
+}
+
 function requestDiagnostics(requestId: string, startTime: number): import("../lib/types.js").ResolveDiagnostics {
   // Diagnostics must never break the response path: provider lookup can throw
   // when no provider was ever instantiated (e.g. validation rejects before
@@ -75,6 +87,9 @@ function firstMediaDiag(media: { type: string; url: string }[]): {
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const requestId = generateToken();
   const startTime = Date.now();
+  // Dynamic resolver responses must never be cached by browsers or CDNs:
+  // they carry short-lived signed CDN URLs that expire minutes later.
+  res.setHeader("Cache-Control", "no-store");
   // Every error below carries request diagnostics so production failures are
   // traceable without log access. Provider stage fields (when present) win.
   const fail = (status: number, code: Parameters<typeof createErrorResponse>[0]): void => {
@@ -277,7 +292,7 @@ async function performResolve(
   // the cache — so the same URL can be retried immediately and the retry
   // is served from cache instead of hanging again. The provider now has its
   // own hard deadline, so "keeps running" can never mean "runs forever".
-  const timeoutMs = readPositiveInt("RESOLVER_TIMEOUT_MS", 15_000);
+  const timeoutMs = resolveTimeoutMs();
   if (opts?.bypassCache) {
     logger.info("Refresh resolve requested (stale CDN URL recovery)", { requestId });
   }
@@ -371,7 +386,11 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
   let settled = false;
 
   res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
+  // SSE must never be cached or buffered anywhere in the chain: each event
+  // carries request-scoped progress and short-lived media URLs. Scoped to
+  // this endpoint only — never applied globally.
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
   res.setHeader("X-Request-Id", requestId);
@@ -419,7 +438,7 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
 
   // Same safe parser as the POST route: a malformed env value must fall back
   // to 15s, never NaN (setTimeout(NaN) fires immediately and breaks all SSE).
-  const timeoutMs = readPositiveInt("RESOLVER_TIMEOUT_MS", 15_000);
+  const timeoutMs = resolveTimeoutMs();
   const timer = setTimeout(() => {
     if (settled) return;
     logger.warn("Resolve stream timeout", { requestId, timeoutMs });

@@ -57,7 +57,15 @@ const DATA_WAIT_TIMEOUT_MS = 5_000;
  */
 
 /** Hard ceiling on one browser resolve, independent of any inner timeout. */
-const RESOLVE_DEADLINE_MS = readBoundedInt("PUPPETEER_RESOLVE_DEADLINE_MS", 45_000, 5_000, 300_000);
+export const RESOLVE_DEADLINE_MS = readBoundedInt("PUPPETEER_RESOLVE_DEADLINE_MS", 45_000, 5_000, 300_000);
+
+/**
+ * Bound on one Chromium launch. Cold serverless launches are slow (tens of
+ * seconds) but a hung spawn must fail fast with a retryable error instead of
+ * pinning the waiter — and its page slot — until the provider deadline. Must
+ * stay below RESOLVE_DEADLINE_MS so page work keeps a useful remainder.
+ */
+export const LAUNCH_TIMEOUT_MS = readBoundedInt("PUPPETEER_LAUNCH_TIMEOUT_MS", 30_000, 5_000, 120_000);
 
 /** How long to wait for a free page slot before refusing the resolve. */
 const PAGE_SLOT_QUEUE_MS = readBoundedInt("PUPPETEER_QUEUE_WAIT_MS", 8_000, 0, 60_000);
@@ -1028,6 +1036,43 @@ export function assemblyFailureStage(
   walled: boolean
 ): "assembly-no-playable-video" | "assembly-temporary-no-media" {
   return walled ? "assembly-no-playable-video" : "assembly-temporary-no-media";
+}
+
+/** Re-navigation cap for the single redirect fallback (bounded, once). */
+export const FALLBACK_NAV_TIMEOUT_MS = 10_000;
+/**
+ * Minimum remaining resolve-deadline budget required to attempt the redirect
+ * fallback (re-navigation plus a useful extraction pass). Below this the
+ * verdict path runs instead — never start work that cannot finish.
+ */
+export const MIN_FALLBACK_REMAINING_MS = 20_000;
+
+/**
+ * Whether a bounced navigation earns the single bounded re-navigation of the
+ * SAME public URL. Pure and unit-tested. A rejected session cannot be fixed
+ * by retrying (AUTH_INVALID verdict stands), and without sufficient
+ * remaining budget the fallback would only trade a fast verdict for a
+ * timeout — both cases skip it.
+ */
+export function shouldAttemptRedirectFallback(args: {
+  redirectedAway: boolean;
+  sessionRejected: boolean;
+  remainingMs: number;
+}): boolean {
+  if (!args.redirectedAway) return false;
+  if (args.sessionRejected) return false;
+  return args.remainingMs >= MIN_FALLBACK_REMAINING_MS;
+}
+
+/**
+ * Candidate sources fetched FOR the requested URL (server-side page graph),
+ * as opposed to evidence captured from a loaded browser document. Pure and
+ * unit-tested. After a redirect these are the ONLY candidates that may
+ * become the result: a bounced document's assets — even verified homepage
+ * clips — must never be served as the requested Reel.
+ */
+export function isRedirectSafeCandidate(source: string | undefined): boolean {
+  return source === "prefetch-og" || source === "prefetch-embed";
 }
 
 export interface RedirectAwaySignals {
@@ -2255,7 +2300,7 @@ export class PuppeteerProvider extends BaseProvider {
       return;
     }
     if (this.launching) {
-      await this.launching;
+      await this.awaitLaunch();
       this.lastUsedAt = Date.now();
       return;
     }
@@ -2308,7 +2353,41 @@ export class PuppeteerProvider extends BaseProvider {
         this.launching = null;
       });
 
-    await this.launching;
+    await this.awaitLaunch();
+  }
+
+  /**
+   * Bounded wait for the single in-flight launch (own or shared). A hung
+   * Chromium spawn fails fast with retryable PROVIDER_UNAVAILABLE instead of
+   * pinning the waiter — and its already-acquired page slot — until the
+   * provider deadline. The launch itself is not cancelled (Chromium offers
+   * no safe abort mid-spawn); resetBrowser() makes a late success
+   * orphan-close instead of installing a stale handle.
+   */
+  private async awaitLaunch(): Promise<void> {
+    const launching = this.launching;
+    if (!launching) return;
+    let timeoutId: NodeJS.Timeout | null = null;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timeoutId = setTimeout(() => resolve("timeout"), LAUNCH_TIMEOUT_MS);
+      timeoutId.unref?.();
+    });
+    const done = launching.then(
+      () => "launched" as const,
+      () => "failed" as const
+    );
+    const outcome = await Promise.race([done, timeout]);
+    if (timeoutId) clearTimeout(timeoutId);
+    if (outcome === "timeout") {
+      this.resetBrowser("launch-timeout");
+      logger.error("Puppeteer BROWSER_LAUNCH_TIMEOUT", { timeoutMs: LAUNCH_TIMEOUT_MS });
+      throw createError("PROVIDER_UNAVAILABLE");
+    }
+    if (outcome === "failed") {
+      // Rethrow the original launch error (its chain already cleared the
+      // poisoned state); a launch is never worth a second blind attempt here.
+      await launching;
+    }
   }
 
   /**
@@ -3286,59 +3365,68 @@ export class PuppeteerProvider extends BaseProvider {
         }
       });
 
+      // Records one navigation outcome into the nav* diagnostics. Shared by
+      // the initial navigation and the single redirect-fallback retry so
+      // both hops are instrumented identically (statuses/hosts only — never
+      // Location URLs, queries, headers, or cookies).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const recordNavResponse = (navResponse: any): void => {
+        navRedirectStatuses = [];
+        navRedirectHosts = [];
+        navRedirectHops = 0;
+        if (!navResponse || typeof navResponse.status !== "function") return;
+        navStatus = navResponse.status();
+        try {
+          const finalUrl = new URL(navResponse.url());
+          navFinalUrl = finalUrl.toString();
+          navFinalHost = finalUrl.hostname;
+          navFinalPath = finalUrl.pathname;
+        } catch {
+          /* keep nulls */
+        }
+        try {
+          const headers = typeof navResponse.headers === "function" ? navResponse.headers() : {};
+          const ct = headers["content-type"] || headers["Content-Type"] || "";
+          navContentType = String(ct).split(";")[0].slice(0, 80) || null;
+        } catch {
+          /* keep null */
+        }
+        try {
+          const chain =
+            typeof navResponse.request === "function" ? navResponse.request().redirectChain() : null;
+          navRedirectHops = Array.isArray(chain) ? chain.length : 0;
+          if (Array.isArray(chain)) {
+            // Per-hop status + host only (never Location URLs/queries):
+            // proves whether Instagram bounced the target to the homepage.
+            for (const hop of chain.slice(0, 8)) {
+              try {
+                const hopRes = hop && typeof hop.response === "function" ? hop.response() : null;
+                const hopStatus = hopRes && typeof hopRes.status === "function" ? hopRes.status() : null;
+                if (typeof hopStatus === "number") navRedirectStatuses.push(hopStatus);
+                const hopUrl = hop && typeof hop.url === "function" ? hop.url() : "";
+                const hopHost = new URL(hopUrl).hostname;
+                if (hopHost) navRedirectHosts.push(hopHost);
+              } catch {
+                /* per-hop best effort */
+              }
+            }
+          }
+        } catch {
+          navRedirectHops = 0;
+        }
+      };
+
       const navStart = Date.now();
       try {
         // domcontentloaded instead of networkidle2: Instagram never goes idle
         // (analytics/background polling), so networkidle would burn the full
-        // timeout on nearly every request. The navigation RESPONSE is kept:
-        // its status/final URL/redirect chain says whether Instagram served
-        // a document, a redirect, or nothing at all.
+        // timeout on nearly every request.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const navResponse: any = await page.goto(url, {
           waitUntil: "domcontentloaded",
           timeout: NAVIGATION_TIMEOUT_MS,
         });
-        if (navResponse && typeof navResponse.status === "function") {
-          navStatus = navResponse.status();
-          try {
-            const finalUrl = new URL(navResponse.url());
-            navFinalUrl = finalUrl.toString();
-            navFinalHost = finalUrl.hostname;
-            navFinalPath = finalUrl.pathname;
-          } catch {
-            /* keep nulls */
-          }
-          try {
-            const headers = typeof navResponse.headers === "function" ? navResponse.headers() : {};
-            const ct = headers["content-type"] || headers["Content-Type"] || "";
-            navContentType = String(ct).split(";")[0].slice(0, 80) || null;
-          } catch {
-            /* keep null */
-          }
-          try {
-            const chain =
-              typeof navResponse.request === "function" ? navResponse.request().redirectChain() : null;
-            navRedirectHops = Array.isArray(chain) ? chain.length : 0;
-            if (Array.isArray(chain)) {
-              // Per-hop status + host only (never Location URLs/queries):
-              // proves whether Instagram bounced the target to the homepage.
-              for (const hop of chain.slice(0, 8)) {
-                try {
-                  const hopRes = hop && typeof hop.response === "function" ? hop.response() : null;
-                  const hopStatus = hopRes && typeof hopRes.status === "function" ? hopRes.status() : null;
-                  if (typeof hopStatus === "number") navRedirectStatuses.push(hopStatus);
-                  const hopUrl = hop && typeof hop.url === "function" ? hop.url() : "";
-                  const hopHost = new URL(hopUrl).hostname;
-                  if (hopHost) navRedirectHosts.push(hopHost);
-                } catch {
-                  /* per-hop best effort */
-                }
-              }
-            }
-          } catch {
-            navRedirectHops = 0;
-          }
-        }
+        recordNavResponse(navResponse);
       } catch (err) {
         logger.warn("Puppeteer PAGE_NAVIGATION_INTERRUPTED", {
           error: err instanceof Error ? err.message : String(err),
@@ -3349,24 +3437,28 @@ export class PuppeteerProvider extends BaseProvider {
       onProgress?.(65, "Page loaded");
 
       // Redirect-away gate: if Instagram bounced the navigation off the
-      // requested content (homepage, off-domain, shortcode lost), NOTHING
-      // below may treat the wrong document as the Reel. Data-wait, settle
-      // polls, the shell reload and carousel clicks against the wrong page
-      // only burn the serverless budget, so they are all skipped and the
-      // resolve jumps straight to the redirect verdict (which still reads
-      // one page-state + the document for the session verdict).
-      let redirectedAway = false;
-      try {
-        redirectedAway = isRedirectedAwayFromTarget(url, {
-          finalUrl: navFinalUrl,
-          finalHost: navFinalHost,
-          finalPath: navFinalPath,
-        });
-      } catch {
-        redirectedAway = false;
-      }
+      // requested content (homepage, off-domain, shortcode lost), the wrong
+      // document must never be treated as the Reel. A 302-to-home is often
+      // transient rotation rather than a dead Reel, so ONE bounded
+      // re-navigation of the SAME public URL is attempted first (same page:
+      // session cookies and interception listeners persist). Only if the
+      // target still does not load do data-wait, settle polls, the shell
+      // reload and carousel clicks get skipped in favor of the redirect
+      // verdict (which still reads one page-state + the document for the
+      // session verdict). Exactly one retry per resolve — never a loop.
+      const checkRedirectedAway = (): boolean => {
+        try {
+          return isRedirectedAwayFromTarget(url, {
+            finalUrl: navFinalUrl,
+            finalHost: navFinalHost,
+            finalPath: navFinalPath,
+          });
+        } catch {
+          return false;
+        }
+      };
+      let redirectedAway = checkRedirectedAway();
       if (redirectedAway) {
-        onProgress?.(68, "Target not loaded");
         logger.warn("Puppeteer redirected away from target", {
           requestId,
           requestedUrl: url.slice(0, 100),
@@ -3377,6 +3469,68 @@ export class PuppeteerProvider extends BaseProvider {
           redirectHosts: navRedirectHosts,
           docStatus: navStatus,
         });
+      }
+      if (
+        redirectedAway &&
+        shouldAttemptRedirectFallback({
+          redirectedAway: true,
+          sessionRejected: fetchMeta.sessionAccepted === false,
+          remainingMs: RESOLVE_DEADLINE_MS - (Date.now() - startTime),
+        }) &&
+        !signal?.aborted
+      ) {
+        // Captures belonging to the bounced load are dropped if — and only
+        // if — the retry lands on the target. Until then they stay counted
+        // in diagnostics but out of the candidate pool (see combine below).
+        const bouncedCaptureCount = interceptedMedia.length;
+        onProgress?.(66, "Retrying target page");
+        logger.info("Puppeteer redirect fallback re-navigation", {
+          requestId,
+          requestedUrl: url.slice(0, 100),
+          remainingMs: RESOLVE_DEADLINE_MS - (Date.now() - startTime),
+        });
+        const fallbackStart = Date.now();
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const retryResponse: any = await page.goto(url, {
+            waitUntil: "domcontentloaded",
+            timeout: FALLBACK_NAV_TIMEOUT_MS,
+          });
+          recordNavResponse(retryResponse);
+        } catch (err) {
+          logger.warn("Puppeteer fallback navigation interrupted", {
+            requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        timings.fallbackNavigationMs = Date.now() - fallbackStart;
+        redirectedAway = checkRedirectedAway();
+        if (!redirectedAway) {
+          // Target loaded: forget the bounced load's captures and any
+          // sidecar cursor it planted, then run the normal flow below
+          // against the RIGHT document.
+          interceptedMedia.splice(bouncedCaptureCount);
+          sidecarState.page = null;
+          timings.navigationMs = Date.now() - navStart;
+          onProgress?.(65, "Page loaded");
+          logger.info("Puppeteer redirect fallback landed on target", {
+            requestId,
+            finalHost: navFinalHost,
+            finalPath: navFinalPath,
+            redirectHops: navRedirectHops,
+          });
+        } else {
+          onProgress?.(68, "Target not loaded");
+          logger.warn("Puppeteer redirect fallback still away from target", {
+            requestId,
+            finalHost: navFinalHost,
+            finalPath: navFinalPath,
+            redirectHops: navRedirectHops,
+            redirectStatuses: navRedirectStatuses,
+          });
+        }
+      } else if (redirectedAway) {
+        onProgress?.(68, "Target not loaded");
       }
 
       // Wait only for the data we actually need (video tag, article, or
@@ -3979,29 +4133,41 @@ export class PuppeteerProvider extends BaseProvider {
         allMedia.push(item);
       };
 
-      // Redirect-away containment (see the gate above): browser-document
-      // evidence belongs to the WRONG page and must never become the
-      // requested Reel's result — not even a verified homepage clip. Only
-      // evidence fetched FOR the requested URL (the prefetch seeds below)
-      // stays eligible. Observed counts above still describe everything.
-      if (!redirectedAway) {
-        for (const item of interceptedMedia) addUnique(item);
-        for (const item of pagedMedia) addUnique({ ...item, source: item.source ?? "api-json" });
-        for (const item of renderedHtmlMedia) addUnique({ ...item, source: item.source ?? "rendered-html" });
-
-        for (const src of domResult.videos) {
-          addUnique({ url: src, type: "video", width: null, height: null, source: "dom" });
-        }
-        for (const src of domResult.images) {
-          addUnique({ url: src, type: "image", width: null, height: null, source: "dom" });
-        }
+      // Redirect containment: when the browser bounced off-target, only
+      // evidence fetched FOR the requested URL (prefetch seeds) may become
+      // candidates. Bounced-document captures stay counted in diagnostics
+      // but can never become the Reel's result — not even a verified
+      // homepage clip. Order matches the historic per-source passes, so the
+      // non-redirect outcome is byte-identical to before.
+      const combinedSources: ExtractedMedia[] = [
+        ...interceptedMedia,
+        ...pagedMedia.map((item) => ({ ...item, source: item.source ?? "api-json" })),
+        ...renderedHtmlMedia.map((item) => ({ ...item, source: item.source ?? "rendered-html" })),
+        ...domResult.videos.map(
+          (src): ExtractedMedia => ({ url: src, type: "video", width: null, height: null, source: "dom" })
+        ),
+        ...domResult.images.map(
+          (src): ExtractedMedia => ({ url: src, type: "image", width: null, height: null, source: "dom" })
+        ),
+      ];
+      for (const item of combinedSources) {
+        if (!redirectedAway || isRedirectSafeCandidate(item.source)) addUnique(item);
       }
 
-      // Server-side metadata may already hold a trusted video URL (og:video
-      // or embedded page JSON). Seed it first so video posts are covered
-      // even when the browser pass finds nothing new.
+      // Server-side metadata may already hold trusted video URLs (og:video
+      // and embedded page JSON, trust-filtered at extraction). Seed them so
+      // video posts are covered even when the browser pass finds nothing new
+      // — and so a redirected-away resolve still has the REQUESTED url's
+      // evidence eligible (these belong to the Reel URL, never to a bounced
+      // document). Extension-less CDN URLs stay eligible: validation is
+      // host/type based, never extension based.
       if (fetchMeta.ogVideo && !seenUrls.has(fetchMeta.ogVideo)) {
         addUnique({ url: fetchMeta.ogVideo, type: "video", width: null, height: null, source: "prefetch-og" });
+      }
+      for (const item of fetchMeta.embeddedMedia) {
+        if (item.type === "video" && !seenUrls.has(item.url) && this.validateMediaUrl(item.url)) {
+          addUnique({ ...item, source: "prefetch-embed" });
+        }
       }
       if (fetchMeta.ogImage && !seenUrls.has(fetchMeta.ogImage)) {
         if (!isStory || !isLikelyProfileImageUrl(fetchMeta.ogImage)) {

@@ -269,6 +269,8 @@ async function handleAudioRequest(
 
   try {
     logger.info("[AUDIO] requested", { requestId, ip });
+    // Transcoded audio is per-request output: never cacheable, on every outcome.
+    res.setHeader("Cache-Control", "no-store");
 
     // --- 1. FFmpeg availability (resolved from ffmpeg-static, not PATH) ---
     const ffmpegOk = await isFfmpegAvailable();

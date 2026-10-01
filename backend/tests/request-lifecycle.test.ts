@@ -229,6 +229,107 @@ describe("SSE timeout and disconnect lifecycle", () => {
   }, 15000);
 });
 
+describe("cache behavior per request category", () => {
+  beforeEach(() => {
+    resetResolver();
+    resetPoolForTests();
+    mockCreateProvider().mockReset();
+    vi.unstubAllGlobals();
+    delete process.env.RESOLVER_TIMEOUT_MS;
+    delete process.env.WORKER_JOB_TIMEOUT_MS;
+    const realFetch = globalThis.fetch.bind(globalThis);
+    vi.stubGlobal(
+      "fetch",
+      (async (input: unknown, init?: unknown) => {
+        const url = String(input);
+        if (url.startsWith("http://127.0.0.1:") || url.startsWith("http://localhost:")) {
+          return realFetch(input as string, init as RequestInit);
+        }
+        return new Response("blocked", { status: 403 });
+      }) as never
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetPoolForTests();
+  });
+
+  it("SSE responses carry no-cache/no-store anti-buffering headers", async () => {
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(
+        `${base}/api/resolve/stream?url=${encodeURIComponent("https://example.com/video")}`
+      );
+      expect(res.headers.get("content-type")).toContain("text/event-stream");
+      expect(res.headers.get("cache-control")).toBe("no-cache, no-store, must-revalidate");
+      expect(res.headers.get("x-accel-buffering")).toBe("no");
+      await res.arrayBuffer().catch(() => {});
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("POST resolve answers are never cacheable (short-lived signed URLs)", async () => {
+    mockCreateProvider().mockReturnValue({
+      name: "test-mock",
+      resolve: async (resolvedUrl: string) => ({
+        type: "POST",
+        sourceUrl: resolvedUrl,
+        thumbnail: null,
+        title: null,
+        author: null,
+        media: [],
+      }),
+    } as never);
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(`${base}/api/resolve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://www.instagram.com/p/CacheHdr001/" }),
+      });
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      await res.arrayBuffer().catch(() => {});
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("health answers are never cacheable (instantaneous signals)", async () => {
+    const { server, base } = await startServer(app);
+    try {
+      for (const p of ["/api/health", "/api/health/ready"]) {
+        const res = await fetch(`${base}${p}`);
+        expect(res.headers.get("cache-control")).toBe("no-store");
+        await res.arrayBuffer().catch(() => {});
+      }
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("media endpoints are uncacheable on every outcome, including errors", async () => {
+    const { server, base } = await startServer(app);
+    try {
+      const evil = await fetch(
+        `${base}/api/stream?url=${encodeURIComponent("https://evil.example.com/x.mp4")}`
+      );
+      expect([400, 403]).toContain(evil.status);
+      expect(evil.headers.get("cache-control")).toBe("no-store");
+      await evil.arrayBuffer().catch(() => {});
+      const dl = await fetch(
+        `${base}/api/download?url=${encodeURIComponent("https://evil.example.com/x.mp4")}&filename=x.mp4`
+      );
+      expect([400, 403]).toContain(dl.status);
+      expect(dl.headers.get("cache-control")).toBe("no-store");
+      await dl.arrayBuffer().catch(() => {});
+    } finally {
+      await closeServer(server);
+    }
+  });
+});
+
 describe("STREAM_TIMEOUT error code", () => {
   it("is a 504 retryable timeout distinct from RESOLVER_TIMEOUT", () => {
     const err = createError("STREAM_TIMEOUT");

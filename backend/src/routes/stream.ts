@@ -746,6 +746,9 @@ async function handleStream(
 ): Promise<void> {
   try {
     logger.info("[STREAM] requested", { requestId, ip });
+    // Media responses (and their errors) are per-request and carry
+    // short-lived signed URLs: never cacheable, on every outcome.
+    res.setHeader("Cache-Control", "no-store");
 
     const rateLimitResult = checkRateLimit(`stream:${ip}`, routeRateLimitConfig("stream"));
     if (!rateLimitResult.allowed) {

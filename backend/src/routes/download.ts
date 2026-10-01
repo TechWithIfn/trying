@@ -110,6 +110,9 @@ async function handleDownload(
 ): Promise<void> {
   try {
     logger.info("[DOWNLOAD] requested", { requestId, ip });
+    // Download responses (and their errors) are per-request: never
+    // cacheable, on every outcome.
+    res.setHeader("Cache-Control", "no-store");
 
     const rateLimitResult = checkRateLimit(`download:${ip}`, routeRateLimitConfig("download"));
     if (!rateLimitResult.allowed) {
