@@ -807,16 +807,19 @@ describe("reel video playback pipeline", () => {
     }
   });
 
-  it("8k. Probe ignores Instagram's embedded bytestart/byteend slice (unit)", async () => {
+  it("8k. Probe tries the signed URL verbatim first; strips the slice only on slice symptom (unit)", async () => {
     // Instagram's CDN answers a Range request with the slice baked into the
-    // signed URL instead of the requested range, so the probe received a 56-byte
-    // sidx fragment instead of the file head. That made the container check read
-    // the wrong bytes and reported the SLICE length as the candidate's total
-    // size, so "largest rendition wins" compared slice lengths. Only those two
-    // params may be dropped; every other signed param must survive verbatim.
+    // signed URL instead of the requested range, so a naive probe received a
+    // mid-file fragment instead of the file head. The probe must try the
+    // signed URL EXACTLY as captured first (transforming a signature before
+    // trying can break it and fake an expiry), and drop ONLY bytestart/
+    // byteend when the edge demonstrably answers with that window — every
+    // other signed param stays byte-identical, and the reported size is the
+    // real object, never the slice length.
     const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
     stubUpstreamFetch();
     stubPolicy.getPlan = [];
+    const TOTAL = 200 * 1024;
     const sliced =
       "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/sliced.mp4?oh=00&oe=AB&bytestart=824&byteend=927";
     const seen: string[] = [];
@@ -826,7 +829,20 @@ describe("reel video playback pipeline", () => {
         return globalThis.fetch(input as string, init as RequestInit);
       }
       seen.push(url);
-      const bytes = mp4WithTrack("vide", 200 * 1024);
+      if (url.includes("bytestart")) {
+        // The edge serves its embedded window, ignoring the Range header:
+        // 104 mid-file bytes that are not a container head.
+        const window = Buffer.alloc(104, 0x41);
+        return new Response(window as unknown as BodyInit, {
+          status: 206,
+          headers: {
+            "content-type": "video/mp4",
+            "content-range": `bytes 824-927/${TOTAL}`,
+            "content-length": "104",
+          },
+        });
+      }
+      const bytes = mp4WithTrack("vide", TOTAL);
       const slice = bytes.subarray(0, 65_536);
       return new Response(slice as unknown as BodyInit, {
         status: 206,
@@ -839,16 +855,82 @@ describe("reel video playback pipeline", () => {
     });
     vi.stubGlobal("fetch", inner as never);
     const check = await verifyVideoCandidate(sliced);
-    expect(seen.length).toBeGreaterThan(0);
-    // The probe must not carry the embedded slice...
-    expect(seen[0]).not.toContain("bytestart");
-    expect(seen[0]).not.toContain("byteend");
-    // ...while the rest of the signature stays byte-identical.
-    expect(seen[0]).toContain("oh=00");
-    expect(seen[0]).toContain("oe=AB");
+    // First fetch is the verbatim signed URL (signature preserved)...
+    expect(seen.length).toBe(2);
+    expect(seen[0]).toContain("bytestart=824");
+    expect(seen[0]).toContain("byteend=927");
+    // ...the retry drops ONLY the window while the signature survives.
+    expect(seen[1]).not.toContain("bytestart");
+    expect(seen[1]).not.toContain("byteend");
+    expect(seen[1]).toContain("oh=00");
+    expect(seen[1]).toContain("oe=AB");
     // The reported size is the real object, not the slice length.
     expect(check.ok).toBe(true);
-    expect(check.contentLength).toBe(200 * 1024);
+    expect(check.contentLength).toBe(TOTAL);
+  });
+
+  it("8k2. bytestart=0 window verifies its head directly with no transform (unit)", async () => {
+    // A window starting at 0 IS the file head: verifying those bytes needs
+    // no URL surgery at all (and /api/stream already serves such URLs).
+    const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
+    stubUpstreamFetch();
+    stubPolicy.getPlan = [];
+    const TOTAL = 200 * 1024;
+    const sliced =
+      "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/head-slice.mp4?oh=00&oe=AB&bytestart=0&byteend=823";
+    const seen: string[] = [];
+    const inner = vi.fn(async (input: unknown, init?: unknown) => {
+      const url = String(input);
+      if (url.startsWith("http://127.0.0.1:") || url.startsWith("http://localhost:")) {
+        return globalThis.fetch(input as string, init as RequestInit);
+      }
+      seen.push(url);
+      const bytes = mp4WithTrack("vide", TOTAL);
+      const window = bytes.subarray(0, 824);
+      return new Response(window as unknown as BodyInit, {
+        status: 206,
+        headers: {
+          "content-type": "video/mp4",
+          "content-range": `bytes 0-823/${TOTAL}`,
+          "content-length": "824",
+        },
+      });
+    });
+    vi.stubGlobal("fetch", inner as never);
+    const check = await verifyVideoCandidate(sliced);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain("bytestart=0");
+    expect(check.ok).toBe(true);
+    expect(check.contentLength).toBe(TOTAL);
+  });
+
+  it("8k3. window-less URLs are probed exactly once, verbatim (unit)", async () => {
+    const { verifyVideoCandidate } = await import("@/lib/providers/puppeteer.js");
+    stubUpstreamFetch();
+    stubPolicy.getPlan = [];
+    const plain = "https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/plain.mp4?oh=00&oe=AB";
+    const seen: string[] = [];
+    const inner = vi.fn(async (input: unknown, init?: unknown) => {
+      const url = String(input);
+      if (url.startsWith("http://127.0.0.1:") || url.startsWith("http://localhost:")) {
+        return globalThis.fetch(input as string, init as RequestInit);
+      }
+      seen.push(url);
+      const bytes = mp4WithTrack("vide", 96 * 1024);
+      const slice = bytes.subarray(0, 65_536);
+      return new Response(slice as unknown as BodyInit, {
+        status: 206,
+        headers: {
+          "content-type": "video/mp4",
+          "content-range": `bytes 0-${slice.length - 1}/${bytes.length}`,
+          "content-length": String(slice.length),
+        },
+      });
+    });
+    vi.stubGlobal("fetch", inner as never);
+    const check = await verifyVideoCandidate(plain);
+    expect(seen).toHaveLength(1);
+    expect(check.ok).toBe(true);
   });
 
   it("8l. Paired audioUrl survives enrich + dedupe in the resolve pipeline", async () => {

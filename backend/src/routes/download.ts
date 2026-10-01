@@ -13,6 +13,7 @@ import {
   pipeUpstreamToClient,
   upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
+import { withoutEmbeddedByteSlice } from "../lib/providers/puppeteer.js";
 
 const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 30_000;
@@ -134,11 +135,18 @@ async function handleDownload(
 
     logger.info("[DOWNLOAD] validated URL", { requestId, hostname: validation.value.hostname });
 
+    // A download always wants the FULL object. Instagram CDN URLs may carry
+    // an embedded bytestart/byteend slice window (a fragment the edge serves
+    // instead of the file); fetching it verbatim would save a truncated file
+    // with HTTP 200. Only the two window params are removed — every other
+    // signed param is preserved byte-identically — and URLs without a window
+    // pass through untouched. Expiry recovery below still applies.
+    const fullObjectUrl = withoutEmbeddedByteSlice(validation.value.url);
     // Use the already-resolved media URL directly. On expired/invalid CDN
     // URLs the helper re-resolves once from `source` (when supplied) and
     // retries against the fresh URL — never a blind Puppeteer relaunch.
     const upstreamStart = Date.now();
-    const { status: upstream, refreshed } = await fetchUpstreamMediaResilient(validation.value.url, {
+    const { status: upstream, refreshed } = await fetchUpstreamMediaResilient(fullObjectUrl, {
       timeoutMs: UPSTREAM_TIMEOUT_MS,
       tag: "DOWNLOAD",
       requestId,

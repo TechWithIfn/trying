@@ -27,6 +27,9 @@ import {
   shouldAttemptRedirectFallback,
   isRedirectSafeCandidate,
   classifyNormalizationRejection,
+  parseEmbeddedByteWindow,
+  responseMatchesEmbeddedWindow,
+  mapWithLimit,
   FALLBACK_NAV_TIMEOUT_MS,
   MIN_FALLBACK_REMAINING_MS,
   LAUNCH_TIMEOUT_MS,
@@ -250,6 +253,89 @@ describe("candidate normalization rejection (trust gate, no extension rule)", ()
       classifyNormalizationRejection("https://scontent-iad3-2.xx.fbcdn.net/o1/v/t16/clip?sig=a")
     ).toBe("invalid-url");
     expect(classifyNormalizationRejection("not a url")).toBe("invalid-url");
+  });
+});
+
+describe("embedded byte-window parsing", () => {
+  it("reads a sane window", () => {
+    expect(
+      parseEmbeddedByteWindow("https://cdn.example.com/v/a.mp4?oh=1&bytestart=824&byteend=927")
+    ).toEqual({ start: 824, end: 927 });
+  });
+
+  it("rejects missing, malformed, or inverted windows", () => {
+    expect(parseEmbeddedByteWindow("https://cdn.example.com/v/a.mp4?oh=1")).toBeNull();
+    expect(parseEmbeddedByteWindow("https://cdn.example.com/v/a.mp4?bytestart=824")).toBeNull();
+    expect(parseEmbeddedByteWindow("https://cdn.example.com/v/a.mp4?bytestart=x&byteend=927")).toBeNull();
+    expect(parseEmbeddedByteWindow("https://cdn.example.com/v/a.mp4?bytestart=927&byteend=824")).toBeNull();
+    expect(parseEmbeddedByteWindow("not a url")).toBeNull();
+  });
+});
+
+describe("slice-symptom detection", () => {
+  const headers = (entries: Record<string, string>) => ({
+    get: (name: string) => entries[name.toLowerCase()] ?? null,
+  });
+
+  it("matches a 206 carrying exactly the window", () => {
+    expect(
+      responseMatchesEmbeddedWindow(
+        { status: 206, headers: headers({ "content-range": "bytes 824-927/200000" }) },
+        { start: 824, end: 927 }
+      )
+    ).toBe(true);
+  });
+
+  it("rejects a 206 answering the real range", () => {
+    expect(
+      responseMatchesEmbeddedWindow(
+        { status: 206, headers: headers({ "content-range": "bytes 0-65535/200000" }) },
+        { start: 824, end: 927 }
+      )
+    ).toBe(false);
+  });
+
+  it("matches a 200 whose body is exactly the window length", () => {
+    expect(
+      responseMatchesEmbeddedWindow(
+        { status: 200, headers: headers({ "content-length": "104" }) },
+        { start: 824, end: 927 }
+      )
+    ).toBe(true);
+  });
+
+  it("rejects full 200 bodies and rangeless 206s", () => {
+    expect(
+      responseMatchesEmbeddedWindow(
+        { status: 200, headers: headers({ "content-length": "200000" }) },
+        { start: 824, end: 927 }
+      )
+    ).toBe(false);
+    expect(
+      responseMatchesEmbeddedWindow({ status: 206, headers: headers({}) }, { start: 824, end: 927 })
+    ).toBe(false);
+  });
+});
+
+describe("bounded fan-out", () => {
+  it("caps parallelism and preserves order", async () => {
+    let live = 0;
+    let peak = 0;
+    const out = await mapWithLimit([1, 2, 3, 4, 5, 6, 7, 8, 9], 3, async (n) => {
+      live++;
+      peak = Math.max(peak, live);
+      await new Promise((r) => setTimeout(r, 5));
+      live--;
+      return n * 10;
+    });
+    expect(out).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90]);
+    expect(peak).toBeLessThanOrEqual(3);
+    expect(peak).toBeGreaterThan(1);
+  });
+
+  it("handles empty input and oversized limits", async () => {
+    expect(await mapWithLimit([], 4, async (n: number) => n)).toEqual([]);
+    expect(await mapWithLimit([1, 2], 10, async (n: number) => n + 1)).toEqual([2, 3]);
   });
 });
 

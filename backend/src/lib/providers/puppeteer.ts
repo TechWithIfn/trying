@@ -1300,7 +1300,7 @@ const MIN_PLAYABLE_VIDEO_BYTES = 16_384;
  * matching the streaming route, which already relies on this being safe.
  * Returns the input unchanged when it carries no slice.
  */
-function withoutEmbeddedByteSlice(rawUrl: string): string {
+export function withoutEmbeddedByteSlice(rawUrl: string): string {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -1313,6 +1313,56 @@ function withoutEmbeddedByteSlice(rawUrl: string): string {
   parsed.searchParams.delete("bytestart");
   parsed.searchParams.delete("byteend");
   return parsed.toString();
+}
+
+export interface EmbeddedByteWindow {
+  start: number;
+  end: number;
+}
+
+/**
+ * The CDN URL's own embedded bytestart/byteend slice window, if both params
+ * are present and sane. Pure and unit-tested.
+ */
+export function parseEmbeddedByteWindow(rawUrl: string): EmbeddedByteWindow | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  const startRaw = parsed.searchParams.get("bytestart");
+  const endRaw = parsed.searchParams.get("byteend");
+  if (startRaw === null || endRaw === null) return null;
+  const start = Number.parseInt(startRaw, 10);
+  const end = Number.parseInt(endRaw, 10);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start) {
+    return null;
+  }
+  return { start, end };
+}
+
+/**
+ * True when an upstream response IS the embedded window rather than the
+ * requested head: a 206 whose Content-Range equals the window, or a 200
+ * whose body length equals the window length with no Content-Range. Pure
+ * and unit-tested. Header/value inspection only — never the URL or bytes.
+ */
+export function responseMatchesEmbeddedWindow(
+  response: { status: number; headers: { get(name: string): string | null } },
+  window: EmbeddedByteWindow
+): boolean {
+  const contentRange = response.headers.get("content-range");
+  if (contentRange) {
+    const match = /^bytes\s+(\d+)-(\d+)\//.exec(contentRange.trim());
+    if (!match) return false;
+    return Number.parseInt(match[1], 10) === window.start && Number.parseInt(match[2], 10) === window.end;
+  }
+  if (response.status === 200) {
+    const length = Number.parseInt(response.headers.get("content-length") || "", 10);
+    return Number.isSafeInteger(length) && length === window.end - window.start + 1;
+  }
+  return false;
 }
 
 /**
@@ -1366,6 +1416,34 @@ export function isDashSegmentUrl(raw: string): boolean {
 
 /** Leading ISO-BMFF box types that identify real MP4 media. */
 const MP4_BOX_TYPES = ["ftyp", "styp", "moov", "moof", "sidx", "emsg", "free", "skip"] as const;
+
+/** Bounded fan-out for candidate verification (unbounded parallelism exhausts serverless sockets). */
+const VERIFY_CONCURRENCY = readBoundedInt("VERIFY_CONCURRENCY", 8, 1, 32);
+
+/**
+ * Bounded parallel map preserving input order. Candidate verification fans
+ * out over dozens of CDN URLs; unbounded parallelism exhausts serverless
+ * sockets and invites egress throttling whose failures look exactly like
+ * expired CDN URLs but are self-inflicted. Pure helper, unit-tested.
+ */
+export async function mapWithLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index] as T, index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 export interface VideoVerification {
   ok: boolean;
@@ -1605,7 +1683,14 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
     }
     return verifyFail("dash-segment", host);
   }
-  current = withoutEmbeddedByteSlice(current);
+  // The signed URL is ALWAYS probed verbatim first: stripping query params
+  // before trying can invalidate the CDN signature, and a secondary-probe
+  // failure must never be mistaken for an invalid original. Only when the
+  // edge demonstrably answers with its embedded bytestart/byteend window
+  // instead of the requested head is the window removed — once — with every
+  // other signed param preserved byte-identically.
+  const embeddedWindow = parseEmbeddedByteWindow(current);
+  let sliceRetried = false;
 
   for (let hop = 0; hop <= VERIFY_MAX_REDIRECTS; hop++) {
     let parsed: URL;
@@ -1647,6 +1732,25 @@ export async function verifyVideoCandidate(raw: string): Promise<VideoVerificati
     const contentType = (response.headers.get("content-type") || "").toLowerCase();
 
     if (status === 200 || status === 206) {
+      // Embedded-slice symptom on a mid-file window: these bytes are not the
+      // file head and can never verify a container — retry once with only
+      // the window removed. A bytestart=0 window IS the file head, so it
+      // falls through and verifies directly below (Content-Range carries the
+      // real total, and /api/stream already serves such URLs correctly).
+      if (
+        !sliceRetried &&
+        embeddedWindow !== null &&
+        embeddedWindow.start > 0 &&
+        responseMatchesEmbeddedWindow(response, embeddedWindow)
+      ) {
+        const stripped = withoutEmbeddedByteSlice(current);
+        if (stripped !== current) {
+          sliceRetried = true;
+          await response.body?.cancel().catch(() => {});
+          current = stripped;
+          continue;
+        }
+      }
       // Read at most the probe window, then cancel: the point is to see the
       // container header, never to buffer the video.
       let head = new Uint8Array(0);
@@ -3856,9 +3960,12 @@ export class PuppeteerProvider extends BaseProvider {
               initialVideoCount: initialVideos.length,
             });
           }
-        } catch {
+          } catch {
           // Evaluate failed (frame detached mid-navigation): keep full budget.
         }
+        // Real stage transition for progress consumers (SSE 65 → 70 → 72 →
+        // 80 → 85): the hydration wait genuinely starts here.
+        onProgress?.(70, "Waiting for video hydration");
         while (Date.now() - settleStart < budget) {
           if (signal?.aborted) break;
 
@@ -4312,6 +4419,7 @@ export class PuppeteerProvider extends BaseProvider {
       let playableMedia: MediaItem[] = validMedia;
       let verifiedByProbeCount = 0;
       let trustedCaptureCount = 0;
+      let audioOnlyCount = 0;
       // Provenance of the finally selected video (source + host only).
       let selectedCandidateSource: string | null = null;
       if (contentType === "REEL" || contentType === "VIDEO") {
@@ -4322,10 +4430,21 @@ export class PuppeteerProvider extends BaseProvider {
         // clip. They can never be a video source, so they are diverted here
         // instead of being probed into the video tier.
         const audioOnly: Array<{ item: MediaItem; size: number }> = [];
-        await Promise.all(
-          videoCandidates.map(async (item) => {
+        // Bounded fan-out (never 101 parallel socket storms), with a
+        // per-candidate debug transition (host + reason only) so the next
+        // all-rejected incident names every decision without log access.
+        onProgress?.(80, "Validating candidates");
+        await mapWithLimit(videoCandidates, VERIFY_CONCURRENCY, async (item) => {
             const check = await verifyVideoCandidate(item.url);
             verifyTally[check.reason] = (verifyTally[check.reason] ?? 0) + 1;
+            logger.debug("Puppeteer candidate verification", {
+              requestId,
+              host: check.cdnHost,
+              source: originByUrl.get(item.url)?.source ?? null,
+              reason: check.reason,
+              ok: check.ok,
+              contentLength: check.contentLength,
+            });
             if (check.reason === "audio-only-payload") {
               audioOnly.push({ item, size: check.contentLength ?? 0 });
               return;
@@ -4350,12 +4469,12 @@ export class PuppeteerProvider extends BaseProvider {
             }
             // Rejected by both tiers: record WHY (probe reason slug).
             rejectionReasons[check.reason] = (rejectionReasons[check.reason] ?? 0) + 1;
-          })
-        );
+        });
         probePassed.sort(compareReelVideoCandidates);
         audioOnly.sort((a, b) => b.size - a.size);
         verifiedByProbeCount = probePassed.length;
         trustedCaptureCount = probePassed.length === 0 ? captureFallback.length : 0;
+        audioOnlyCount = audioOnly.length;
         if (probePassed.length > 0) {
           playableMedia = probePassed.map((entry) => entry.item);
           const firstOrigin = originByUrl.get(playableMedia[0].url);
@@ -4365,11 +4484,14 @@ export class PuppeteerProvider extends BaseProvider {
           playableMedia = captureFallback.map((entry) => entry.item);
           selectedCandidateSource = captureFallback[0].origin.source ?? "network-video-response";
           logger.info("Puppeteer assembly using trusted network capture (probe passed 0)", {
+            requestId,
             contentType,
             captureFallbackCount: captureFallback.length,
             verifyTally,
             captureHost: hostnameOf(captureFallback[0].item.url),
             captureContentType: captureFallback[0].origin.capturedContentType ?? null,
+            captureContentRange: captureFallback[0].origin.capturedResponseHeaders?.["content-range"] ?? null,
+            captureStatus: captureFallback[0].origin.capturedStatus ?? null,
             captureResourceType: captureFallback[0].origin.capturedResourceType ?? null,
           });
         } else {
@@ -4411,6 +4533,22 @@ export class PuppeteerProvider extends BaseProvider {
         selectedCandidateSource = firstOrigin?.source ?? null;
       }
 
+      // Candidate-lifecycle summary (STEP 7): one deterministic accounting of
+      // every discovered candidate. For REEL/VIDEO kinds a progressiveVideo > 0
+      // structurally implies selected > 0 (probePassed feeds playableMedia),
+      // so `selected: 0` with `progressiveVideo: 0` always pairs with the
+      // per-reason tallies above explaining each rejection.
+      const selectionSummary = {
+        discovered: allMedia.length,
+        duplicates: duplicateCount,
+        images: validMedia.filter((m) => m.type === "image").length,
+        audio: audioOnlyCount,
+        dashSegments: verifyTally["dash-segment"] ?? 0,
+        progressiveVideo: verifiedByProbeCount,
+        trusted: trustedCaptureCount,
+        selected: playableMedia.length,
+      };
+
       if (playableMedia.length === 0) {
         const rejectedVideoCount = validMedia.filter((item) => item.type === "video").length;
         // Empty-shell signal for the branch below and the log line: whether
@@ -4445,6 +4583,7 @@ export class PuppeteerProvider extends BaseProvider {
           finalResolutionState: noMediaState,
           extractionAttempt: extractionPasses,
           redirectedAway,
+          selection: selectionSummary,
           finalUrl: navFinalHost ? `${navFinalHost}${navFinalPath ?? ""}` : null,
           redirectHops: navRedirectHops,
           redirectStatuses: navRedirectStatuses,
@@ -4691,8 +4830,11 @@ export class PuppeteerProvider extends BaseProvider {
         trustedCaptureCount,
         rejectionReasons,
         selectedCandidateSource,
-        selectedMediaHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
         selectedCandidateHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
+        selectedCandidateType: orderedMedia[0]?.type ?? null,
+        selectedCandidate: orderedMedia.length > 0,
+        selection: selectionSummary,
+        selectedMediaHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
         videoCandidateCount: validMedia.filter((m) => m.type === "video").length,
         mediaInterceptCount: interceptedMediaRequestCount,
         videoElementCount: domResult.videos.length,

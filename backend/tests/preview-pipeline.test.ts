@@ -81,7 +81,8 @@ type CdnMode =
   | "empty"
   | "webp"
   | "no-length-200"
-  | "ignore-range";
+  | "ignore-range"
+  | "download-slice";
 
 const stubPolicy = {
   mode: "honor" as CdnMode,
@@ -158,6 +159,26 @@ function stubUpstreamFetch() {
       return new Response(stream as unknown as BodyInit, {
         status: 200,
         headers: { "content-type": "video/mp4" },
+      });
+    }
+
+    if (stubPolicy.mode === "download-slice") {
+      // Embedded-window edge: the verbatim slice URL answers with only the
+      // window, while the window-stripped URL serves the full object. A
+      // download must fetch the latter — never save the fragment as the file.
+      if (new URL(url).searchParams.has("bytestart")) {
+        return new Response(MP4.subarray(824, 928) as unknown as BodyInit, {
+          status: 200,
+          headers: { "content-type": "video/mp4", "content-length": "104" },
+        });
+      }
+      return new Response(MP4 as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          "content-type": "video/mp4",
+          "content-length": String(TOTAL),
+          "accept-ranges": "bytes",
+        },
       });
     }
 
@@ -530,6 +551,27 @@ describe("media preview/playback pipeline", () => {
       expect(seek.status).toBe(206);
       expect(seek.headers.get("content-range")).toBe(`bytes 100000-101023/${TOTAL}`);
       expect(Buffer.from(await seek.arrayBuffer()).equals(MP4.subarray(100000, 101024))).toBe(true);
+    } finally {
+      await closeServer(server);
+    }
+  });
+
+  it("download of a slice-window URL fetches the full object, not the fragment", async () => {
+    stubPolicy.mode = "download-slice";
+    const sliced =
+      "https://scontent-ord5-2.xx.fbcdn.net/v/t16/dlclip.mp4?bytestart=824&byteend=927&_nc_cat=101&oh=00&oe=AB";
+    const { server, base } = await startServer(app);
+    try {
+      const res = await fetch(
+        `${base}/api/download?url=${encodeURIComponent(sliced)}&filename=reel.mp4`
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("video/mp4");
+      expect(res.headers.get("content-length")).toBe(String(TOTAL));
+      const bytes = Buffer.from(await res.arrayBuffer());
+      expect(bytes.length).toBe(TOTAL);
+      expect(bytes.equals(MP4)).toBe(true);
+      expect(bytes.subarray(4, 8).toString()).toBe("ftyp");
     } finally {
       await closeServer(server);
     }
