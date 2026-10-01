@@ -114,7 +114,32 @@ export interface ResolveDiagnostics {
    * rejected (false), or carries no verdict (null — never decide on null).
    */
   sessionAccepted?: boolean | null;
+  /**
+   * Internal resolution outcome classification. TEMPORARY_NO_MEDIA ("no video
+   * yet, no block evidence") must never be reported as CONTENT_UNAVAILABLE —
+   * it maps to the existing retryable VIDEO_SOURCE_NOT_FOUND /
+   * EMPTY_INSTAGRAM_SHELL codes. Ignored by the frontend.
+   */
+  finalResolutionState?: ResolutionState;
+  /** Number of DOM/script extraction passes performed (settle + 2nd attempt). */
+  extractionAttempt?: number;
 }
+
+/**
+ * Internal page-resolution outcome. Only MEDIA_FOUND is success; the rest
+ * describe WHY no playable media was returned. TEMPORARY_NO_MEDIA is the
+ * "not yet" state (healthy page, media still hydrating or simply late) and
+ * is always retryable — never a content verdict.
+ */
+export type ResolutionState =
+  | "MEDIA_FOUND"
+  | "LOGIN_REQUIRED"
+  | "CHALLENGE"
+  | "PRIVATE_CONTENT"
+  | "CONTENT_UNAVAILABLE"
+  | "TEMPORARY_NO_MEDIA"
+  | "PROVIDER_TIMEOUT"
+  | "AUTH_INVALID";
 
 export interface ResolveErrorResponse {
   success: false;
@@ -183,6 +208,12 @@ export interface ResolveCallOptions {
    * existing providers stay source-compatible.
    */
   signal?: AbortSignal;
+  /**
+   * Request correlation for server-side logs only (never into responses,
+   * never to the frontend). Lets the expensive provider stages be traced
+   * back to the API request in production logs.
+   */
+  requestId?: string;
 }
 
 export interface InstagramResolver {

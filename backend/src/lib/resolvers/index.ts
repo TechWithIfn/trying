@@ -119,6 +119,11 @@ export interface ResolveOptions {
    * admission wait and a running browser operation both observe it.
    */
   signal?: AbortSignal;
+  /**
+   * Request correlation for provider server-side logs only (never into
+   * responses). Lets expensive browser stages be traced to the API request.
+   */
+  requestId?: string;
 }
 
 /**
@@ -262,7 +267,7 @@ export async function resolveUrl(
       // or an expired budget frees the browser page instead of finishing
       // unseen. `signal` here is intentionally the pool's, not the caller's.
       void signal;
-      return resolver.resolve(url, onProgress, { signal: execSignal }).finally(() => {
+      return resolver.resolve(url, onProgress, { signal: execSignal, requestId: opts?.requestId }).finally(() => {
         observe("provider", Date.now() - providerStart);
       });
     }, {

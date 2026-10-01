@@ -281,7 +281,7 @@ async function performResolve(
   if (opts?.bypassCache) {
     logger.info("Refresh resolve requested (stale CDN URL recovery)", { requestId });
   }
-  const pending = resolveUrl(parsed.normalized, undefined, { signal, bypassCache: opts?.bypassCache });
+  const pending = resolveUrl(parsed.normalized, undefined, { signal, bypassCache: opts?.bypassCache, requestId });
   let gateWon = false;
   const timeoutGate = new Promise<never>((_, reject) => {
     const timer = setTimeout(() => {
@@ -499,7 +499,7 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
           (progress, stage) => {
             send("progress", { progress, stage });
           },
-          { signal: controller.signal }
+          { signal: controller.signal, requestId }
         ),
       { signal: controller.signal }
     );

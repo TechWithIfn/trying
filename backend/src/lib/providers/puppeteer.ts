@@ -6,6 +6,7 @@ import type {
   ResolveProgressCallback,
   ResolveCallOptions,
   ResolveDiagnostics,
+  ResolutionState,
 } from "../types.js";
 import { BaseProvider, isCdnMediaHost, isPrivateOrReservedHost } from "./base.js";
 import { createError, isConnectionLostError, isTimeoutError, AppError } from "../errors.js";
@@ -922,6 +923,111 @@ export interface ShellProbe {
   videos?: unknown;
   images?: unknown;
   bodySnippet?: unknown;
+}
+
+export type SettleBudgetReason = "blocked-state" | "full-budget";
+
+/**
+ * Settle-budget decision for the video-graph hydration wait. Pure and
+ * unit-tested.
+ *
+ * A page that already declares itself blocked (deleted post, login wall,
+ * challenge) will never grow a video graph — grant only a short grace for
+ * late hydration. Every other loaded page keeps the COMPLETE configured
+ * budget even when no media has been observed yet: posters, the video graph
+ * and API responses hydrate late on automated clients, so "nothing yet" is
+ * a temporary state, never a verdict. Cutting a healthy page to 3000ms on
+ * no-media-signals killed public Reels whose media arrived later.
+ */
+export function decideSettleBudget(
+  blocked: boolean,
+  fullBudgetMs: number
+): { budgetMs: number; reason: SettleBudgetReason } {
+  if (blocked) {
+    return { budgetMs: Math.min(fullBudgetMs, 2000), reason: "blocked-state" };
+  }
+  return { budgetMs: fullBudgetMs, reason: "full-budget" };
+}
+
+export interface ResolutionSignals {
+  loginWall: boolean;
+  challenge: boolean;
+  unavailable: boolean;
+  emptyShell: boolean;
+  /** Positive hint the content is private (not merely missing). */
+  privateHint?: boolean;
+}
+
+/**
+ * Internal resolution-outcome classification. Pure and unit-tested.
+ *
+ * TEMPORARY_NO_MEDIA ("no video yet, no block evidence") is the default for
+ * every non-gated outcome — including the empty shell — and must never be
+ * reported as CONTENT_UNAVAILABLE. Callers map it to the existing retryable
+ * codes (VIDEO_SOURCE_NOT_FOUND / EMPTY_INSTAGRAM_SHELL).
+ */
+export function classifyResolutionState(signals: ResolutionSignals): ResolutionState {
+  if (signals.loginWall) return "LOGIN_REQUIRED";
+  if (signals.challenge) return "CHALLENGE";
+  if (signals.unavailable) return signals.privateHint === true ? "PRIVATE_CONTENT" : "CONTENT_UNAVAILABLE";
+  return "TEMPORARY_NO_MEDIA";
+}
+
+/**
+ * Bounded budget for the controlled second extraction attempt. Pure and
+ * unit-tested: capped at `maxMs`, never past the resolve deadline (keeping
+ * `reserveMs` for assembly/probes), never negative.
+ */
+export function secondAttemptBudgetMs(
+  elapsedMs: number,
+  deadlineMs: number = RESOLVE_DEADLINE_MS,
+  maxMs = 2000,
+  reserveMs = 3000
+): number {
+  const remaining = deadlineMs - elapsedMs - reserveMs;
+  if (remaining <= 0) return 0;
+  return Math.min(maxMs, remaining);
+}
+
+export type EmptyShellErrorCode =
+  | "INSTAGRAM_AUTH_INVALID"
+  | "CONTENT_NOT_FOUND"
+  | "CONTENT_UNAVAILABLE"
+  | "EMPTY_INSTAGRAM_SHELL";
+
+/**
+ * Empty-shell decision tree (positive evidence only). Pure and unit-tested;
+ * mirrors the assembly throw site exactly so tests prove the mapping:
+ * stale credential → AUTH_INVALID, bounced-to-home with proven session →
+ * NOT_FOUND, bounced home without proof → UNAVAILABLE (retryable), otherwise
+ * the retryable EMPTY_INSTAGRAM_SHELL — never a content verdict on timing.
+ */
+export function decideEmptyShellError(opts: {
+  sessionConfigured: boolean;
+  sessionAccepted: boolean | null;
+  redirectHome: boolean;
+}): { code: EmptyShellErrorCode; stage: string } {
+  if (opts.sessionConfigured && opts.sessionAccepted === false) {
+    return { code: "INSTAGRAM_AUTH_INVALID", stage: "assembly-session-rejected" };
+  }
+  if (opts.redirectHome) {
+    return opts.sessionAccepted === true
+      ? { code: "CONTENT_NOT_FOUND", stage: "assembly-empty-shell-redirect-home" }
+      : { code: "CONTENT_UNAVAILABLE", stage: "assembly-empty-shell-redirect-home" };
+  }
+  return { code: "EMPTY_INSTAGRAM_SHELL", stage: "assembly-empty-shell" };
+}
+
+/**
+ * Assembly failure stage. Pure and unit-tested: with block evidence the
+ * historic stage is kept; without any gate the failure is classified as
+ * temporary-no-media (retryable VIDEO_SOURCE_NOT_FOUND, never the
+ * "currently unavailable" verdict on timing alone).
+ */
+export function assemblyFailureStage(
+  walled: boolean
+): "assembly-no-playable-video" | "assembly-temporary-no-media" {
+  return walled ? "assembly-no-playable-video" : "assembly-temporary-no-media";
 }
 
 /**
@@ -2386,13 +2492,16 @@ export class PuppeteerProvider extends BaseProvider {
     const onExternalAbort = (): void => controller.abort(CLIENT_GONE_REASON);
     external?.addEventListener("abort", onExternalAbort, { once: true });
     inc("puppeteerJobs");
+    // Log correlation only: the API request this browser work belongs to.
+    // Never into responses, never to the frontend.
+    const requestId = options?.requestId ?? null;
 
     // One hard deadline per resolve. A hung page must not be able to hold a
     // browser slot (and its Chromium memory) indefinitely.
     const deadline = setTimeout(() => controller.abort(DEADLINE_REASON), RESOLVE_DEADLINE_MS);
     deadline.unref?.();
 
-    const work = this.resolveInternal(url, onProgress, controller.signal).finally(() => {
+    const work = this.resolveInternal(url, onProgress, controller.signal, requestId).finally(() => {
       clearTimeout(deadline);
       external?.removeEventListener("abort", onExternalAbort);
     });
@@ -2429,7 +2538,8 @@ export class PuppeteerProvider extends BaseProvider {
   private async resolveInternal(
     url: string,
     onProgress: ResolveProgressCallback | undefined,
-    signal: AbortSignal
+    signal: AbortSignal,
+    requestId: string | null = null
   ): Promise<ResolverResult> {
     const startTime = Date.now();
     const timings: Record<string, number> = {};
@@ -2872,6 +2982,10 @@ export class PuppeteerProvider extends BaseProvider {
       let jsonSkippedCount = 0;
       let jsonBytesRead = 0;
       let interceptedMediaRequestCount = 0;
+      // DOM/script extraction passes performed (initial + settle polls +
+      // the bounded second attempt). Surfaced as `extractionAttempt` in
+      // diagnostics so production shows how hard media was looked for.
+      let extractionPasses = 0;
       let capturedCdnMediaUrlCount = 0;
       // Failure observability (§5 diagnostics): which subresources die before
       // hydration, grouped by host/type/chromium-error. Host + type + error
@@ -3238,7 +3352,11 @@ export class PuppeteerProvider extends BaseProvider {
           verifiedByProbe?: number;
           trustedCapture?: number;
         },
-        docSessionAccepted?: boolean | null
+        docSessionAccepted?: boolean | null,
+        // Internal outcome classification. Defaults to TEMPORARY_NO_MEDIA:
+        // without positive block evidence no failure may claim the content
+        // is unavailable.
+        finalState?: ResolutionState
       ): ResolveDiagnostics => ({
         provider: "puppeteer",
         runtime: isServerlessRuntime() ? "serverless" : "local",
@@ -3270,6 +3388,8 @@ export class PuppeteerProvider extends BaseProvider {
         trustedCaptureCount: assembly?.trustedCapture ?? 0,
         selectedCandidateSource: null,
         selectedMediaHost: null,
+        finalResolutionState: finalState ?? "TEMPORARY_NO_MEDIA",
+        extractionAttempt: extractionPasses,
         totalDurationMs: Date.now() - startTime,
       });
 
@@ -3282,13 +3402,20 @@ export class PuppeteerProvider extends BaseProvider {
           rejectionReasons?: Record<string, number>;
           verifiedByProbe?: number;
           trustedCapture?: number;
-        }
+        },
+        finalState?: ResolutionState
       ): AppError => {
         const err = createError("VIDEO_SOURCE_NOT_FOUND");
-        return new AppError(err.code, err.message, err.statusCode, failureDiagnostics(stage, normalized, assembly));
+        return new AppError(
+          err.code,
+          err.message,
+          err.statusCode,
+          failureDiagnostics(stage, normalized, assembly, undefined, finalState)
+        );
       };
 
       // 1. Initial media inspection from page DOM & scripts
+      extractionPasses++;
       const initialVideos = await extractVideoCandidatesFromPage();
       for (const item of initialVideos) {
         if (!interceptedMedia.some((m) => m.url === item.url)) {
@@ -3346,46 +3473,49 @@ export class PuppeteerProvider extends BaseProvider {
       // NEVER use interceptedMedia.length === 0 as condition: poster/image presence
       // must NOT mean video extraction is finished.
       // The condition MUST be whether an actual VIDEO candidate has been extracted.
+      //
+      // State-machine rule: "no media signals yet" on a loaded, ungated page
+      // is TEMPORARY — the wait keeps the complete configured budget so late
+      // hydration (posters first, video graph/API media seconds later) is
+      // observed instead of misdiagnosed. Only a page that already declares
+      // itself blocked gets a short grace (the video graph is never coming,
+      // and the blocked-state handlers below produce the same honest outcome
+      // sooner).
       if (!hasVideoBeenExtracted()) {
         const settleStart = Date.now();
         const fullBudget = readBoundedInt("PUPPETEER_VIDEO_SETTLE_MS", 12_000, 500, 30_000);
-        // Fast path out (measured production waste): when the page already
-        // declares itself blocked (deleted post, login wall, challenge), the
-        // video graph is never coming — grant only a short grace for late
-        // hydration instead of burning the full budget against the 15s
-        // overall resolver deadline. The blocked-state handlers below still
-        // produce exactly the same honest outcome, just ~10s sooner.
         let budget = fullBudget;
-        let shortenReason: string | null = null;
         try {
           const early = await page.evaluate(PAGE_STATE_FN).catch(() => null) as {
             hasUnavailableMessage?: boolean;
             hasLoginWall?: boolean;
             hasChallenge?: boolean;
           } | null;
-          if (
+          const blocked = Boolean(
             early &&
-            (early.hasUnavailableMessage === true ||
-              early.hasLoginWall === true ||
-              early.hasChallenge === true)
-          ) {
-            // Declared block: the video graph is never coming.
-            budget = Math.min(fullBudget, 2000);
-            shortenReason = "blocked-state";
-          } else if (interceptedMedia.length === 0 && initialVideos.length === 0) {
-            // No media signal of ANY kind after full navigation + data wait
-            // (no API media, no DOM video, no video graph): a healthy post
-            // page always exposes at least posters by now. Grant a short
-            // grace for very late hydration instead of the full budget.
-            budget = Math.min(fullBudget, 3000);
-            shortenReason = "no-media-signals";
-          }
-          if (shortenReason) {
+              (early.hasUnavailableMessage === true ||
+                early.hasLoginWall === true ||
+                early.hasChallenge === true)
+          );
+          const decision = decideSettleBudget(blocked, fullBudget);
+          budget = decision.budgetMs;
+          if (decision.reason === "blocked-state") {
             logger.info("Puppeteer settle shortened", {
+              requestId,
               url,
-              reason: shortenReason,
+              reason: decision.reason,
               fullBudgetMs: fullBudget,
               shortenedBudgetMs: budget,
+            });
+          } else {
+            logger.info("Puppeteer settle full budget", {
+              requestId,
+              url,
+              reason: decision.reason,
+              fullBudgetMs: fullBudget,
+              budgetMs: budget,
+              interceptedMediaCount: interceptedMedia.length,
+              initialVideoCount: initialVideos.length,
             });
           }
         } catch {
@@ -3398,6 +3528,7 @@ export class PuppeteerProvider extends BaseProvider {
           if (hasVideoBeenExtracted()) break;
 
           // Re-extract from hydrated page DOM and scripts
+          extractionPasses++;
           const pageVideos = await extractVideoCandidatesFromPage();
           if (pageVideos.length > 0) {
             for (const item of pageVideos) {
@@ -3413,6 +3544,55 @@ export class PuppeteerProvider extends BaseProvider {
         timings.settleMs = Date.now() - settleStart;
       }
 
+      // 2b. Controlled second extraction attempt (same page, no new browser):
+      // when the settle phase found no video and the page declares no gate,
+      // hydration may simply be late. Poll DOM/scripts once more within a
+      // hard cap that never reaches past the resolve deadline (room is kept
+      // for assembly and candidate verification). One attempt, then conclude.
+      if (!hasVideoBeenExtracted() && !signal?.aborted) {
+        const gate = await page.evaluate(PAGE_STATE_FN).catch(() => null) as {
+          hasUnavailableMessage?: boolean;
+          hasLoginWall?: boolean;
+          hasChallenge?: boolean;
+        } | null;
+        const gated = Boolean(
+          gate &&
+            (gate.hasUnavailableMessage === true ||
+              gate.hasLoginWall === true ||
+              gate.hasChallenge === true)
+        );
+        if (!gated) {
+          const secondBudget = secondAttemptBudgetMs(Date.now() - startTime, RESOLVE_DEADLINE_MS);
+          if (secondBudget >= 500) {
+            onProgress?.(72, "Media discovery");
+            const secondStart = Date.now();
+            let secondPasses = 0;
+            while (Date.now() - secondStart < secondBudget) {
+              if (signal?.aborted || hasVideoBeenExtracted()) break;
+              extractionPasses++;
+              secondPasses++;
+              const more = await extractVideoCandidatesFromPage();
+              for (const item of more) {
+                if (!interceptedMedia.some((m) => m.url === item.url)) {
+                  interceptedMedia.push(item);
+                }
+              }
+              if (hasVideoBeenExtracted()) break;
+              await new Promise((r) => setTimeout(r, 250));
+            }
+            timings.secondAttemptMs = Date.now() - secondStart;
+            logger.info("Puppeteer second extraction attempt", {
+              requestId,
+              url,
+              budgetMs: secondBudget,
+              passes: secondPasses,
+              foundVideo: hasVideoBeenExtracted(),
+              interceptedMediaCount: interceptedMedia.length,
+            });
+          }
+        }
+      }
+
       // Check page state
       const pageState = await page.evaluate(PAGE_STATE_FN).catch(() => ({
         title: "",
@@ -3422,27 +3602,50 @@ export class PuppeteerProvider extends BaseProvider {
       }));
 
       if (pageState.hasLoginWall && !hasVideoBeenExtracted()) {
-        logger.warn("Instagram login wall detected", { url });
+        logger.warn("Instagram login wall detected", { requestId, url });
         if (this.detectContentType(url) === "STORY") {
-          logger.warn("STORY_SOURCE_UNAVAILABLE", { url, reason: "authentication-required" });
+          logger.warn("STORY_SOURCE_UNAVAILABLE", { requestId, url, reason: "authentication-required" });
           throw createError("STORY_SOURCE_UNAVAILABLE");
         }
         if (fetchMeta.ogImage) {
           return this.buildResultFromMetadata(url, fetchMeta);
         }
-        throw createError("CONTENT_UNAVAILABLE");
+        // Declared gate with positive evidence (not timing): keep the
+        // existing code, but attach the accurate state so it is never
+        // confused with a temporary extraction failure.
+        const walled = createError("CONTENT_UNAVAILABLE");
+        throw new AppError(walled.code, walled.message, walled.statusCode, {
+          provider: "puppeteer",
+          runtime: isServerlessRuntime() ? "serverless" : "local",
+          stage: "browser-login-wall",
+          pageStatus: fetchMeta.pageStatus,
+          loginWall: true,
+          challenge: fetchMeta.hasChallenge,
+          finalResolutionState: "LOGIN_REQUIRED",
+          extractionAttempt: extractionPasses,
+        });
       }
 
       if (pageState.hasChallenge && !hasVideoBeenExtracted()) {
-        logger.warn("Instagram challenge detected", { url });
+        logger.warn("Instagram challenge detected", { requestId, url });
         if (this.detectContentType(url) === "STORY") {
-          logger.warn("STORY_SOURCE_UNAVAILABLE", { url, reason: "challenge-required" });
+          logger.warn("STORY_SOURCE_UNAVAILABLE", { requestId, url, reason: "challenge-required" });
           throw createError("STORY_SOURCE_UNAVAILABLE");
         }
         if (fetchMeta.ogImage) {
           return this.buildResultFromMetadata(url, fetchMeta);
         }
-        throw createError("CONTENT_UNAVAILABLE");
+        const challenged = createError("CONTENT_UNAVAILABLE");
+        throw new AppError(challenged.code, challenged.message, challenged.statusCode, {
+          provider: "puppeteer",
+          runtime: isServerlessRuntime() ? "serverless" : "local",
+          stage: "browser-challenge",
+          pageStatus: fetchMeta.pageStatus,
+          loginWall: fetchMeta.loginWall,
+          challenge: true,
+          finalResolutionState: "CHALLENGE",
+          extractionAttempt: extractionPasses,
+        });
       }
 
       if (pageState.hasUnavailableMessage && !hasVideoBeenExtracted()) {
@@ -3476,14 +3679,22 @@ export class PuppeteerProvider extends BaseProvider {
             }
           }
         }
-        // If we still have nothing, surface an honest error.
+        // If we still have nothing, surface an honest error. Instagram
+        // explicitly reported the content unavailable (positive evidence),
+        // so CONTENT_UNAVAILABLE here is a verdict — never timing.
         if (!hasVideoBeenExtracted()) {
           const notFound = createError("CONTENT_NOT_FOUND");
           throw new AppError(
             notFound.code,
             notFound.message,
             notFound.statusCode,
-            failureDiagnostics("browser-blocked-no-prefetch-video")
+            failureDiagnostics(
+              "browser-blocked-no-prefetch-video",
+              undefined,
+              undefined,
+              undefined,
+              "CONTENT_UNAVAILABLE"
+            )
           );
         }
         logger.info("Browser-blocked resolve: proceeding with prefetch video candidates", { url });
@@ -3856,9 +4067,18 @@ export class PuppeteerProvider extends BaseProvider {
           interceptedCount: interceptedMedia.length,
           walled: shellWalled,
         });
+        const noMediaState = classifyResolutionState({
+          loginWall: pageState.hasLoginWall,
+          challenge: pageState.hasChallenge,
+          unavailable: pageState.hasUnavailableMessage,
+          emptyShell,
+        });
         logger.error("Puppeteer NO_MEDIA_FOUND", {
+          requestId,
           url: url.slice(0, 100),
           contentType,
+          finalResolutionState: noMediaState,
+          extractionAttempt: extractionPasses,
           isServerless: isServerlessRuntime(),
           browserLaunchStatus: this.browser ? "launched" : "not-launched",
           status: fetchMeta.pageStatus,
@@ -3873,6 +4093,7 @@ export class PuppeteerProvider extends BaseProvider {
           validVideoCandidateCount: rejectedVideoCount,
           rejectedCandidateCount: rejectedVideoCount,
           interceptedMediaCount: interceptedMedia.length,
+          mediaInterceptCount: interceptedMediaRequestCount,
           cdnMediaCount: capturedCdnMediaUrlCount,
           verifyTally,
           rejectionReasons,
@@ -3880,8 +4101,10 @@ export class PuppeteerProvider extends BaseProvider {
           duplicateCount,
           verifiedByProbeCount,
           trustedCaptureCount,
+          selectedCandidateHost: null,
           hasSession: isInstagramSessionConfigured(),
           domVideoCount: domResult.videos.length,
+          videoElementCount: domResult.videos.length,
           domImageCount: domResult.images.length,
           renderedHtmlMediaCount: renderedHtmlMedia.length,
           renderedHtmlStoryMediaCount: renderedHtmlMedia.filter(
@@ -3920,6 +4143,7 @@ export class PuppeteerProvider extends BaseProvider {
           pageErrorCount,
           firstPageError,
           duration: Date.now() - startTime,
+          elapsedMs: Date.now() - startTime,
         });
         // A Reel/TV page with no discoverable video must NEVER degrade into
         // a fake photo result — surface an honest diagnostic error instead.
@@ -3953,30 +4177,39 @@ export class PuppeteerProvider extends BaseProvider {
             const docSessionAccepted = detectSessionAccepted(renderedHtmlText);
             const shellError = (
               code: Parameters<typeof createError>[0],
-              stage: string
+              stage: string,
+              state: ResolutionState
             ): AppError => {
               const err = createError(code);
               return new AppError(
                 err.code,
                 err.message,
                 err.statusCode,
-                failureDiagnostics(stage, normalized, undefined, docSessionAccepted)
+                failureDiagnostics(stage, normalized, undefined, docSessionAccepted, state)
               );
             };
-            if (isInstagramSessionConfigured() && docSessionAccepted === false) {
-              throw shellError("INSTAGRAM_AUTH_INVALID", "assembly-session-rejected");
-            }
-            if (navFinalPath === "/") {
-              const stage = "assembly-empty-shell-redirect-home";
-              if (docSessionAccepted === true) {
-                throw shellError("CONTENT_NOT_FOUND", stage);
-              }
-              throw shellError("CONTENT_UNAVAILABLE", stage);
-            }
-            throw shellError("EMPTY_INSTAGRAM_SHELL", "assembly-empty-shell");
+            // Decision tree with positive evidence only (see
+            // decideEmptyShellError): a credential verdict, a proven home
+            // redirect, or the retryable empty shell — never CONTENT_UNAVAILABLE
+            // on timing alone.
+            const shellDecision = decideEmptyShellError({
+              sessionConfigured: isInstagramSessionConfigured(),
+              sessionAccepted: docSessionAccepted,
+              redirectHome: navFinalPath === "/",
+            });
+            const shellState: ResolutionState =
+              shellDecision.code === "INSTAGRAM_AUTH_INVALID"
+                ? "AUTH_INVALID"
+                : shellDecision.code === "EMPTY_INSTAGRAM_SHELL"
+                  ? "TEMPORARY_NO_MEDIA"
+                  : "CONTENT_UNAVAILABLE";
+            throw shellError(shellDecision.code, shellDecision.stage, shellState);
           }
+          // No gate evidence here means the video simply never materialized
+          // within the bounded wait: TEMPORARY_NO_MEDIA via the existing
+          // retryable VIDEO_SOURCE_NOT_FOUND — never CONTENT_UNAVAILABLE.
           throw videoFailure(
-            "assembly-no-playable-video",
+            assemblyFailureStage(shellWalled),
             {
               count: validMedia.length,
               types: [...new Set(validMedia.map((m) => m.type))],
@@ -3987,7 +4220,13 @@ export class PuppeteerProvider extends BaseProvider {
               rejectionReasons,
               verifiedByProbe: verifiedByProbeCount,
               trustedCapture: trustedCaptureCount,
-            }
+            },
+            classifyResolutionState({
+              loginWall: pageState.hasLoginWall,
+              challenge: pageState.hasChallenge,
+              unavailable: pageState.hasUnavailableMessage,
+              emptyShell: false,
+            })
           );
         }
         if (noVideoKind === "STORY") {
@@ -4050,7 +4289,10 @@ export class PuppeteerProvider extends BaseProvider {
         null;
 
       logger.info("Puppeteer resolve SUCCESS", {
+        requestId,
         contentType,
+        finalResolutionState: "MEDIA_FOUND" as ResolutionState,
+        extractionAttempt: extractionPasses,
         discovered: allMedia.length,
         invalidSkipped: allMedia.length - validMedia.length,
         returned: validMedia.length,
@@ -4065,8 +4307,14 @@ export class PuppeteerProvider extends BaseProvider {
         rejectionReasons,
         selectedCandidateSource,
         selectedMediaHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
+        selectedCandidateHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
+        videoCandidateCount: validMedia.filter((m) => m.type === "video").length,
+        mediaInterceptCount: interceptedMediaRequestCount,
+        videoElementCount: domResult.videos.length,
+        embeddedMediaCount: fetchMeta.embeddedMedia.length,
         verifyTally,
         duration: Date.now() - startTime,
+        elapsedMs: Date.now() - startTime,
         // Timing diagnostics: where the time actually went, so a slow resolve
         // is attributed instead of guessed.
         ...timings,
