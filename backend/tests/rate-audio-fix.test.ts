@@ -254,6 +254,20 @@ describe("extractDashVideoRepresentations", () => {
       "https://scontent-iad3-1.cdninstagram.com/video?sig=v",
     ]);
   });
+
+  it("extracts the representation when the manifest is the only media field", async () => {
+    const { extractMediaFromJson } = await import("@/lib/providers/puppeteer.js");
+    const json =
+      '{"video_dash_manifest":"<MPD><AdaptationSet contentType=\\"video\\">' +
+      '<Representation><BaseURL>https:\\/\\/scontent-iad3-1.cdninstagram.com\\/video?sig=v</BaseURL>' +
+      '</Representation></AdaptationSet></MPD>"}';
+    expect(extractMediaFromJson(json)).toContainEqual({
+      url: "https://scontent-iad3-1.cdninstagram.com/video?sig=v",
+      type: "video",
+      width: null,
+      height: null,
+    });
+  });
 });
 
 describe("selectReelVideo", () => {

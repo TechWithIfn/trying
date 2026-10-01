@@ -672,6 +672,9 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
   // `video_versions` (progressive MP4 + dimensions). Read it before the
   // tag-based patterns: it is the authoritative video source.
   for (const item of extractVideoVersions(html)) addItem(item);
+  for (const url of extractDashVideoRepresentations(html)) {
+    addItem({ url, type: "video", width: null, height: null });
+  }
 
   // Slash-normalized copy so escaped JSON URLs are visible below.
   const scan = normalizeEmbeddedJson(html);
@@ -3363,6 +3366,8 @@ export class PuppeteerProvider extends BaseProvider {
                 text.includes("display_url") ||
                 text.includes("image_versions") ||
                 text.includes("playback_url") ||
+                text.includes("dash_manifest") ||
+                text.includes("video_dash_manifest") ||
                 text.includes("edge_sidecar_to_children") ||
                 text.includes("carousel_media")
               ) {
