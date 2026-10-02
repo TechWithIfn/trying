@@ -540,13 +540,33 @@ export async function pipeUpstreamToClient(
         if (!canContinue) {
           // A bounded wait: if the client stalls forever, treat it as gone
           // rather than holding the slot, socket, and bandwidth indefinitely.
+          // Every listener added here is removed on settle — a stalled drain
+          // must not accumulate drain/close/error/abort listeners.
           const drained = await new Promise<boolean>((resolve) => {
-            const onDrain = () => resolve(true);
-            const onClose = () => resolve(false);
+            let drainSettled = false;
+            const onDrain = (): void => {
+              if (drainSettled) return;
+              drainSettled = true;
+              cleanupDrainWait();
+              resolve(true);
+            };
+            const onClose = (): void => {
+              if (drainSettled) return;
+              drainSettled = true;
+              cleanupDrainWait();
+              resolve(false);
+            };
+            const onAbort = (): void => onClose();
+            function cleanupDrainWait(): void {
+              res.off("drain", onDrain);
+              res.off("close", onClose);
+              res.off("error", onClose);
+              signal?.removeEventListener("abort", onAbort);
+            }
             res.once("drain", onDrain);
             res.once("close", onClose);
             res.once("error", onClose);
-            signal?.addEventListener("abort", () => resolve(false), { once: true });
+            signal?.addEventListener("abort", onAbort, { once: true });
           });
           if (!drained) {
             finished = true;

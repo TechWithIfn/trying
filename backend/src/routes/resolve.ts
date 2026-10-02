@@ -486,7 +486,7 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
   };
   try {
     const rawUrl = req.query.url;
-    send("progress", { progress: 5, stage: "Request received" });
+    send("progress", { progress: 0, stage: "Request accepted" });
 
     if (typeof rawUrl !== "string" || rawUrl.length === 0) {
       failEvent("VALIDATION_ERROR");
@@ -535,7 +535,7 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
         return;
       }
     }
-    send("progress", { progress: 15, stage: "Link validated" });
+    send("progress", { progress: 10, stage: "Link validated" });
 
     const result = await resolveGate.run(
       () =>

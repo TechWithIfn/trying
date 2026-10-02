@@ -249,7 +249,7 @@ export async function resolveUrl(
       provider: resolver.name,
       url: url.slice(0, 80),
     });
-    onProgress?.(25, "Starting resolution");
+    onProgress?.(20, "Resolver started");
     // The 3-worker resolver pool is the choke point for expensive resolution
     // work (browser pages, upstream API calls). It routes to the least-loaded
     // healthy worker, bounds concurrency and queue depth per worker, and

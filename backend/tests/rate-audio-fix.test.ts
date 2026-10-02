@@ -266,6 +266,7 @@ describe("extractDashVideoRepresentations", () => {
       type: "video",
       width: null,
       height: null,
+      variant: "dash-representation",
     });
   });
 

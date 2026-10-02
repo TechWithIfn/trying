@@ -150,11 +150,32 @@ export type CandidateSource =
   | "prefetch-embed"
   | "embed-html";
 
+/**
+ * Instagram representation a video URL was extracted from. Orthogonal to
+ * `source` (where it was captured): the same `video_versions` graph can
+ * arrive via page JSON, an API response, or the rendered DOM, and it stays
+ * the highest-priority progressive signal in every case.
+ */
+export type CandidateVariant =
+  | "video-versions"
+  | "playable-url"
+  | "browser-native"
+  | "og-video"
+  | "dash-representation"
+  | "generic";
+
 export interface ExtractedMedia {
   url: string;
   type: "video" | "image";
   width: number | null;
   height: number | null;
+  /**
+   * Which Instagram representation this URL came from. Drives the
+   * deterministic candidate score (§5): structured `video_versions` entries
+   * outrank tag-scraped generics, and DASH manifest representations are
+   * never scored as progressive video.
+   */
+  variant?: CandidateVariant;
   /**
    * Where this candidate was first captured. The network layer's own
    * video response (`network-video-response`) is the authoritative
@@ -283,6 +304,7 @@ export function extractVideoVersions(text: string): ExtractedMedia[] {
         type: "video",
         width: typeof record.width === "number" ? record.width : null,
         height: typeof record.height === "number" ? record.height : null,
+        variant: "video-versions",
       });
     }
   }
@@ -344,11 +366,11 @@ export function extractMediaFromJson(text: string): ExtractedMedia[] {
   const media: ExtractedMedia[] = [];
   const seen = new Set<string>();
 
-  const add = (url: string, type: "video" | "image") => {
+  const add = (url: string, type: "video" | "image", variant?: CandidateVariant) => {
     const clean = unescapeInstagramString(url);
     if (!clean || seen.has(clean) || !clean.startsWith("http")) return;
     seen.add(clean);
-    media.push({ url: clean, type, width: null, height: null });
+    media.push({ url: clean, type, width: null, height: null, variant: variant ?? "generic" });
   };
 
   // Real media graph first: `video_versions` carries the progressive MP4
@@ -360,7 +382,7 @@ export function extractMediaFromJson(text: string): ExtractedMedia[] {
   }
 
   for (const url of extractDashVideoRepresentations(text)) {
-    add(url, "video");
+    add(url, "video", "dash-representation");
   }
 
   // Scan a slash-normalized copy so escaped URLs ("https:\/\/…") are visible
@@ -368,19 +390,22 @@ export function extractMediaFromJson(text: string): ExtractedMedia[] {
   const scan = normalizeEmbeddedJson(text);
 
   for (const m of scan.matchAll(/"video_url"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video");
+    add(m[1], "video", "playable-url");
+  }
+  for (const m of scan.matchAll(/"playable_url"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "playable-url");
   }
   for (const m of scan.matchAll(/"playback_url"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video");
+    add(m[1], "video", "playable-url");
   }
   for (const m of scan.matchAll(/"url"\s*:\s*"(https?:[^"]*?\.mp4[^"]*?)"/g)) {
     add(m[1], "video");
   }
   for (const m of scan.matchAll(/"browser_native_(?:hd|sd)_url"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video");
+    add(m[1], "video", "browser-native");
   }
   for (const m of scan.matchAll(/<BaseURL>([^<]+\.mp4[^<]*)<\/BaseURL>/gi)) {
-    add(m[1], "video");
+    add(m[1], "video", "dash-representation");
   }
   for (const m of scan.matchAll(/(https?:\/\/[^"'\s<>\\]*?(?:fbcdn|cdninstagram)[^"'\s<>\\]*?\.mp4[^"'\s<>\\]*)/gi)) {
     add(m[1], "video");
@@ -666,11 +691,11 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
   const media: ExtractedMedia[] = [];
   const seen = new Set<string>();
 
-  const add = (url: string, type: "video" | "image") => {
+  const add = (url: string, type: "video" | "image", variant?: CandidateVariant) => {
     const clean = unescapeInstagramString(url);
     if (!clean || seen.has(clean) || !clean.startsWith("http")) return;
     seen.add(clean);
-    media.push({ url: clean, type, width: null, height: null });
+    media.push({ url: clean, type, width: null, height: null, variant: variant ?? "generic" });
   };
 
   const addItem = (item: ExtractedMedia) => {
@@ -684,7 +709,7 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
   // tag-based patterns: it is the authoritative video source.
   for (const item of extractVideoVersions(html)) addItem(item);
   for (const url of extractDashVideoRepresentations(html)) {
-    addItem({ url, type: "video", width: null, height: null });
+    addItem({ url, type: "video", width: null, height: null, variant: "dash-representation" });
   }
 
   // Slash-normalized copy so escaped JSON URLs are visible below.
@@ -693,12 +718,12 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
   for (const m of html.matchAll(
     /property=["']og:video["'][^>]*content=["']([^"']+)["']/gi
   )) {
-    add(m[1], "video");
+    add(m[1], "video", "og-video");
   }
   for (const m of html.matchAll(
     /content=["']([^"']+)["'][^>]*property=["']og:video["']/gi
   )) {
-    add(m[1], "video");
+    add(m[1], "video", "og-video");
   }
   for (const m of html.matchAll(
     /property=["']og:image["'][^>]*content=["']([^"']+)["']/gi
@@ -713,7 +738,7 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
   for (const m of html.matchAll(
     /name=["']twitter:player:stream["'][^>]*content=["']([^"']+)["']/gi
   )) {
-    add(m[1], "video");
+    add(m[1], "video", "playable-url");
   }
   for (const m of html.matchAll(
     /name=["']twitter:image["'][^>]*content=["']([^"']+)["']/gi
@@ -721,7 +746,13 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
     add(m[1], "image");
   }
   for (const m of scan.matchAll(/"video_url"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video");
+    add(m[1], "video", "playable-url");
+  }
+  for (const m of scan.matchAll(/"playable_url"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "playable-url");
+  }
+  for (const m of scan.matchAll(/"browser_native_(?:hd|sd)_url"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "browser-native");
   }
   // Progressive MP4 URLs in the embedded media graph (escaped slashes already
   // normalized above). This is what a Reel actually ships.
@@ -859,6 +890,131 @@ export function sortVideoFirst(media: MediaItem[], contentType: InstagramContent
   const videos = media.filter((m) => m.type === "video");
   if (videos.length === 0) return media;
   return [...videos, ...media.filter((m) => m.type !== "video")];
+}
+
+/**
+ * Deterministic candidate score (§5). Decided BEFORE any network probe from
+ * representation provenance + declared dimensions only, so verification
+ * always runs in priority order and DASH/unsafe items never earn traffic:
+ *
+ *   +100  structured video_versions graph (progressive + real dimensions)
+ *   +90   og:video document tag
+ *   +85   playable_url / browser_native_hd|sd_url
+ *   +80   trusted captured video response (Chromium delivered video bytes)
+ *   +10   dimensions known, plus up to +20 by megapixels (larger rendition)
+ *   -100  DASH segment / audio-only / image / thumbnail / tiny / unsafe host
+ *   -50   duplicate (handled by dedupe tallies; scorer stays order-stable)
+ *
+ * Pure and unit-tested. Higher score probes first; ties keep discovery order
+ * (stable sort at the call site).
+ */
+export interface CandidateScore {
+  score: number;
+  /** Machine-readable tier for diagnostics (never a URL). */
+  tier: "progressive" | "og" | "playable" | "trusted" | "other" | "penalized";
+}
+
+export function scoreVideoCandidate(item: ExtractedMedia): CandidateScore {
+  if (item.type !== "video") {
+    return { score: -100, tier: "penalized" };
+  }
+  if (isDashSegmentUrl(item.url)) {
+    return { score: -100, tier: "penalized" };
+  }
+  try {
+    const parsed = new URL(item.url);
+    if (parsed.protocol !== "https:") return { score: -100, tier: "penalized" };
+    if (!isCdnMediaHost(parsed.hostname)) return { score: -100, tier: "penalized" };
+    if (isPrivateOrReservedHost(parsed.hostname.toLowerCase())) {
+      return { score: -100, tier: "penalized" };
+    }
+  } catch {
+    return { score: -100, tier: "penalized" };
+  }
+  if (item.variant === "video-versions") return { score: 100 + dimensionBonus(item), tier: "progressive" };
+  if (item.variant === "og-video" || item.source === "prefetch-og") {
+    return { score: 90 + dimensionBonus(item), tier: "og" };
+  }
+  if (item.variant === "playable-url" || item.variant === "browser-native") {
+    return { score: 85 + dimensionBonus(item), tier: "playable" };
+  }
+  if (item.source === "network-video-response" && isTrustedNetworkCapture(item)) {
+    return { score: 80, tier: "trusted" };
+  }
+  return { score: dimensionBonus(item), tier: "other" };
+}
+
+/** +10 when dimensions are known, plus up to +20 by megapixels. */
+function dimensionBonus(item: ExtractedMedia): number {
+  if (typeof item.width !== "number" || typeof item.height !== "number") return 0;
+  if (item.width <= 0 || item.height <= 0) return 0;
+  const megapixels = (item.width * item.height) / 1_000_000;
+  return 10 + Math.min(20, Math.floor(megapixels * 10));
+}
+
+/**
+ * Bounded priority verification (§4). Probes candidates in score order with
+ * at most `concurrency` probes in flight (never a parallel burst), and stops
+ * dispatching new probes once `isComplete` reports a verified playable
+ * result — in-flight probes finish (each is timeout-bounded) and are still
+ * ranked, so quality selection sees every proof obtained.
+ *
+ * The caller owns classification: DASH segments must be partitioned out
+ * BEFORE calling (they earn zero traffic), and `signal` stops further
+ * dispatch when the client goes away. Pure concurrency control — the `verify`
+ * function is injected, so this is unit-testable without any network.
+ */
+export async function verifyInPriorityOrder<Item, Result>(args: {
+  items: Item[];
+  concurrency: number;
+  signal?: AbortSignal;
+  verify: (item: Item, index: number) => Promise<Result>;
+  onResult: (item: Item, index: number, result: Result) => void;
+  /** True when no further probes are needed (verified playable found). */
+  isComplete: () => boolean;
+}): Promise<void> {
+  const { items, signal } = args;
+  const limit = Math.max(1, Math.min(Math.floor(args.concurrency) || 1, 64));
+  let next = 0;
+  let active = 0;
+  let stopped = false;
+  return new Promise<void>((resolve) => {
+    const pump = (): void => {
+      if (stopped) return;
+      if (signal?.aborted || args.isComplete()) {
+        if (active === 0) {
+          stopped = true;
+          resolve();
+        }
+        return;
+      }
+      while (active < limit && next < items.length && !signal?.aborted && !args.isComplete()) {
+        const index = next++;
+        active++;
+        void Promise.resolve()
+          .then(() => args.verify(items[index] as Item, index))
+          .then(
+            (result) => {
+              active--;
+              try {
+                args.onResult(items[index] as Item, index, result);
+              } finally {
+                pump();
+              }
+            },
+            () => {
+              active--;
+              pump();
+            }
+          );
+      }
+      if ((next >= items.length || signal?.aborted || args.isComplete()) && active === 0) {
+        stopped = true;
+        resolve();
+      }
+    };
+    pump();
+  });
 }
 
 const FETCH_META_FN = `
@@ -1450,6 +1606,9 @@ function decodeEfgTag(rawUrl: string): string | null {
 export function isDashSegmentUrl(raw: string): boolean {
   try {
     const parsed = new URL(raw);
+    // A `.m4s` path is by definition a fragmented DASH media segment — never
+    // a progressive representation, whatever its query string claims.
+    if (parsed.pathname.toLowerCase().endsWith(".m4s")) return true;
     const params = parsed.searchParams;
     const hasSliceMarkers = params.has("bytestart") || params.has("byteend");
     if (!hasSliceMarkers) return false;
@@ -1463,8 +1622,15 @@ export function isDashSegmentUrl(raw: string): boolean {
 /** Leading ISO-BMFF box types that identify real MP4 media. */
 const MP4_BOX_TYPES = ["ftyp", "styp", "moov", "moof", "sidx", "emsg", "free", "skip"] as const;
 
-/** Bounded fan-out for candidate verification (unbounded parallelism exhausts serverless sockets). */
-const VERIFY_CONCURRENCY = readBoundedInt("VERIFY_CONCURRENCY", 8, 1, 32);
+/**
+ * Bounded fan-out for candidate verification (§4). At most this many CDN
+ * probes are ever in flight: a parallel burst exhausts serverless sockets and
+ * invites egress throttling whose failures look exactly like expired CDN URLs
+ * but are self-inflicted. Verification additionally runs in score order with
+ * early stop (see verifyInPriorityOrder), so DASH segments — partitioned out
+ * before this point — never earn traffic at all.
+ */
+const VERIFY_CONCURRENCY = readBoundedInt("VERIFY_CONCURRENCY", 4, 1, 8);
 
 /**
  * Bounded parallel map preserving input order. Candidate verification fans
@@ -3836,7 +4002,10 @@ export class PuppeteerProvider extends BaseProvider {
                 await page.deleteCookie(...jar);
               }
               sessionStripped = true;
-              onProgress?.(67, "Retrying without session");
+              // Same number as the page-load phase (65): the stage string
+              // carries the retry meaning, so the numeric sequence never
+              // moves backwards for progress consumers.
+              onProgress?.(65, "Retrying without session");
               logger.info("Puppeteer retrying redirected Reel anonymously", {
                 requestId,
                 reason: fetchMeta.sessionAccepted === false ? "session-rejected" : "session-not-accepted",
@@ -3846,7 +4015,10 @@ export class PuppeteerProvider extends BaseProvider {
               // Cookie cleanup failure leaves the original bounded retry intact.
             }
           } else {
-            onProgress?.(66, "Retrying target page");
+            // Same number as the page-load phase (see above): retry
+            // visibility lives in the stage string, monotonicity in the
+            // number.
+            onProgress?.(65, "Retrying target page");
             logger.info("Puppeteer redirect fallback re-navigation", {
               requestId,
               requestedUrl: url.slice(0, 100),
@@ -4052,6 +4224,10 @@ export class PuppeteerProvider extends BaseProvider {
       if (!redirectedAway) {
         // Extraction phase 1 of at most 3 (initial → settle → 2nd attempt):
         // phases are counted, never polls, so the counter cannot run away.
+        // 75 marks the extraction phase deterministically: it fires whenever
+        // extraction actually runs, even when the first pass already finds
+        // video and the settle/second-attempt waits are correctly skipped.
+        onProgress?.(75, "Extracting media");
         extractionPasses++;
         initialVideos = await extractVideoCandidatesFromPage();
         for (const item of initialVideos) {
@@ -4161,9 +4337,9 @@ export class PuppeteerProvider extends BaseProvider {
           } catch {
           // Evaluate failed (frame detached mid-navigation): keep full budget.
         }
-        // Real stage transition for progress consumers (SSE 65 → 70 → 72 →
-        // 80 → 85): the hydration wait genuinely starts here.
-        onProgress?.(70, "Waiting for video hydration");
+        // Real stage transition for progress consumers (SSE 65 → 75 → 85 →
+        // 95 → 100): the hydration wait genuinely starts here.
+        onProgress?.(75, "Extracting media");
         while (Date.now() - settleStart < budget) {
           if (signal?.aborted) break;
 
@@ -4210,7 +4386,7 @@ export class PuppeteerProvider extends BaseProvider {
         if (!gated) {
           const secondBudget = secondAttemptBudgetMs(Date.now() - startTime, RESOLVE_DEADLINE_MS);
           if (secondBudget >= 500) {
-            onProgress?.(72, "Media discovery");
+            onProgress?.(75, "Extracting media");
             const secondStart = Date.now();
             let secondPasses = 0;
             while (Date.now() - secondStart < secondBudget) {
@@ -4235,6 +4411,36 @@ export class PuppeteerProvider extends BaseProvider {
               foundVideo: hasVideoBeenExtracted(),
               interceptedMediaCount: interceptedMedia.length,
             });
+            // Final sweep (§6): one bounded re-read of the rendered document
+            // before concluding. Late hydration can land video_versions,
+            // playable_url, browser_native_hd|sd_url or og:video in the HTML
+            // after the DOM/script polls — merge any new video entries so the
+            // assembly below sees the complete pool. One call, never a loop.
+            if (!hasVideoBeenExtracted() && !signal?.aborted) {
+              try {
+                const rescanHtml = await page.content().catch(() => "");
+                if (rescanHtml) {
+                  const rescanned = extractMediaFromHtml(rescanHtml);
+                  let fresh = 0;
+                  for (const item of rescanned) {
+                    if (item.type !== "video" || !this.validateMediaUrl(item.url)) continue;
+                    if (!interceptedMedia.some((m) => m.url === item.url)) {
+                      interceptedMedia.push({ ...item, source: item.source ?? "rendered-html" });
+                      fresh++;
+                    }
+                  }
+                  if (fresh > 0) {
+                    logger.info("Puppeteer final HTML re-sweep found video", {
+                      requestId,
+                      fresh,
+                      interceptedMediaCount: interceptedMedia.length,
+                    });
+                  }
+                }
+              } catch {
+                // Re-scan failed: conclude with what was captured.
+              }
+            }
           }
         }
       }
@@ -4599,15 +4805,22 @@ export class PuppeteerProvider extends BaseProvider {
       // Reel/video pages accept ONLY verified playable video candidates:
       // an image/thumbnail/HTML URL must never become the video source.
       //
-      // Two-tier acceptance (best first, never arbitrary):
-      //   1. Probe-verified: the bounded ranged-GET confirms video/*, an MP4
-      //      container header, and a non-degenerate size. Largest first.
-      //   2. Trusted network capture: Chromium already received video bytes
-      //      for this exact URL (resourceType "media" or video/*, HTTP
-      //      200/206, trusted CDN host). Used ONLY when no probe passes —
-      //      serverless egress can fail a re-probe for a URL the browser
-      //      demonstrably delivered. The URL (with its signed query) is
-      //      returned exactly as captured.
+      // Pipeline (§1, §4, §5):
+      //   1. Partition: DASH segments are tallied for diagnostics and NEVER
+      //      verified — a fragment earns zero probe traffic and can never
+      //      become the Reel source through any tier.
+      //   2. Score: remaining video candidates are ordered by representation
+      //      (video_versions > og:video > playable/browser-native > trusted
+      //      capture > other), dimensions breaking ties. Stable: discovery
+      //      order survives equal scores.
+      //   3. Bounded priority verification: at most VERIFY_CONCURRENCY probes
+      //      in flight, dispatch stops once a playable video is proven
+      //      (in-flight probes still finish and are ranked, so quality
+      //      selection sees every proof obtained).
+      //   4. Two-tier acceptance: probe-verified wins (combined audio+video
+      //      outranks silent, then largest); trusted network capture is used
+      //      ONLY when no probe passes. Audio-only renditions are diverted
+      //      for pairing, never selected as video.
       //
       // Safety is unchanged: javascript:/data:/blob:/localhost/private/
       // non-http(s)/credentialed URLs never carry a trusted-capture source
@@ -4626,18 +4839,51 @@ export class PuppeteerProvider extends BaseProvider {
       let selectedCombined: boolean | null = null;
       if (contentType === "REEL" || contentType === "VIDEO") {
         const videoCandidates = validMedia.filter((item) => item.type === "video");
+        // §1 partition: DASH/MSE segments are diagnostics, never candidates.
+        // No verifyVideoCandidate call happens for these — zero traffic.
+        const scored: Array<{ item: MediaItem; score: number }> = [];
+        for (const item of videoCandidates) {
+          const origin = originByUrl.get(item.url);
+          const candidate: ExtractedMedia = origin ?? {
+            url: item.url,
+            type: "video",
+            width: item.width,
+            height: item.height,
+          };
+          if (isDashSegmentUrl(item.url)) {
+            verifyTally["dash-segment"] = (verifyTally["dash-segment"] ?? 0) + 1;
+            rejectionReasons["dash-segment"] = (rejectionReasons["dash-segment"] ?? 0) + 1;
+            logger.debug("Puppeteer candidate rejected as DASH segment (no probe)", {
+              requestId,
+              host: hostnameOf(item.url),
+              source: origin?.source ?? null,
+              variant: origin?.variant ?? null,
+            });
+            continue;
+          }
+          scored.push({ item, score: scoreVideoCandidate(candidate).score });
+        }
+        // Priority order, highest score first; stable for equal scores.
+        scored.sort((a, b) => b.score - a.score);
         const probePassed: RankedVideoCandidate[] = [];
         const captureFallback: Array<{ item: MediaItem; origin: ExtractedMedia }> = [];
         // Instagram split renditions: audio-only MP4s that belong to the same
         // clip. They can never be a video source, so they are diverted here
         // instead of being probed into the video tier.
         const audioOnly: Array<{ item: MediaItem; size: number }> = [];
-        // Bounded fan-out (never 101 parallel socket storms), with a
-        // per-candidate debug transition (host + reason only) so the next
-        // all-rejected incident names every decision without log access.
-        onProgress?.(80, "Validating candidates");
-        await mapWithLimit(videoCandidates, VERIFY_CONCURRENCY, async (item) => {
-            const check = await verifyVideoCandidate(item.url);
+        if (scored.length > 0) {
+          // 85 fires only when verifiable video candidates actually exist —
+          // never on an empty pool, never for DASH-only discoveries.
+          onProgress?.(85, "Media extracted");
+          // 95 marks the verification phase that proves a playable source.
+          onProgress?.(95, "Verifying playable source");
+        }
+        await verifyInPriorityOrder({
+          items: scored,
+          concurrency: VERIFY_CONCURRENCY,
+          signal,
+          verify: async ({ item }) => verifyVideoCandidate(item.url),
+          onResult: ({ item }, _index, check) => {
             verifyTally[check.reason] = (verifyTally[check.reason] ?? 0) + 1;
             const origin = originByUrl.get(item.url);
             // Structured per-candidate diagnostics (§12): every field that
@@ -4646,6 +4892,7 @@ export class PuppeteerProvider extends BaseProvider {
               requestId,
               host: check.cdnHost,
               source: origin?.source ?? null,
+              variant: origin?.variant ?? null,
               reason: check.reason,
               ok: check.ok,
               status: check.status,
@@ -4682,6 +4929,10 @@ export class PuppeteerProvider extends BaseProvider {
             }
             // Rejected by both tiers: record WHY (probe reason slug).
             rejectionReasons[check.reason] = (rejectionReasons[check.reason] ?? 0) + 1;
+          },
+          // Dispatch stops once a playable video is proven; in-flight probes
+          // still complete and join the ranking below.
+          isComplete: () => probePassed.length > 0,
         });
         probePassed.sort(compareReelVideoCandidates);
         audioOnly.sort((a, b) => b.size - a.size);
@@ -4827,7 +5078,16 @@ export class PuppeteerProvider extends BaseProvider {
           duplicateCount,
           verifiedByProbeCount,
           trustedCaptureCount,
+          progressiveCandidateCount: verifiedByProbeCount,
+          dashSegmentCount: verifyTally["dash-segment"] ?? 0,
+          audioCandidateCount: audioOnlyCount,
+          imageCandidateCount: validMedia.filter((m) => m.type === "image").length,
+          verifiedCandidateCount: verifiedByProbeCount,
           selectedCandidateHost: null,
+          selectedCandidateType: null,
+          selectedWidth: null,
+          selectedHeight: null,
+          selectedContentLength: null,
           hasSession: isInstagramSessionConfigured(),
           domVideoCount: domResult.videos.length,
           videoElementCount: domResult.videos.length,
@@ -5053,6 +5313,14 @@ export class PuppeteerProvider extends BaseProvider {
         selectedCandidate: orderedMedia.length > 0,
         selectedVideoBytes,
         selectedCombined,
+        selectedWidth: orderedMedia[0]?.width ?? null,
+        selectedHeight: orderedMedia[0]?.height ?? null,
+        selectedContentLength: selectedVideoBytes,
+        progressiveCandidateCount: verifiedByProbeCount,
+        dashSegmentCount: verifyTally["dash-segment"] ?? 0,
+        audioCandidateCount: audioOnlyCount,
+        imageCandidateCount: validMedia.filter((m) => m.type === "image").length,
+        verifiedCandidateCount: verifiedByProbeCount,
         selection: selectionSummary,
         selectedMediaHost: orderedMedia[0] ? hostnameOf(orderedMedia[0].url) : null,
         videoCandidateCount: validMedia.filter((m) => m.type === "video").length,
@@ -5076,7 +5344,9 @@ export class PuppeteerProvider extends BaseProvider {
           cdnMediaCaptured: capturedCdnMediaUrlCount,
         },
       });
-      onProgress?.(85, "Media extracted");
+      // No further progress event here: 85 (candidates) and 95 (verifying)
+      // already fired in order during assembly, and the route emits 100 on
+      // completion. A post-success 85 would break the monotonic sequence.
 
       return {
         type: contentType,

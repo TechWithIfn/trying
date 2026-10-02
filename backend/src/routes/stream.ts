@@ -288,12 +288,14 @@ export function waitForDrainOrGone(
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     let settled = false;
+    const onDrain = (): void => done(true);
     const done = (ok: boolean): void => {
       if (settled) return;
       settled = true;
       req.off("close", onGone);
       res.off("close", onGone);
       res.off("error", onGone);
+      res.off("drain", onDrain);
       signal?.removeEventListener("abort", onGone);
       resolve(ok);
     };
@@ -308,7 +310,7 @@ export function waitForDrainOrGone(
       }
       signal.addEventListener("abort", onGone, { once: true });
     }
-    res.once("drain", () => done(true));
+    res.once("drain", onDrain);
   });
 }
 

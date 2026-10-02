@@ -110,6 +110,7 @@ export function parseSessionCookies(): SessionCookie[] {
   const cookie = getInstagramSessionCookie();
   if (!cookie) return [];
   const out: SessionCookie[] = [];
+  const seenNames = new Set<string>();
   for (const part of cookie.split(";")) {
     if (out.length >= MAX_SESSION_COOKIES) break;
     const trimmed = part.trim();
@@ -123,6 +124,10 @@ export function parseSessionCookies(): SessionCookie[] {
     if (hasHeaderInjection(name) || hasHeaderInjection(value)) continue;
     // Cookie names are tokens: reject separators that would corrupt the jar.
     if (/[\s,;"\\]/.test(name)) continue;
+    // First occurrence wins: a duplicated name would otherwise install the
+    // cookie twice and leave the browser jar ambiguous.
+    if (seenNames.has(name.toLowerCase())) continue;
+    seenNames.add(name.toLowerCase());
     out.push({ name, value, domain: ".instagram.com" });
   }
   return out;
