@@ -520,8 +520,13 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
               Download Instagram Reels, Videos &amp; Photos in HD — paste a public link and save public Reels, videos, photos, stories and audio to your phone or desktop with Downloadit. No login required.
             </p>
 
-            {/* Hero Category Row — 5 types: Reels, Videos, Photos, Stories, Audio */}
-            <div className="mt-6 w-full">
+            {/* Hero Category Row — 5 types: Reels, Videos, Photos, Stories, Audio.
+                Mobile order (reference layout): the search/download box must
+                render directly below the description and ABOVE these cards, so
+                below the lg breakpoint this block is ordered last within the
+                flex column. Desktop (lg+) keeps the existing DOM order.
+                No duplication: same nodes, same tablist semantics. */}
+            <div className="mt-6 w-full max-lg:order-last">
               <div
                 role="tablist"
                 aria-label="Supported downloaders"
