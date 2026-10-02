@@ -129,6 +129,72 @@ export function isMediaBearingApiUrl(url: string): boolean {
   return MEDIA_API_PATH_RE.test(parsed.pathname);
 }
 
+/**
+ * Interception phase. `hydrate` covers navigation and initial hydration:
+ * only fonts and clearly-unnecessary third-party requests are blocked, so
+ * Instagram CSS, images, and every API/CDN surface load normally. `optimize`
+ * additionally blocks stylesheets and non-story images to save bandwidth —
+ * entered ONLY after the browser itself captured a video candidate.
+ */
+export type InterceptionPhase = "hydrate" | "optimize";
+
+/**
+ * Whether the interception handler must abort this request. Pure and
+ * unit-tested. Safety rules, in order:
+ *
+ * - document/media/video/websocket/xhr/fetch/manifest/other are NEVER
+ *   aborted: they carry navigation, delivery, API, or page-protocol traffic
+ *   that hydration may require. Scripts load EXCEPT when the URL matches the
+ *   third-party ad/analytics blocklist on a non-media host (Instagram's own
+ *   scripts are exempt by MEDIA_HOST_RE, so hydration can never lose app
+ *   code — only DoubleClick-style tag managers and beacons are dropped).
+ * - fonts are always safe to drop (never affect media extraction).
+ * - third-party analytics/ads are always safe to drop.
+ * - stylesheets and (non-story) images are dropped ONLY in `optimize`
+ *   phase, i.e. after media was captured — never during hydration.
+ */
+export function shouldAbortRequest(
+  url: string,
+  resourceType: string,
+  phase: InterceptionPhase,
+  isStory: boolean
+): boolean {
+  if (
+    resourceType === "document" ||
+    resourceType === "media" ||
+    resourceType === "video" ||
+    resourceType === "websocket" ||
+    resourceType === "xhr" ||
+    resourceType === "fetch" ||
+    resourceType === "manifest" ||
+    resourceType === "other"
+  ) {
+    return false;
+  }
+  if (resourceType === "font") return true;
+  if (isUnnecessaryResource(url, resourceType)) return true;
+  if (phase === "optimize") {
+    if (resourceType === "stylesheet") return true;
+    if (resourceType === "image" && !isStory) return true;
+  }
+  return false;
+}
+
+export type RequestFailureClass = "intentional-abort" | "upstream-failure";
+
+/**
+ * Attribute a failed request. Puppeteer reports OUR OWN interception aborts
+ * as `net::ERR_FAILED` — indistinguishable by error text from a genuine
+ * network failure — so the abort set (populated by the request handler)
+ * is the only reliable signal. Pure and unit-tested.
+ */
+export function classifyRequestFailure(
+  url: string,
+  abortedUrls: ReadonlySet<string>
+): RequestFailureClass {
+  return abortedUrls.has(url) ? "intentional-abort" : "upstream-failure";
+}
+
 const MOBILE_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 // Desktop Chrome identity. Instagram's web document only carries the real
@@ -3460,12 +3526,22 @@ export class PuppeteerProvider extends BaseProvider {
           if (jar.length > 0) {
             await page.setCookie(...jar);
           }
-          // Count only: proves the session was injected pre-navigation
-          // without ever logging names, values, or domains.
-          logger.info("Puppeteer session cookies applied", { count: jar.length });
+          // Presence proof only: count + cookie NAMES (generic identifiers
+          // like sessionid/ds_user_id, never values). Whether Instagram
+          // ACCEPTED the session is decided later from document markers
+          // (detectSessionAccepted), never assumed from this line.
+          logger.info("Puppeteer session cookies applied", {
+            count: jar.length,
+            cookies: jar.map((c) => c.name),
+            sessionConfigured: true,
+          });
         } catch {
           /* anonymous fallback below */
         }
+      } else {
+        logger.info("Puppeteer anonymous navigation (no session configured)", {
+          sessionConfigured: false,
+        });
       }
 
       // Apply stealth patches to this page
@@ -3522,14 +3598,24 @@ export class PuppeteerProvider extends BaseProvider {
       // diagnostics so production shows how hard media was looked for.
       let extractionPasses = 0;
       let capturedCdnMediaUrlCount = 0;
-      // Failure observability (§5 diagnostics): which subresources die before
-      // hydration, grouped by host/type/chromium-error. Host + type + error
-      // text only — never URLs, headers, or cookies. A "document" or
-      // "script"/"xhr"/"fetch" failure here is the empty-shell smoking gun;
-      // ERR_BLOCKED_BY_CLIENT on font/stylesheet/image is our own
-      // interceptor working as designed.
+      // Failure observability: which subresources die before hydration,
+      // grouped by host/type/chromium-error. Host + type + error text only —
+      // never URLs, headers, or cookies. Intentional optimizer aborts are
+      // filtered out at the requestfailed listener (see intentionalAbortCount),
+      // so a "document"/"script"/"xhr"/"fetch" failure here is the empty-shell
+      // smoking gun, never our own interception.
       let failedRequestTotal = 0;
       const failedRequestGroups: Record<string, number> = {};
+      // Requests aborted by OUR OWN interception handler (bandwidth
+      // optimization). Puppeteer surfaces these as net::ERR_FAILED, exactly
+      // like a genuine network failure — without the abort set below they
+      // would be misread as Instagram blocking us. Never counted as upstream
+      // failures, never part of failedRequestGroups.
+      let intentionalAbortCount = 0;
+      const intentionallyAborted = new Set<string>();
+      // Main-document navigation failure (exception text), when goto itself
+      // threw rather than returning a (possibly bounced) response.
+      let navError: string | null = null;
       let consoleErrorCount = 0;
       let firstConsoleError: string | null = null;
       let pageErrorCount = 0;
@@ -3546,26 +3632,36 @@ export class PuppeteerProvider extends BaseProvider {
       let navRedirectStatuses: number[] = [];
       let navRedirectHosts: string[] = [];
 
-      // Block heavy resources we never need, but NEVER abort video/media
-      // requests: media delivery responses (resourceType "media",
-      // video/*) and <video> currentSrc are primary extraction signals.
-      // Scripts/XHR/fetch stay enabled — API JSON interception depends on them.
+      // Two-phase interception (§2/§3): hydrate first, optimize only after
+      // the browser itself captured a video candidate. Scripts/XHR/fetch/
+      // documents/media are never aborted in either phase — API JSON
+      // interception and hydration depend on them.
       await page.setRequestInterception(true).catch(() => {});
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       page.on("request", (intercepted: any) => {
         try {
+          // A second listener resolving the same request would race abort
+          // against continue and wedge the navigation: stand down when the
+          // resolution was already handled elsewhere.
+          if (
+            typeof intercepted.isInterceptResolutionHandled === "function" &&
+            intercepted.isInterceptResolutionHandled()
+          ) {
+            return;
+          }
           const type = intercepted.resourceType();
           const target = intercepted.url();
           if (type === "media" || type === "image" || type === "video") {
             interceptedMediaRequestCount++;
           }
-          if (
-            (type === "image" && !isStory) ||
-            type === "font" ||
-            type === "stylesheet" ||
-            isUnnecessaryResource(target, type)
-          ) {
+          const phase: InterceptionPhase = interceptedMedia.some((m) => m.type === "video")
+            ? "optimize"
+            : "hydrate";
+          if (shouldAbortRequest(target, type, phase, isStory)) {
             blockedRequestCount++;
+            // Bounded: one entry per distinct subresource URL on this page.
+            if (intentionallyAborted.size > 2000) intentionallyAborted.clear();
+            intentionallyAborted.add(target);
             intercepted.abort().catch(() => {});
           } else {
             intercepted.continue().catch(() => {});
@@ -3802,6 +3898,12 @@ export class PuppeteerProvider extends BaseProvider {
           const failure = typeof failed?.failure === "function" ? failed.failure() : null;
           const errText =
             failure && typeof failure.errorText === "string" ? failure.errorText : "unknown";
+          // Our own interception aborts surface here as net::ERR_FAILED —
+          // attribute them before counting anything as an upstream failure.
+          if (classifyRequestFailure(furl, intentionallyAborted) === "intentional-abort") {
+            intentionalAbortCount++;
+            return;
+          }
           let host = "(unparsable)";
           try {
             host = new URL(furl).hostname;
@@ -3907,12 +4009,22 @@ export class PuppeteerProvider extends BaseProvider {
         });
         recordNavResponse(navResponse);
       } catch (err) {
+        navError = err instanceof Error ? err.message.slice(0, 160) : String(err).slice(0, 160);
         logger.warn("Puppeteer PAGE_NAVIGATION_INTERRUPTED", {
-          error: err instanceof Error ? err.message : String(err),
+          error: navError,
           url,
         });
       }
       timings.navigationMs = Date.now() - navStart;
+      logger.info("[RESOLVE] navigation-complete", {
+        requestId,
+        docStatus: navStatus,
+        docHost: navFinalHost,
+        docPath: navFinalPath,
+        docContentType: navContentType,
+        redirects: navRedirectHops,
+        navError,
+      });
       onProgress?.(65, "Page loaded");
 
       // Redirect-away gate: if Instagram bounced the navigation off the
@@ -4220,6 +4332,7 @@ export class PuppeteerProvider extends BaseProvider {
       // 1. Initial media inspection from page DOM & scripts. Skipped when
       // redirected away: the loaded document is not the requested content and
       // its assets must never enter the candidate pool (see eligibleMedia).
+      const extractionStart = Date.now();
       let initialVideos: ExtractedMedia[] = [];
       if (!redirectedAway) {
         // Extraction phase 1 of at most 3 (initial → settle → 2nd attempt):
@@ -4245,6 +4358,13 @@ export class PuppeteerProvider extends BaseProvider {
       // counter needed because this block runs at most once per resolve.
       // Skipped for declared gates (reload cannot lift a login wall or
       // challenge) and whenever any media signal already exists.
+      //
+      // When the reload ALSO renders an empty shell, the 12s settle + 2s
+      // second attempt below are skipped (skipSettleWaits): a document with
+      // no app content cannot grow a video graph by waiting, and the blind
+      // wait is what turned transient shells into ~30s failures. Prefetch
+      // seeds and the embed fallback still get their chance at assembly.
+      let skipSettleWaits = false;
       if (!hasVideoBeenExtracted() && interceptedMedia.length === 0 && !signal?.aborted && !redirectedAway) {
         try {
           const [shellProbe, shellState] = await Promise.all([
@@ -4260,10 +4380,33 @@ export class PuppeteerProvider extends BaseProvider {
             shellState &&
               (shellState.hasUnavailableMessage || shellState.hasLoginWall || shellState.hasChallenge)
           );
+          logger.info("[RESOLVE] document-inspection", {
+            requestId,
+            docStatus: navStatus,
+            docContentType: navContentType,
+            hasArticle: Boolean((shellProbe as { hasArticle?: unknown } | null)?.hasArticle),
+            domVideos: Array.isArray((shellProbe as { videos?: unknown } | null)?.videos)
+              ? ((shellProbe as { videos: unknown[] }).videos.length)
+              : -1,
+            domImages: Array.isArray((shellProbe as { images?: unknown } | null)?.images)
+              ? ((shellProbe as { images: unknown[] }).images.length)
+              : -1,
+            bodyChars: typeof (shellProbe as { bodySnippet?: unknown } | null)?.bodySnippet === "string"
+              ? ((shellProbe as { bodySnippet: string }).bodySnippet.length)
+              : -1,
+            interceptedMedia: interceptedMedia.length,
+            walled: shellWalled,
+          });
           if (isReloadableShell(shellProbe, shellWalled)) {
             logger.warn("Puppeteer empty shell detected, attempting one bounded reload", { url });
             const reloadStart = Date.now();
-            await page.reload({ waitUntil: "domcontentloaded", timeout: 10_000 });
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const reloadResponse: any = await page.reload({ waitUntil: "domcontentloaded", timeout: 10_000 });
+              recordNavResponse(reloadResponse);
+            } catch {
+              // Reload navigation threw: continue with what was captured.
+            }
             timings.shellReloadMs = Date.now() - reloadStart;
             const retryVideos = await extractVideoCandidatesFromPage();
             for (const item of retryVideos) {
@@ -4275,7 +4418,21 @@ export class PuppeteerProvider extends BaseProvider {
               url,
               reloadMs: timings.shellReloadMs,
               retryVideoCount: retryVideos.length,
+              reloadedDocStatus: navStatus,
+              reloadedDocPath: navFinalPath,
             });
+            // Re-probe: if the reloaded document is STILL an empty shell,
+            // waiting cannot help — skip straight to the verdict paths.
+            if (!hasVideoBeenExtracted()) {
+              const rescan = await page.evaluate(FETCH_META_FN).catch(() => null);
+              if (isReloadableShell(rescan, shellWalled)) {
+                skipSettleWaits = true;
+                logger.info("[RESOLVE] empty-shell-verdict-path", {
+                  requestId,
+                  reason: "reload-still-empty-shell",
+                });
+              }
+            }
           }
         } catch {
           // Reload failed or frame detached: continue with what was captured.
@@ -4295,7 +4452,7 @@ export class PuppeteerProvider extends BaseProvider {
       // itself blocked gets a short grace (the video graph is never coming,
       // and the blocked-state handlers below produce the same honest outcome
       // sooner).
-      if (!hasVideoBeenExtracted() && !redirectedAway) {
+      if (!hasVideoBeenExtracted() && !redirectedAway && !skipSettleWaits) {
         // Extraction phase 2 (final value 2): one bounded hydration wait.
         extractionPasses++;
         const settleStart = Date.now();
@@ -4368,7 +4525,7 @@ export class PuppeteerProvider extends BaseProvider {
       // hydration may simply be late. Poll DOM/scripts once more within a
       // hard cap that never reaches past the resolve deadline (room is kept
       // for assembly and candidate verification). One attempt, then conclude.
-      if (!hasVideoBeenExtracted() && !signal?.aborted && !redirectedAway) {
+      if (!hasVideoBeenExtracted() && !signal?.aborted && !redirectedAway && !skipSettleWaits) {
         // Extraction phase 3 (final value 3): the single controlled second
         // attempt. After this the extraction story is over — assembly decides.
         extractionPasses++;
@@ -4445,7 +4602,10 @@ export class PuppeteerProvider extends BaseProvider {
         }
       }
 
+      timings.extractionMs = Date.now() - extractionStart;
+
       // Check page state
+      const documentInspectionStart = Date.now();
       const pageState = await page.evaluate(PAGE_STATE_FN).catch(() => ({
         title: "",
         hasUnavailableMessage: false,
@@ -4681,6 +4841,7 @@ export class PuppeteerProvider extends BaseProvider {
       } catch {
         // Page content not available
       }
+      timings.documentInspectionMs = Date.now() - documentInspectionStart;
 
       // Combine all sources. First-seen provenance wins, except a later
       // network-video-response upgrades a weaker earlier source (the network
@@ -4878,6 +5039,7 @@ export class PuppeteerProvider extends BaseProvider {
           // 95 marks the verification phase that proves a playable source.
           onProgress?.(95, "Verifying playable source");
         }
+        const verificationStart = Date.now();
         await verifyInPriorityOrder({
           items: scored,
           concurrency: VERIFY_CONCURRENCY,
@@ -4933,6 +5095,14 @@ export class PuppeteerProvider extends BaseProvider {
           // Dispatch stops once a playable video is proven; in-flight probes
           // still complete and join the ranking below.
           isComplete: () => probePassed.length > 0,
+        });
+        timings.verificationMs = Date.now() - verificationStart;
+        logger.info("[RESOLVE] candidates-verified", {
+          requestId,
+          verified: probePassed.length,
+          trustedFallback: captureFallback.length,
+          verifyTally,
+          verificationMs: timings.verificationMs,
         });
         probePassed.sort(compareReelVideoCandidates);
         audioOnly.sort((a, b) => b.size - a.size);
@@ -5017,6 +5187,11 @@ export class PuppeteerProvider extends BaseProvider {
         trusted: trustedCaptureCount,
         selected: playableMedia.length,
       };
+      logger.info("[RESOLVE] candidates-found", {
+        requestId,
+        contentType,
+        ...selectionSummary,
+      });
 
       if (playableMedia.length === 0) {
         const rejectedVideoCount = validMedia.filter((item) => item.type === "video").length;
@@ -5089,6 +5264,19 @@ export class PuppeteerProvider extends BaseProvider {
           selectedHeight: null,
           selectedContentLength: null,
           hasSession: isInstagramSessionConfigured(),
+          sessionConfigured: isInstagramSessionConfigured(),
+          sessionAccepted: docSessionAcceptedForLog ?? fetchMeta.sessionAccepted ?? null,
+          // Request-lifecycle attribution (§1/§6/§18): intentional aborts
+          // (our bandwidth optimization) are counted separately and NEVER
+          // mixed into upstream failures. navError names a thrown goto;
+          // mainDocumentFailure is true only when the document itself failed.
+          intentionalAbortCount,
+          mainDocumentFailure: navError !== null,
+          navError,
+          documentBodyLength: renderedHtmlText.length,
+          apiResponseCount: jsonInspectedCount,
+          mediaRequestCount: interceptedMediaRequestCount,
+          mediaResponseCount: capturedCdnMediaUrlCount,
           domVideoCount: domResult.videos.length,
           videoElementCount: domResult.videos.length,
           domImageCount: domResult.images.length,
@@ -5118,16 +5306,19 @@ export class PuppeteerProvider extends BaseProvider {
           docSessionAccepted: docSessionAcceptedForLog,
           docContentType: navContentType,
           docRedirectHops: navRedirectHops,
-          // Pre-hydration failures: which subresources died (host/type/
-          // chromium-error only). document/script/xhr/fetch failures here
-          // are the empty-shell smoking gun; ERR_BLOCKED_BY_CLIENT on
-          // font/stylesheet/image is our own interceptor by design.
+          // Pre-hydration failures: genuine upstream subresource deaths only
+          // (host/type/chromium-error). Intentional optimizer aborts are
+          // counted separately above and never appear here — a document,
+          // script, xhr or fetch failure in these groups is the empty-shell
+          // smoking gun.
           failedRequestTotal,
           failedRequestGroups,
           consoleErrorCount,
           firstConsoleError,
           pageErrorCount,
           firstPageError,
+          // Stage timings (§19): where the milliseconds actually went.
+          ...timings,
           duration: Date.now() - startTime,
           elapsedMs: Date.now() - startTime,
         });

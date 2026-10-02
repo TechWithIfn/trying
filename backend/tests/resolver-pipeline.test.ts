@@ -12,6 +12,7 @@
  *  R. event-listener cleanup (gates, drain waits)
  *  T. session-cookie parsing (duplicates, malformed, no crash)
  *  Plus: SSE progress monotonicity on success.
+ *  Plus: two-phase interception (hydrate-safe) + abort attribution.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
@@ -312,6 +313,62 @@ describe("candidate classification and verification", () => {
       if (saved.INSTAGRAM_SESSIONID === undefined) delete process.env.INSTAGRAM_SESSIONID;
       else process.env.INSTAGRAM_SESSIONID = saved.INSTAGRAM_SESSIONID;
     }
+  });
+});
+
+describe("two-phase interception and abort attribution", () => {
+  const IG_CSS = "https://www.instagram.com/static/bundles/base.css";
+  const IG_IMG = "https://scontent-iad3-1.cdninstagram.com/v/photo.jpg?sig=x";
+  const AD_SCRIPT = "https://www.doubleclick.net/gpt/pubads.js";
+  const AD_IMG = "https://ad.example.com/px.gif";
+
+  it("hydrate phase never blocks Instagram CSS/images/scripts/API traffic", async () => {
+    const { shouldAbortRequest } = await import("@/lib/providers/puppeteer.js");
+    expect(shouldAbortRequest(IG_CSS, "stylesheet", "hydrate", false)).toBe(false);
+    expect(shouldAbortRequest(IG_IMG, "image", "hydrate", false)).toBe(false);
+    expect(shouldAbortRequest("https://www.instagram.com/api/v1/feed/", "xhr", "hydrate", false)).toBe(false);
+    expect(shouldAbortRequest("https://www.instagram.com/graphql", "fetch", "hydrate", false)).toBe(false);
+    expect(shouldAbortRequest("https://www.instagram.com/reel/Abc/", "document", "hydrate", false)).toBe(false);
+    expect(shouldAbortRequest(`${CDN}/o1/v/t16/clip.mp4?sig=v`, "media", "hydrate", false)).toBe(false);
+    expect(shouldAbortRequest(`${CDN}/o1/v/t16/clip.mp4?sig=v`, "video", "hydrate", false)).toBe(false);
+    // Story images stay exempt in both phases.
+    expect(shouldAbortRequest(IG_IMG, "image", "optimize", true)).toBe(false);
+  });
+
+  it("hydrate phase still drops fonts and third-party trackers", async () => {
+    const { shouldAbortRequest } = await import("@/lib/providers/puppeteer.js");
+    expect(shouldAbortRequest("https://fonts.gstatic.com/font.woff2", "font", "hydrate", false)).toBe(true);
+    // Blocklisted ad hosts are dropped even as scripts: no media host is
+    // involved, so Instagram hydration cannot depend on them.
+    expect(shouldAbortRequest(AD_SCRIPT, "script", "hydrate", false)).toBe(true);
+    // Instagram's own scripts always load (media-host exempt).
+    expect(
+      shouldAbortRequest("https://www.instagram.com/static/bundles/app.js", "script", "hydrate", false)
+    ).toBe(false);
+    expect(shouldAbortRequest(AD_IMG, "image", "hydrate", false)).toBe(true);
+  });
+
+  it("optimize phase restores bandwidth saving after media capture", async () => {
+    const { shouldAbortRequest } = await import("@/lib/providers/puppeteer.js");
+    expect(shouldAbortRequest(IG_CSS, "stylesheet", "optimize", false)).toBe(true);
+    expect(shouldAbortRequest(IG_IMG, "image", "optimize", false)).toBe(true);
+    // Delivery and API traffic stay exempt in every phase.
+    expect(shouldAbortRequest(`${CDN}/o1/v/t16/clip.mp4?sig=v`, "media", "optimize", false)).toBe(false);
+    expect(shouldAbortRequest("https://www.instagram.com/api/v1/feed/", "xhr", "optimize", false)).toBe(false);
+  });
+
+  it("own interception aborts are never counted as upstream failures", async () => {
+    const { classifyRequestFailure } = await import("@/lib/providers/puppeteer.js");
+    const aborted = new Set(["https://static.cdninstagram.com/style.css", IG_IMG]);
+    expect(classifyRequestFailure("https://static.cdninstagram.com/style.css", aborted)).toBe(
+      "intentional-abort"
+    );
+    expect(classifyRequestFailure("https://www.instagram.com/api/v1/feed/", aborted)).toBe(
+      "upstream-failure"
+    );
+    expect(classifyRequestFailure("https://static.cdninstagram.com/other.css", aborted)).toBe(
+      "upstream-failure"
+    );
   });
 });
 
