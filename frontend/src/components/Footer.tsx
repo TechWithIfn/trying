@@ -68,6 +68,7 @@ export default function Footer() {
     { label: t.footer.legalLinks.terms, href: "/terms" },
     { label: t.footer.legalLinks.dmca, href: "/dmca" },
     { label: t.footer.legalLinks.disclaimer, href: "/disclaimer" },
+    { label: t.footer.legalLinks.advertise, href: "/advertise-with-us" },
   ];
 
   return (

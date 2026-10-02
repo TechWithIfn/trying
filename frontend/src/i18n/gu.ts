@@ -235,6 +235,7 @@ export const gu: Strings = {
       terms: "સેવાની શરતો",
       dmca: "DMCA / કોપીરાઇટ",
       disclaimer: "અસ્વીકરણ",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram કે Meta સાથે સંકળાયેલ નથી. ફક્ત જે કન્ટેન્ટનો અધિકાર તમારી પાસે હોય તે જ ડાઉનલોડ કરો.",

@@ -34,7 +34,7 @@ export default function HomeClient() {
   return (
     <>
       <Header activeDownloaderTab={activeTab} onDownloaderTabChange={handleDownloaderTabChange} />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <HeroDownloader activeTab={activeTab} onActiveTabChange={setActiveTab} />
 
         {/* ── Quick Feature Strip ── */}
@@ -88,11 +88,11 @@ export default function HomeClient() {
                   </div>
                   <h3 className="mt-3 text-[16px] font-bold text-fg">What you can download</h3>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px] leading-[1.7] text-fg-muted">
-                    <li><a href="/instagram-reels-downloader" className="font-bold text-primary hover:underline">Instagram Reels Downloader</a> — Download Instagram Reels in full quality as MP4.</li>
-                    <li><a href="/instagram-video-downloader" className="font-bold text-primary hover:underline">Instagram Video Downloader</a> — Download Instagram Videos and long-form clips as MP4.</li>
-                    <li><a href="/instagram-photo-downloader" className="font-bold text-primary hover:underline">Instagram Photo Downloader</a> — save single photos and every image of a multi-photo post at original resolution.</li>
-                    <li><a href="/instagram-story-downloader" className="font-bold text-primary hover:underline">Instagram Story Downloader</a> — save public stories before they expire.</li>
-                    <li><a href="/instagram-audio-downloader" className="font-bold text-primary hover:underline">Instagram Audio Downloader</a> — extract the sound of a Reel or video as MP3.</li>
+                    <li><a href="/instagram-reels-downloader" className="font-bold text-primary-strong hover:underline">Instagram Reels Downloader</a> — Download Instagram Reels in full quality as MP4.</li>
+                    <li><a href="/instagram-video-downloader" className="font-bold text-primary-strong hover:underline">Instagram Video Downloader</a> — Download Instagram Videos and long-form clips as MP4.</li>
+                    <li><a href="/instagram-photo-downloader" className="font-bold text-primary-strong hover:underline">Instagram Photo Downloader</a> — save single photos and every image of a multi-photo post at original resolution.</li>
+                    <li><a href="/instagram-story-downloader" className="font-bold text-primary-strong hover:underline">Instagram Story Downloader</a> — save public stories before they expire.</li>
+                    <li><a href="/instagram-audio-downloader" className="font-bold text-primary-strong hover:underline">Instagram Audio Downloader</a> — extract the sound of a Reel or video as MP3.</li>
                   </ul>
                 </div>
                 <div className="rounded-2xl p-5 shadow-[var(--shadow-card)]" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>

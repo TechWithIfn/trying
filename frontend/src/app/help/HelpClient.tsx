@@ -104,7 +104,7 @@ export default function HelpClient() {
   return (
     <>
       <Header />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <section className="relative overflow-hidden pb-8 pt-8 sm:pt-12">
           <div className="absolute inset-0 -z-10">
             <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/[0.03] blur-[160px]" />

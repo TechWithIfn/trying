@@ -235,6 +235,7 @@ export const pa: Strings = {
       terms: "ਸੇਵਾ ਸ਼ਰਤਾਂ",
       dmca: "DMCA / ਕਾਪੀਰਾਈਟ",
       disclaimer: "ਬੇਦਾਅਵਾ",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram ਜਾਂ Meta ਨਾਲ ਸਬੰਧਤ ਨਹੀਂ ਹੈ। ਸਿਰਫ਼ ਉਹੀ ਸਮੱਗਰੀ ਡਾਊਨਲੋਡ ਕਰੋ ਜਿਸਦਾ ਅਧਿਕਾਰ ਤੁਹਾਡੇ ਕੋਲ ਹੈ।",

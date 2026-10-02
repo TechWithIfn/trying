@@ -242,6 +242,7 @@ export const en: Strings = {
       terms: "Terms of Service",
       dmca: "DMCA / Copyright",
       disclaimer: "Disclaimer",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit is not affiliated with Instagram or Meta. Only download content you have the right to save.",

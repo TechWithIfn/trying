@@ -21,7 +21,10 @@ const poppins = Poppins({
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
-  weight: ["500", "600"],
+  // Only 600 italic is used (hero title accent, font-semibold italic).
+  // Loading 500 as well would cost an extra render-blocking woff2 + preload
+  // for a weight nothing renders.
+  weight: ["600"],
   style: ["italic"],
   display: "swap",
 });
@@ -111,10 +114,12 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Google AdSense */}
+        {/* Google AdSense (Auto Ads): lazyOnload keeps the ~250KB ad stack
+            off the critical path — it must never compete with hero paint,
+            fonts, or hydration. Ads render once the page is interactive. */}
         <Script
           id="google-adsense"
-          async
+          strategy="lazyOnload"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8543183124286362"
           crossOrigin="anonymous"
         />
@@ -181,6 +186,9 @@ export default function RootLayout({
       </head>
 
       <body className="min-h-full flex flex-col antialiased">
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>

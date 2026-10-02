@@ -235,6 +235,7 @@ export const bn: Strings = {
       terms: "পরিষেবার শর্তাবলী",
       dmca: "DMCA / কপিরাইট",
       disclaimer: "দাবিত্যাগ",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram বা Meta-র সাথে যুক্ত নয়। শুধু সেই কন্টেন্ট ডাউনলোড করুন যার অধিকার আপনার আছে।",

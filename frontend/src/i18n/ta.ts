@@ -235,6 +235,7 @@ export const ta: Strings = {
       terms: "சேவை விதிகள்",
       dmca: "DMCA / பதிப்புரிமை",
       disclaimer: "மறுப்பு",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram அல்லது Meta-வுடன் தொடர்புடையது அல்ல. உங்களுக்கு உரிமையுள்ள உள்ளடக்கத்தை மட்டும் பதிவிறக்குங்கள்.",

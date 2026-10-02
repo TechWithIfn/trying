@@ -235,6 +235,7 @@ export const kn: Strings = {
       terms: "ಸೇವಾ ನಿಯಮಗಳು",
       dmca: "DMCA / ಹಕ್ಕುಸ್ವಾಮ್ಯ",
       disclaimer: "ನಿರಾಕರಣೆ",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram ಅಥವಾ Meta ಗೆ ಸಂಬಂಧಿಸಿಲ್ಲ. ನಿಮಗೆ ಹಕ್ಕಿರುವ ವಿಷಯವನ್ನು ಮಾತ್ರ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ.",

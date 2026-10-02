@@ -27,7 +27,7 @@ export default function ReelsDownloaderPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pt-8 sm:pt-12 pb-12">
           <h1 className="text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">
             Instagram Reels Downloader
@@ -51,7 +51,7 @@ export default function ReelsDownloaderPage() {
             <h2 className="text-[20px] font-bold text-fg">How the Instagram Reels downloader works</h2>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li><strong className="text-fg">Copy the Reels link</strong> — open Instagram, tap Share on the reel and copy its link.</li>
-              <li><strong className="text-fg">Paste it in Downloadit</strong> — go to the <Link href="/" className="text-primary hover:underline">Instagram Downloader</Link> and paste the URL.</li>
+              <li><strong className="text-fg">Paste it in Downloadit</strong> — go to the <Link href="/" className="text-primary-strong hover:underline">Instagram Downloader</Link> and paste the URL.</li>
               <li><strong className="text-fg">Preview and save</strong> — preview the reel as MP4 and tap Download to save it to your device.</li>
             </ol>
             <p className="text-[14px] leading-[1.6] text-fg-subtle">
@@ -90,7 +90,7 @@ export default function ReelsDownloaderPage() {
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
-                <span className="text-[14px] font-semibold text-primary">{l.label}</span>
+                <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
                 <span className="mt-1 block text-[14px] text-fg-muted">{l.desc}</span>
               </Link>
             ))}
@@ -119,7 +119,7 @@ export default function ReelsDownloaderPage() {
           </section>
 
           <p className="mt-10 text-[12px] text-fg-subtle">
-            Learn how the downloader works on the <Link href="/#how-it-works" className="text-primary hover:underline">How It Works</Link> section, find answers in the <Link href="/#faq" className="text-primary hover:underline">FAQ</Link>, or read our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+            Learn how the downloader works on the <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link> section, find answers in the <Link href="/#faq" className="text-primary-strong hover:underline">FAQ</Link>, or read our <Link href="/privacy" className="text-primary-strong hover:underline">Privacy Policy</Link>.
           </p>
         </section>
       </main>

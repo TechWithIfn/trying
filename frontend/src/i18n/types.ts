@@ -160,6 +160,7 @@ export interface Strings {
       terms: string;
       dmca: string;
       disclaimer: string;
+      advertise: string;
     };
     disclaimer: string;
     rights: string;

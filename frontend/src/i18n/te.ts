@@ -235,6 +235,7 @@ export const te: Strings = {
       terms: "సేవా నిబంధనలు",
       dmca: "DMCA / కాపీరైట్",
       disclaimer: "నిరాకరణ",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram లేదా Metaతో అనుబంధం లేదు. మీకు హక్కు ఉన్న కంటెంట్ మాత్రమే డౌన్‌లోడ్ చేయండి.",

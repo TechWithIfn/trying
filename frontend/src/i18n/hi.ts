@@ -235,6 +235,7 @@ export const hi: Strings = {
       terms: "सेवा शर्तें",
       dmca: "DMCA / कॉपीराइट",
       disclaimer: "अस्वीकरण",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram या Meta से संबद्ध नहीं है। केवल वही कंटेंट डाउनलोड करें जिसका अधिकार आपके पास है।",

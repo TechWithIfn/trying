@@ -235,6 +235,7 @@ export const or: Strings = {
       terms: "ସେବା ସର୍ତ୍ତାବଳୀ",
       dmca: "DMCA / କପିରାଇଟ",
       disclaimer: "ଅସ୍ୱୀକାର",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram ବା Meta ସହ ଜଡିତ ନୁହେଁ। କେବଳ ଯେଉଁ ବିଷୟର ଅଧିକାର ଆପଣଙ୍କ ପାଖରେ ଅଛି ତାହା ଡାଉନଲୋଡ୍ କରନ୍ତୁ।",

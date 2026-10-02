@@ -235,6 +235,7 @@ export const as: Strings = {
       terms: "সেৱাৰ চৰ্তাৱলী",
       dmca: "DMCA / কপিৰাইট",
       disclaimer: "অস্বীকাৰ",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram বা Metaৰ সৈতে জড়িত নহয়। অধিকাৰ থকা কন্টেন্টহে ডাউনল’ড কৰক।",

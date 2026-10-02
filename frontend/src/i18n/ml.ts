@@ -235,6 +235,7 @@ export const ml: Strings = {
       terms: "സേവന നിബന്ധനകൾ",
       dmca: "DMCA / പകർപ്പവകാശം",
       disclaimer: "നിരാകരണം",
+      advertise: "Advertise",
     },
     disclaimer:
       "Downloadit Instagram-മായോ Meta-യുമായോ അഫിലിയേറ്റ് ചെയ്തിട്ടില്ല. അവകാശമുള്ള ഉള്ളടക്കം മാത്രം ഡൗൺലോഡ് ചെയ്യൂ.",

@@ -27,7 +27,7 @@ export default function StoryDownloaderPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pt-8 sm:pt-12 pb-12">
           <h1 className="text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Story Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
@@ -47,7 +47,7 @@ export default function StoryDownloaderPage() {
             <h2 className="text-[20px] font-bold text-fg">How the Instagram story downloader works</h2>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li><strong className="text-fg">Copy the story link</strong> — open the public story and copy its link.</li>
-              <li><strong className="text-fg">Paste it in Downloadit</strong> — use the <Link href="/" className="text-primary hover:underline">Instagram Downloader</Link> homepage.</li>
+              <li><strong className="text-fg">Paste it in Downloadit</strong> — use the <Link href="/" className="text-primary-strong hover:underline">Instagram Downloader</Link> homepage.</li>
               <li><strong className="text-fg">Preview and save</strong> — view the story image or video and download it in original quality.</li>
             </ol>
             <p className="text-[14px] leading-[1.6] text-fg-subtle">No-login story saver: only stories you can view publicly without signing in are eligible. Expired stories always show a clear “expired/not found” message.</p>
@@ -84,7 +84,7 @@ export default function StoryDownloaderPage() {
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
-                <span className="text-[14px] font-semibold text-primary">{l.label}</span>
+                <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
                 <span className="mt-1 block text-[14px] text-fg-muted">{l.desc}</span>
               </Link>
             ))}
@@ -113,7 +113,7 @@ export default function StoryDownloaderPage() {
           </section>
 
           <p className="mt-10 text-[12px] text-fg-subtle">
-            See <Link href="/#how-it-works" className="text-primary hover:underline">How It Works</Link>, <Link href="/#faq" className="text-primary hover:underline">FAQ</Link> or <Link href="/privacy" className="text-primary hover:underline">Privacy</Link>.
+            See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, <Link href="/#faq" className="text-primary-strong hover:underline">FAQ</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
           </p>
         </section>
       </main>

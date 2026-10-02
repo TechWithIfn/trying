@@ -6,22 +6,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { LanguageCode, LanguageMeta, Strings } from "./types";
 import { en } from "./en";
-import { hi } from "./hi";
-import { mr } from "./mr";
-import { bn } from "./bn";
-import { gu } from "./gu";
-import { pa } from "./pa";
-import { ta } from "./ta";
-import { te } from "./te";
-import { kn } from "./kn";
-import { ml } from "./ml";
-import { or as orLang } from "./or";
-import { as as asLang } from "./as";
 
 export const LANGUAGES: LanguageMeta[] = [
   { code: "en", label: "English", short: "EN" },
@@ -41,9 +31,37 @@ export const LANGUAGES: LanguageMeta[] = [
 const STORAGE_KEY = "downloadit_language";
 const DEFAULT_LANG: LanguageCode = "en";
 
-const catalogs: Record<LanguageCode, Strings> = {
-  en, hi, mr, bn, gu, pa, ta, te, kn, ml, or: orLang, as: asLang,
+// English is bundled (first paint + SSR use it). Every other catalog is a
+// separate lazy chunk loaded on demand — shipping all 12 locales statically
+// added ~300KB of strings to every visitor's initial JavaScript.
+type CatalogModule = { [K in string]: Strings };
+const catalogLoaders: Record<Exclude<LanguageCode, "en">, () => Promise<Strings>> = {
+  hi: () => import("./hi").then((m: CatalogModule) => m.hi),
+  mr: () => import("./mr").then((m: CatalogModule) => m.mr),
+  bn: () => import("./bn").then((m: CatalogModule) => m.bn),
+  gu: () => import("./gu").then((m: CatalogModule) => m.gu),
+  pa: () => import("./pa").then((m: CatalogModule) => m.pa),
+  ta: () => import("./ta").then((m: CatalogModule) => m.ta),
+  te: () => import("./te").then((m: CatalogModule) => m.te),
+  kn: () => import("./kn").then((m: CatalogModule) => m.kn),
+  ml: () => import("./ml").then((m: CatalogModule) => m.ml),
+  or: () => import("./or").then((m: CatalogModule) => m.or),
+  as: () => import("./as").then((m: CatalogModule) => m.as),
 };
+
+// Loaded non-English catalogs (module-level cache: one network fetch per
+// language per page lifetime, then instant).
+const loadedCatalogs = new Map<LanguageCode, Strings>();
+
+function loadCatalog(code: LanguageCode): Promise<Strings> {
+  if (code === "en") return Promise.resolve(en);
+  const cached = loadedCatalogs.get(code);
+  if (cached) return Promise.resolve(cached);
+  return catalogLoaders[code]().then((catalog) => {
+    loadedCatalogs.set(code, catalog);
+    return catalog;
+  });
+}
 
 function isLangCode(value: unknown): value is LanguageCode {
   return (
@@ -99,15 +117,42 @@ function readStoredLang(): LanguageCode {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<LanguageCode>(DEFAULT_LANG);
+  // Non-English strings arrive asynchronously; until then the UI keeps
+  // rendering English (same strings the server prerendered — no hydration
+  // mismatch, no layout shift from missing text).
+  const [catalog, setCatalog] = useState<Strings>(en);
+  // Guards rapid language switches: only the latest request may install
+  // its catalog, so a slow earlier fetch can never overwrite a newer one.
+  const requestRef = useRef(0);
+
+  const applyLang = useCallback((code: LanguageCode) => {
+    setLangState(code);
+    if (code === DEFAULT_LANG) {
+      requestRef.current += 1;
+      setCatalog(en);
+      return;
+    }
+    const request = requestRef.current + 1;
+    requestRef.current = request;
+    loadCatalog(code).then(
+      (strings) => {
+        if (requestRef.current === request) setCatalog(strings);
+      },
+      () => {
+        if (requestRef.current === request) setCatalog(en);
+      }
+    );
+  }, []);
 
   // Restore the saved language after mount (initial render stays English
   // so server and client HTML always match — no hydration mismatch).
+  // Deferred (repo convention) to avoid a synchronous setState in effect.
   useEffect(() => {
     queueMicrotask(() => {
       const stored = readStoredLang();
-      if (stored !== DEFAULT_LANG) setLangState(stored);
+      if (stored !== DEFAULT_LANG) applyLang(stored);
     });
-  }, []);
+  }, [applyLang]);
 
   // Keep <html lang> in sync for accessibility and SEO.
   useEffect(() => {
@@ -118,17 +163,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [lang ]);
 
-  const setLang = useCallback((code: LanguageCode) => {
-    if (!isLangCode(code)) return;
-    setLangState(code);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, code);
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
+  const setLang = useCallback(
+    (code: LanguageCode) => {
+      if (!isLangCode(code)) return;
+      applyLang(code);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, code);
+      } catch {
+        /* storage unavailable */
+      }
+    },
+    [applyLang]
+  );
 
-  const t = useMemo(() => withFallback(catalogs[lang]), [lang]);
+  const t = useMemo(() => withFallback(catalog), [catalog]);
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
