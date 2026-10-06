@@ -92,6 +92,23 @@ const HERO_CATEGORIES = [
   },
 ];
 
+/**
+ * Single auto-scroll entry point for the downloader flow. Targets the shared
+ * result anchor (progress, output and error all render inside it), so one
+ * helper covers every scroll. `block: "start"` pairs with the anchor's
+ * `scroll-mt-20` (80px clears the 72px sticky header); centering would waste
+ * half the viewport above the card. Honors reduced-motion. Never called from
+ * progress callbacks — only submit and success paths below may call it.
+ */
+function scrollToSection(ref: { current: HTMLElement | null }) {
+  const el = ref.current;
+  if (!el || typeof window === "undefined") return;
+  const reduceMotion =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+}
+
 function resolveTabFromResultType(type: string): DownloaderTab | null {
   switch (type) {
     case "REEL":
@@ -386,6 +403,14 @@ export default function HeroDownloader({
       setProgress(0);
       setProgressStage(t.hero.analyzing);
       setState("PREPARING");
+      // Auto-scroll #1 (once per request): the request genuinely started, so
+      // guide to the progress area. Validation/offline/duplicate paths return
+      // before this point and never scroll. The anchor always exists, so the
+      // scroll is safe even before the progress UI commits.
+      if (submitScrollSeqRef.current !== seq) {
+        submitScrollSeqRef.current = seq;
+        scrollToSection(resultAnchorRef);
+      }
       // Silence watchdog, not a total-request timer. It fires only when the backend
       // sends no SSE stage, error, or completion for this long. Resetting it on
       // every real backend event prevents a slow-but-working serverless resolve
@@ -548,6 +573,12 @@ export default function HeroDownloader({
   const tabsRef = useRef<HTMLDivElement>(null);
   const resultAnchorRef = useRef<HTMLDivElement>(null);
   const prevStateRef = useRef<UIState>("IDLE");
+  // Auto-scroll guards: each fires at most once per request, keyed by the
+  // request sequence (which strictly increases per submit, so a new URL or
+  // retry automatically re-arms both). Refs — not state — so SSE progress
+  // events and re-renders can never trigger extra scrolls.
+  const submitScrollSeqRef = useRef(0);
+  const successScrollSeqRef = useRef(0);
 
   // Keep the active tab fully visible inside the horizontal scroller.
   useEffect(() => {
@@ -555,13 +586,19 @@ export default function HeroDownloader({
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [activeTab]);
 
-  // On phones, bring the fresh result into view so Preview / Download are
-  // reachable without hunting. Desktop behavior is left untouched.
+  // Auto-scroll #2 (once per successful request, all viewports): the actual
+  // output just rendered, so bring the result card into view — Preview and
+  // Download land under the header offset instead of below the fold. Fires on
+  // the SUCCESS transition only (never on progress percentages), and never on
+  // ERROR (the user is already at the progress/error area from scroll #1) or
+  // reset. rAF lets the result mount first. At most two programmatic scrolls
+  // per request exist, so manual scrolling is never fought.
   useEffect(() => {
     if (state === "SUCCESS" && prevStateRef.current !== "SUCCESS") {
-      if (typeof window !== "undefined" && window.innerWidth < 640) {
+      if (successScrollSeqRef.current !== requestSeqRef.current) {
+        successScrollSeqRef.current = requestSeqRef.current;
         requestAnimationFrame(() => {
-          resultAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          scrollToSection(resultAnchorRef);
         });
       }
     }
