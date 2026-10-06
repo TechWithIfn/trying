@@ -3,6 +3,7 @@ export type InstagramContentType =
   | "POST"
   | "CAROUSEL"
   | "STORY"
+  | "STORY_PROFILE"
   | "HIGHLIGHT"
   | "VIDEO"
   | "PHOTO"
@@ -23,6 +24,12 @@ export interface MediaItem {
   size?: number | null;
   thumbnail: string | null;
   format: string | null;
+  /**
+   * Verified upstream MIME (e.g. "video/mp4") observed during candidate
+   * verification. Optional so existing Reel/Post providers stay untouched;
+   * the Story resolver sets it whenever verification observed one.
+   */
+  mimeType?: string | null;
   /**
    * Separate audio rendition for a split-track video (Instagram Reels publish
    * a video-only MP4 plus its own audio-only MP4). Null when the video already
@@ -190,9 +197,27 @@ export type ErrorCode =
   | "STORY_MEDIA_NOT_FOUND"
   | "INSTAGRAM_AUTH_NOT_CONFIGURED"
   | "INSTAGRAM_AUTH_INVALID"
+  | "SESSION_EXPIRED"
+  | "USER_NOT_FOUND"
+  | "PRIVATE_ACCOUNT"
+  | "FETCH_FAILED"
+  | "NO_STORY"
   | "STORY_NOT_FOUND"
   | "STORY_EXPIRED"
   | "STORY_PRIVATE"
+  | "STORY_PROFILE_NOT_FOUND"
+  | "STORY_NOT_ACTIVE"
+  | "STORY_MEDIA_NOT_DISCOVERED"
+  | "STORY_MEDIA_DISCOVERED_BUT_INVALID"
+  | "STORY_MEDIA_EXPIRED"
+  | "INSTAGRAM_STORY_ACCESS_RESTRICTED"
+  | "INSTAGRAM_EMPTY_STORY_SHELL"
+  | "STORY_RESTRICTED"
+  | "NO_ACTIVE_PUBLIC_STORY"
+  | "STORY_RESOLUTION_TIMEOUT"
+  | "STORY_PROVIDER_FAILED"
+  | "STORY_PARSE_FAILED"
+  | "INSTAGRAM_LOGIN_REQUIRED"
   | "INSTAGRAM_RATE_LIMITED"
   | "INSTAGRAM_PROVIDER_ERROR"
   | "STREAM_TIMEOUT"

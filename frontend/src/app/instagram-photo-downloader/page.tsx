@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
   title: { absolute: "Instagram Photo Downloader – Save Photos & Images | Downloadit" },
@@ -23,56 +24,96 @@ export const metadata: Metadata = {
   },
 };
 
+const PAGE_NAME = "Instagram Photo Downloader";
+const PAGE_PATH = "/instagram-photo-downloader";
+
+const FAQS = [
+  {
+    q: "Can I download every photo from a carousel post?",
+    a: "Yes. Paste the carousel link and flip through the slides with Next and Previous — the counter shows where you are. Each slide downloads as its own file, so save the ones you want one by one.",
+  },
+  {
+    q: "What quality are the saved photos?",
+    a: "The original file Instagram serves for display — JPG, PNG or WebP at full resolution. Compare the saved file, not the small in-page preview, if one looks soft.",
+  },
+  {
+    q: "Can I download someone's profile picture?",
+    a: "No. This page handles photo posts and carousels only. Profile pictures are a different thing and are not supported.",
+  },
+  {
+    q: "What about photos posted as stories?",
+    a: "Story images belong to the story pipeline, which handles their 24-hour expiry. Use the Instagram Story Downloader for those.",
+  },
+  {
+    q: "Do I need to log in?",
+    a: "No. A public photo link downloads as-is; there is no sign-in step anywhere in the flow.",
+  },
+  {
+    q: "Which image formats can I get?",
+    a: "Whatever Instagram serves for that photo: JPG in most cases, sometimes PNG or WebP. The format is preserved, not converted.",
+  },
+];
+
 export default function PhotoDownloaderPage() {
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pt-8 sm:pt-12 pb-12">
-          <h1 className="text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Photo Downloader</h1>
+        <ToolDownloader
+          initialTab="photos"
+          titleA="Paste a photo link,"
+          titleB="save every slide."
+          subtitle="Download public Instagram photos and carousels at original resolution — flip through the slides, save the ones you want."
+        />
+        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
+          <Link
+            href="/"
+            className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
+          >
+            ← Back to Instagram Downloader
+          </Link>
+          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Photo Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Download public Instagram photos and images in original quality with Downloadit. Save single image posts or every slide of a carousel to your phone — no login required.
+            People screenshot Instagram photos because there is no save button — then wonder why the picture looks soft when they zoom in. A screenshot captures your screen; this page captures the file. Paste the link to a public photo post and you get Instagram&apos;s original image, not a copy of a copy.
           </p>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            This photo saver preserves the JPG or PNG file Instagram serves for display. Paste a post link, preview each slide with its real resolution, and download the original image — not a compressed screenshot.
+            Carousels work too, and they are the main reason this page exists. A ten-slide post would take ten screenshots; here you flip through the slides in the preview and download each image separately at full resolution.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/#hero" className="inline-flex min-h-[48px] items-center justify-center rounded-2xl px-6 text-[16px] font-bold text-white shadow-[var(--shadow-brand)]" style={{ background: "var(--brand-gradient)" }}>
-              Download a Photo — Paste Link
-            </Link>
-            <Link href="/" className="inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-border bg-card px-6 text-[16px] font-semibold text-fg hover:bg-primary-light">Back to Instagram Downloader</Link>
-          </div>
 
           <div className="mt-12 grid gap-6 rounded-[24px] p-6 sm:p-8" style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-            <h2 className="text-[20px] font-bold text-fg">How the Instagram photo downloader works</h2>
+            <h2 className="text-[20px] font-bold text-fg">How to download photos</h2>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-              <li><strong className="text-fg">Copy the post link</strong> — open the Instagram photo or carousel and copy its link.</li>
-              <li><strong className="text-fg">Paste it in Downloadit</strong> — use the <Link href="/" className="text-primary-strong hover:underline">Instagram Downloader</Link> homepage.</li>
-              <li><strong className="text-fg">Choose the image</strong> — preview each carousel slide and download the JPG in original quality.</li>
+              <li><strong className="text-fg">Copy the post link</strong> — open the photo post itself (not the profile grid), then three dots → Copy Link on desktop or Share → Copy link on mobile.</li>
+              <li><strong className="text-fg">Paste it above</strong> — the Photos tab is already selected. Tap Get Media and the images appear in the preview.</li>
+              <li><strong className="text-fg">Work through the carousel</strong> — the counter tells you which slide you are on. Use Next and Previous to move, and tap Download on each image you want. Every slide is a separate file.</li>
             </ol>
-            <p className="text-[14px] leading-[1.6] text-fg-subtle">No-login image saver: works only with photos you can view publicly. Private images return a clear error and are never bypassed.</p>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Supported formats</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">JPG, PNG, WebP — original image saver output, not recompressed.</p>
+              <h3 className="text-[16px] font-bold text-fg">Formats and quality</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">JPG in most cases, sometimes PNG or WebP — exactly what Instagram serves. Files are kept as-is, never recompressed into a smaller copy.</p>
             </div>
             <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Carousel support</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Carousels show a counter (1/7). Navigate with Next/Previous — current image stays until next is ready, no flash.</p>
+              <h3 className="text-[16px] font-bold text-fg">Straight to the gallery</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Photos are small files that save in a tap and land directly in your gallery or downloads folder — phone, tablet or desktop, all from the browser.</p>
             </div>
           </div>
 
-          <h2 className="mt-12 text-[24px] font-bold text-fg">Save Instagram photos without login</h2>
+          <h2 className="mt-12 text-[24px] font-bold text-fg">Photos this page cannot fetch</h2>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            People search for Instagram photo downloader online and Instagram image saver to keep high-resolution photos for offline viewing. Downloadit lets you download Instagram photos to phone directly in the browser — paste a public photo link and save the original image without creating an Instagram account. The same page answers insta photo download and insta image download searches for both single photos and multi-photo posts.
+            Private and deleted posts are out, same as everywhere else on this site. Two photo-specific boundaries: profile pictures are not supported — only photo posts and carousels — and images posted as stories belong to the <Link href="/instagram-story-downloader" className="font-bold text-primary-strong hover:underline">Instagram Story Downloader</Link>, because stories carry a 24-hour expiry this pipeline does not track.
           </p>
 
-          <h2 className="mt-10 text-[18px] font-bold text-fg">Limitations for private content</h2>
-          <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-            Only publicly accessible photos are supported. If an image is private, deleted, or restricted, the backend explains the category instead of faking a download.
-          </p>
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Photo troubleshooting</h2>
+          <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
+              <p><strong className="text-fg">Only the first slide saved.</strong> That is expected — each carousel slide is its own file. Advance with Next and tap Download on every image you want to keep.</p>
+              <p><strong className="text-fg">The saved photo looks blurry.</strong> Judge the downloaded file, not the small preview on the page. The file is the original resolution; the preview is just a preview.</p>
+              <p><strong className="text-fg">I cannot find a link to copy.</strong> You are probably on the profile grid. Tap into the post so the single photo or carousel opens, then copy the link from there.</p>
+              <p><strong className="text-fg">The download starts but the file will not open.</strong> The media URL expired mid-download. Paste the post link again and save promptly.</p>
+            </div>
+          </div>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -93,33 +134,48 @@ export default function PhotoDownloaderPage() {
           <section className="mt-12">
             <h2 className="text-[20px] font-bold text-fg">Photo downloading FAQ</h2>
             <div className="mt-4 space-y-3">
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">Can I download carousel photos?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Yes. Paste a carousel link, navigate slides with Next/Previous, and download each JPG individually.</p>
-              </details>
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">What quality are the photos?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Original quality as served by Instagram (JPG/WebP), not a compressed preview.</p>
-              </details>
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">Do I need to log in?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">No. Downloadit is an Instagram downloader no login image saver for public links.</p>
-              </details>
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">How do I save Instagram photos to my phone?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Copy the photo post link, paste it into Downloadit, and download each image in original quality. On mobile the JPG saves straight to your device from the browser.</p>
-              </details>
+              {FAQS.map((item) => (
+                <details key={item.q} className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                  <summary className="cursor-pointer text-[16px] font-semibold text-fg">{item.q}</summary>
+                  <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">{item.a}</p>
+                </details>
+              ))}
             </div>
           </section>
 
           <p className="mt-10 text-[12px] text-fg-subtle">
-            See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, <Link href="/#faq" className="text-primary-strong hover:underline">FAQ</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
+            See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
           </p>
         </section>
       </main>
       <Footer />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQS.map((item) => ({
+              "@type": "Question",
+              name: item.q,
+              acceptedAnswer: { "@type": "Answer", text: item.a },
+            })),
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
+            ],
+          }),
+        }}
+      />
     </>
   );
 }
-
-

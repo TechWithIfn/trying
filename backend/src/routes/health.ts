@@ -5,7 +5,7 @@ import { capacitySnapshot } from "../lib/capacity.js";
 import { getResolverPoolSnapshot } from "../lib/resolver-pool.js";
 import { currentDrainReason, drainMetrics, isDraining } from "../lib/shutdown.js";
 import { metricsSnapshot } from "../lib/metrics.js";
-import { isInstagramSessionConfigured } from "../lib/instagram-session.js";
+import { getSessionState, isInstagramSessionConfigured } from "../lib/instagram-session.js";
 import { getBuildVersion } from "../lib/env.js";
 
 const router = Router();
@@ -62,6 +62,12 @@ router.get("/ready", async (_req: Request, res: Response) => {
     // Presence flags only — credentials never leave the backend.
     hasSession: isInstagramSessionConfigured(),
     instagramSessionConfigured: isInstagramSessionConfigured(),
+    // Lifecycle state (UNCONFIGURED/CONFIGURED_UNKNOWN/VALID/INVALID) plus
+    // the selecting variable NAME only — distinguishes "loaded" from
+    // "verified" for operators without exposing any secret material.
+    sessionState: getSessionState().state,
+    sessionSource: getSessionState().source,
+    sessionValidated: getSessionState().validated,
     audioProvider: audioProviderStatus(),
     ffmpegAvailable,
     ffmpegVersion: getFfmpegVersionSync(),

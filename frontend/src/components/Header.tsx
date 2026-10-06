@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, HelpCircle, Sun, Moon, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Lightbulb, CircleHelp, Shield, FileText, Mail, ChevronDown } from "lucide-react";
+import { Globe, HelpCircle, Sun, Moon, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Lightbulb, CircleHelp, Shield, FileText, Mail, ChevronDown, Info, Scale, ScrollText } from "lucide-react";
 import { useLanguage, LANGUAGES } from "@/i18n";
-import { SUPPORT_GMAIL_URL } from "@/config/site";
 import type { DownloaderTab } from "@/components/HeroDownloader";
 import ToolCategoryDropdown from "@/components/ToolCategoryDropdown";
 
@@ -142,7 +141,8 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
               <nav className="flex items-center gap-0.5 xl:gap-1" aria-label="Site sections">
                 <Link href="/#how-it-works" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">How It Works</Link>
                 <Link href="/#faq" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">FAQ</Link>
-                <a href={SUPPORT_GMAIL_URL} target="_blank" rel="noopener noreferrer" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">Contact</a>
+                <Link href="/about" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">About</Link>
+                <Link href="/contact" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">Contact</Link>
               </nav>
             </div>
             <div className="relative" ref={langRef}>
@@ -305,10 +305,10 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             <span className="mobile-nav-icon bg-indigo-500/10 text-primary"><CircleHelp className="h-[18px] w-[18px]" /></span>
             <span>FAQ</span>
           </Link>
-          <a href={SUPPORT_GMAIL_URL} target="_blank" rel="noopener noreferrer" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
+          <Link href="/contact" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span className="mobile-nav-icon bg-rose-500/10 text-primary"><Mail className="h-[18px] w-[18px]" /></span>
             <span>Contact</span>
-          </a>
+          </Link>
           <Link href="/help" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span className="mobile-nav-icon bg-sky-500/10 text-primary"><HelpCircle className="h-[18px] w-[18px]" /></span>
             <span>Help</span>
@@ -347,6 +347,10 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             </span>
             <span className="flex-1">{isDark ? t.header.themeToLight : t.header.themeToDark}</span>
           </button>
+          <Link href="/about" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
+            <span className="mobile-nav-icon bg-teal-500/10 text-primary"><Info className="h-[18px] w-[18px]" /></span>
+            <span>About</span>
+          </Link>
           <Link href="/privacy" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span className="mobile-nav-icon bg-teal-500/10 text-primary"><Shield className="h-[18px] w-[18px]" /></span>
             <span>Privacy</span>
@@ -354,6 +358,14 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
           <Link href="/terms" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span className="mobile-nav-icon bg-slate-500/10 text-primary"><FileText className="h-[18px] w-[18px]" /></span>
             <span>Terms</span>
+          </Link>
+          <Link href="/dmca" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
+            <span className="mobile-nav-icon bg-slate-500/10 text-primary"><Scale className="h-[18px] w-[18px]" /></span>
+            <span>DMCA</span>
+          </Link>
+          <Link href="/disclaimer" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
+            <span className="mobile-nav-icon bg-slate-500/10 text-primary"><ScrollText className="h-[18px] w-[18px]" /></span>
+            <span>Disclaimer</span>
           </Link>
         </nav>
         <div className="mobile-drawer-cta shrink-0 border-t border-border p-4 pb-[calc(1rem+var(--sab))]">

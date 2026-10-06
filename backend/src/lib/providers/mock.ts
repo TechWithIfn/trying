@@ -12,7 +12,15 @@ export class MockProvider extends BaseProvider {
     if (segments[0] === "tv") return "VIDEO";
     if (segments[0] === "stories") {
       if (segments.includes("highlights")) return "HIGHLIGHT";
+      if (segments.length === 2) return "STORY_PROFILE";
       return "STORY";
+    }
+    // Bare profile URL used for public story lookup (single username segment).
+    if (segments.length === 1 && /^[a-zA-Z0-9._]{1,30}$/.test(segments[0])) {
+      const lower = segments[0].toLowerCase();
+      if (!["accounts", "direct", "explore", "embed"].includes(lower)) {
+        return "STORY_PROFILE";
+      }
     }
     return "UNKNOWN";
   }
@@ -28,7 +36,7 @@ export class MockProvider extends BaseProvider {
 
     let media: MediaItem[] = [];
 
-    if (type === "STORY") {
+    if (type === "STORY" || type === "STORY_PROFILE") {
       // Deterministic: derive media kind from the shortcode so repeated
       // resolves of the same URL always return the same result.
       // Explicit dev/test provider only — never used as a production fallback.
@@ -117,7 +125,7 @@ export class MockProvider extends BaseProvider {
     }
 
     const authorUsername =
-      type === "STORY"
+      type === "STORY" || type === "STORY_PROFILE"
         ? segments[1] || "mock_user"
         : type === "HIGHLIGHT"
           ? "mock_user"

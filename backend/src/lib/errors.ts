@@ -201,8 +201,49 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     retryable: false,
   },
   INSTAGRAM_AUTH_INVALID: {
-    message: "Instagram authentication is invalid or expired. Please refresh the server session.",
+    message: "Instagram session expired or requires verification.",
     status: 401,
+    retryable: false,
+  },
+  /**
+   * Story-pipeline verdicts. The Story resolver maps every terminal failure
+   * to exactly one of these six codes (plus the freshness codes
+   * MEDIA_URL_EXPIRED/STORY_MEDIA_EXPIRED, which drive the preview retry
+   * protocol rather than reporting verdicts):
+   * - SESSION_EXPIRED: login_required/401/403/checkpoint/challenge — never
+   *   reported as "no story".
+   * - USER_NOT_FOUND: the profile/user lookup missed.
+   * - PRIVATE_ACCOUNT: is_private or an authenticated-only wall for the user.
+   * - RATE_LIMITED: genuine upstream 429s (carries upstreamRetryAfterSeconds).
+   * - FETCH_FAILED: network/timeout/parse/provider failures; the message
+   *   always names the stage that failed.
+   * - NO_STORY: ONLY when the session is verified valid (or no session is
+   *   configured and the public chain completed ungated) AND the tray is
+   *   truly empty with a recognized structure.
+   */
+  SESSION_EXPIRED: {
+    message: "Instagram session expired or requires verification.",
+    status: 401,
+    retryable: false,
+  },
+  USER_NOT_FOUND: {
+    message: "That Instagram profile was not found. Check the username and try again.",
+    status: 404,
+    retryable: false,
+  },
+  PRIVATE_ACCOUNT: {
+    message: "Private account — Story unavailable.",
+    status: 403,
+    retryable: false,
+  },
+  FETCH_FAILED: {
+    message: "Story request failed.",
+    status: 502,
+    retryable: true,
+  },
+  NO_STORY: {
+    message: "This account has no active public Story right now. Stories expire after 24 hours.",
+    status: 404,
     retryable: false,
   },
   STORY_NOT_FOUND: {
@@ -216,8 +257,73 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     retryable: false,
   },
   STORY_PRIVATE: {
-    message: "This Story is from a private account and cannot be accessed.",
+    message: "Private account — Story unavailable.",
     status: 403,
+    retryable: false,
+  },
+  STORY_PROFILE_NOT_FOUND: {
+    message: "That Instagram profile was not found. Check the username and try again.",
+    status: 404,
+    retryable: false,
+  },
+  STORY_NOT_ACTIVE: {
+    message: "This account has no active public Story right now. Stories expire after 24 hours.",
+    status: 404,
+    retryable: false,
+  },
+  STORY_MEDIA_NOT_DISCOVERED: {
+    message: "A Story may exist, but its media could not be discovered. Please try again shortly.",
+    status: 502,
+    retryable: true,
+  },
+  STORY_MEDIA_DISCOVERED_BUT_INVALID: {
+    message: "Story data was found, but the media could not be verified for playback.",
+    status: 502,
+    retryable: false,
+  },
+  STORY_MEDIA_EXPIRED: {
+    message: "This Story media link has expired. Please try Get Media again.",
+    status: 410,
+    retryable: true,
+  },
+  INSTAGRAM_STORY_ACCESS_RESTRICTED: {
+    message: "Instagram restricted automated access to this Story. Please try again shortly.",
+    status: 403,
+    retryable: true,
+  },
+  INSTAGRAM_EMPTY_STORY_SHELL: {
+    message: "Instagram returned an empty Story page without media. Please try again shortly.",
+    status: 503,
+    retryable: true,
+  },
+  STORY_RESTRICTED: {
+    message: "Instagram restricted automated access to this Story. Please try again later.",
+    status: 403,
+    retryable: true,
+  },
+  NO_ACTIVE_PUBLIC_STORY: {
+    message: "This account has no active public Story right now. Stories expire after 24 hours.",
+    status: 404,
+    retryable: false,
+  },
+  STORY_RESOLUTION_TIMEOUT: {
+    message: "Instagram took too long to return the Story. Please try again.",
+    status: 504,
+    retryable: true,
+  },
+  STORY_PROVIDER_FAILED: {
+    message: "The Story provider could not return media. Please try again shortly.",
+    status: 502,
+    retryable: true,
+  },
+  STORY_PARSE_FAILED: {
+    message: "Instagram returned an unexpected Story format. Please try again shortly.",
+    status: 502,
+    retryable: false,
+  },
+  INSTAGRAM_LOGIN_REQUIRED: {
+    message: "Instagram requires authentication to view this Story. The server session is not verified for this content.",
+    status: 401,
     retryable: false,
   },
   INSTAGRAM_RATE_LIMITED: {

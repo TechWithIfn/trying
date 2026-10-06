@@ -236,6 +236,37 @@ async function main() {
   await api.resolveInstagramUrl("https://www.instagram.com/reel/DDD/", undefined, { refresh: true });
   check("recovery resolve sets refresh:true", lastBody.refresh, true);
 
+  // ---- G. concurrent handles are independent (no global blocking) ----
+  // Two simultaneous streams (e.g. a superseded job plus its replacement)
+  // each own their EventSource: completing one never closes the other, and
+  // closing one never silences the other. Per-handle `closed` flags only.
+  let doneA = 0;
+  let doneB = 0;
+  const handleA = api.startResolveStream("https://www.instagram.com/stories/userA/", {
+    onProgress: () => {},
+    onComplete: () => {
+      doneA++;
+    },
+    onError: () => {},
+  });
+  api.startResolveStream("https://www.instagram.com/stories/userB/", {
+    onProgress: () => {},
+    onComplete: () => {
+      doneB++;
+    },
+    onError: () => {},
+  });
+  const esA = FakeEventSource.instances[FakeEventSource.instances.length - 2];
+  const esB = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+  check("two handles open two streams", esA !== esB && !esA.closed && !esB.closed, true);
+  esA.emit("complete", { data: JSON.stringify({ data: { media: [] } }) });
+  check("first stream completes independently", doneA, 1);
+  check("first stream closed after complete", esA.closed, true);
+  check("second stream unaffected by first", !esB.closed && doneB === 0, true);
+  handleA.close();
+  esB.emit("complete", { data: JSON.stringify({ data: { media: [] } }) });
+  check("second stream completes after first closed", doneB, 1);
+
   // Stream/download URL construction: `url` is the CDN media source and
   // `source` is only the original page — never confused, never double-encoded.
   const cdn = "https://scontent-iad3-1.cdninstagram.com/v/t16/a.mp4?oh=00&oe=AB&efg=x%3Dy";

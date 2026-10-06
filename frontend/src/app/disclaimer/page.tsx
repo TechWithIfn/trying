@@ -28,14 +28,19 @@ export const metadata: Metadata = {
 
 export default function DisclaimerPage() {
   return (
-    <LegalPage title="Disclaimer" updated="September 2026" crumbPath="/disclaimer">
+    <LegalPage title="Disclaimer" updated="October 2026" crumbPath="/disclaimer">
       <p>Downloadit is not affiliated with Instagram or Meta.</p>
       <p>
         The tool only works with publicly available content and does not bypass logins,
         private profiles, or platform access controls. You are responsible for ensuring you
         have the right to download and use any media you save.
       </p>
-      <p>The service is provided as-is, without warranties of any kind.</p>
+      <p>
+        The service depends on Instagram&apos;s own availability and behavior, which change
+        without notice. Availability, results and accuracy are therefore not guaranteed, and
+        the service may be interrupted or modified at any time. The service is provided
+        as-is, without warranties of any kind.
+      </p>
     </LegalPage>
   );
 }

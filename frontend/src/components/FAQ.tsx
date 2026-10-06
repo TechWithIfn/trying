@@ -28,7 +28,7 @@ export default function FAQ() {
           }),
         }}
       />
-      <section id="faq" className="px-4 py-20 sm:px-6 sm:py-28 lg:px-8" aria-label={t.faq.title}>
+      <section id="faq" className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8" aria-label={t.faq.title}>
       <div className="mx-auto max-w-[720px]">
         <div className="mb-14 text-center">
           <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">

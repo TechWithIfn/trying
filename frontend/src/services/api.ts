@@ -44,6 +44,8 @@ export interface MediaItem {
   size?: number | null;
   thumbnail: string | null;
   format: string | null;
+  /** Verified upstream MIME observed by the resolver (e.g. "video/mp4"). */
+  mimeType?: string | null;
   /** Separate audio rendition for split-track videos (Instagram Reels). */
   audioUrl?: string | null;
 }
@@ -297,6 +299,68 @@ export async function resolveInstagramUrl(
   return body;
 }
 
+/**
+ * Story error mapping for the six pipeline verdicts (plus legacy aliases
+ * from older backends, which render identically):
+ * SESSION_EXPIRED / USER_NOT_FOUND / PRIVATE_ACCOUNT / RATE_LIMITED /
+ * FETCH_FAILED / NO_STORY.
+ *
+ * An authentication / rate-limit / challenge / timeout / private / fetch
+ * failure is NEVER rendered as "no active Story" — even if a backend message
+ * ever regressed to one, the code-specific fallback wins for those classes.
+ * When the backend message is present and honest it is shown verbatim (it
+ * names the exact stage/reason); the fallbacks below only cover missing or
+ * misleading text.
+ */
+const NO_STORY_MESSAGE_RE = /no active (public )?story/i;
+
+export function storyErrorMessage(code: string, backendMessage?: string | null): string {
+  const backend = typeof backendMessage === "string" ? backendMessage.trim() : "";
+  const misleading = backend ? NO_STORY_MESSAGE_RE.test(backend) : true;
+  const fallback = (text: string): string => (!misleading && backend ? backend : text);
+  switch (code) {
+    case "SESSION_EXPIRED":
+    case "INSTAGRAM_AUTH_INVALID":
+    case "INSTAGRAM_LOGIN_REQUIRED":
+      // Fixed operator-facing text: the backend reason is session-side, so
+      // the UI always shows this line (the exact Instagram response stays in
+      // server logs + diagnostics for the operator).
+      return "Server session expired, please try again later.";
+    case "PRIVATE_ACCOUNT":
+    case "STORY_PRIVATE":
+      return fallback("Private account — Story unavailable.");
+    case "RATE_LIMITED":
+    case "INSTAGRAM_RATE_LIMITED":
+    case "PROVIDER_RATE_LIMITED":
+      return fallback("Instagram is rate-limiting requests. Please try again shortly.");
+    case "USER_NOT_FOUND":
+    case "STORY_PROFILE_NOT_FOUND":
+      return fallback("That Instagram profile was not found. Check the username and try again.");
+    case "FETCH_FAILED":
+    case "STORY_MEDIA_NOT_FOUND":
+    case "STORY_MEDIA_DISCOVERED_BUT_INVALID":
+    case "STORY_SOURCE_UNAVAILABLE":
+    case "STORY_MEDIA_NOT_DISCOVERED":
+    case "STORY_PARSE_FAILED":
+    case "STORY_PROVIDER_FAILED":
+    case "INSTAGRAM_PROVIDER_ERROR":
+    case "RESOLVER_TIMEOUT":
+    case "PROVIDER_TIMEOUT":
+    case "STREAM_TIMEOUT":
+    case "STORY_RESOLUTION_TIMEOUT":
+    case "STORY_NOT_FOUND":
+    case "STORY_EXPIRED":
+    case "CONTENT_NOT_FOUND":
+      return fallback("The actual Story media could not be resolved.");
+    case "NO_STORY":
+    case "NO_ACTIVE_PUBLIC_STORY":
+    case "STORY_NOT_ACTIVE":
+      return backend || "This account has no active public Story right now. Stories expire after 24 hours.";
+    default:
+      return backend || "Something went wrong while fetching the media. Please try again.";
+  }
+}
+
 export interface ResolveStreamHandlers {
   onProgress: (progress: number, stage: string) => void;
   onComplete: (data: ResolveData) => void;
@@ -337,6 +401,12 @@ export interface ResolveStreamHandle {
 export function startResolveStream(url: string, handlers: ResolveStreamHandlers): ResolveStreamHandle {
   const es = new EventSource(`${getApiBase()}/api/resolve/stream?url=${encodeURIComponent(url)}`);
   let closed = false;
+  // Monotonic per-stream guard (mirrors the backend gate): resolver fallback
+  // stages can legitimately repeat a value, but a late event from a
+  // coalesced/superseded job must never rewind the UI (e.g. 75 → 35). Equal
+  // values still pass so stage text keeps updating. A genuinely new
+  // extraction gets a fresh handle, so progress restarts only then.
+  let maxProgress = -1;
   const close = () => {
     if (!closed) {
       closed = true;
@@ -358,6 +428,8 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
     try {
       const data = JSON.parse((e as MessageEvent).data) as { progress?: unknown; stage?: unknown };
       if (typeof data.progress === "number") {
+        if (!Number.isFinite(data.progress) || data.progress < maxProgress) return;
+        maxProgress = data.progress;
         handlers.onProgress(data.progress, typeof data.stage === "string" ? data.stage : "");
       }
     } catch {

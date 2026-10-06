@@ -55,6 +55,11 @@ describe("App wiring (shared by local server and Vercel function)", () => {
     // Session presence only — the value must never appear.
     expect(typeof body.instagramSessionConfigured).toBe("boolean");
     expect(body.instagramSessionConfigured).toBe(body.hasSession);
+    // Lifecycle state distinguishes loaded from verified; source is the
+    // variable name only, never the secret.
+    expect(["UNCONFIGURED", "CONFIGURED_UNKNOWN", "VALID", "INVALID"]).toContain(body.sessionState);
+    expect(body.sessionSource === null || typeof body.sessionSource === "string").toBe(true);
+    expect(typeof body.sessionValidated).toBe("boolean");
     expect(typeof body.runtime).toBe("string");
     expect(typeof body.uptimeSeconds).toBe("number");
     // Honest saturation visibility, with no secrets in the payload.

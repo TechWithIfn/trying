@@ -2,7 +2,17 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-export default function ScrollReveal({ children }: { children: ReactNode }) {
+export default function ScrollReveal({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: ReactNode;
+  /** Extra classes on the observed wrapper (e.g. flex/grid sizing). */
+  className?: string;
+  /** Stagger entrance in ms; applied as transition-delay (harmless under reduced motion). */
+  delay?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -32,8 +42,11 @@ export default function ScrollReveal({ children }: { children: ReactNode }) {
   return (
     <div
       ref={ref}
-      className="fade-section"
-      style={visible ? { opacity: 1, transform: "translateY(0)" } : undefined}
+      className={`fade-section${className ? ` ${className}` : ""}`}
+      style={{
+        ...(visible ? { opacity: 1, transform: "translateY(0)" } : undefined),
+        ...(delay > 0 ? { transitionDelay: `${delay}ms` } : undefined),
+      }}
     >
       {children}
     </div>

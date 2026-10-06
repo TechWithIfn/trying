@@ -27,6 +27,7 @@ import {
   getApiBase,
   logApiFailure,
   isBrowserOffline,
+  storyErrorMessage,
   type ResolveData,
   type ResolveStreamHandle,
 } from "@/services/api";
@@ -103,6 +104,7 @@ function resolveTabFromResultType(type: string): DownloaderTab | null {
     case "PHOTO":
       return "photos";
     case "STORY":
+    case "STORY_PROFILE":
       return "stories";
     case "AUDIO":
       return "audio";
@@ -173,9 +175,28 @@ function CircularProgress({ value, label }: { value: number; label: string }) {
 interface HeroDownloaderProps {
   activeTab: DownloaderTab | null;
   onActiveTabChange: (tab: DownloaderTab | null) => void;
+  /** Heading override for tool pages. Homepage passes nothing (defaults below). */
+  titleA?: string;
+  titleB?: string;
+  subtitle?: string;
+  /**
+   * Tool pages render the hero heading as a styled <p> so each page keeps a
+   * single <h1>. Default "h1" preserves the homepage exactly.
+   */
+  titleAs?: "h1" | "p";
 }
 
-export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDownloaderProps) {
+const DEFAULT_SUBTITLE =
+  "Download Instagram Reels, Videos & Photos in HD — paste a public link and save public Reels, videos, photos, stories and audio to your phone or desktop with Downloadit. No login required.";
+
+export default function HeroDownloader({
+  activeTab,
+  onActiveTabChange,
+  titleA = "Instagram Video ",
+  titleB = "Downloader",
+  subtitle = DEFAULT_SUBTITLE,
+  titleAs = "h1",
+}: HeroDownloaderProps) {
   const { t } = useLanguage();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
@@ -197,6 +218,24 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
   // user action never produces two API requests. A different URL still
   // supersedes the in-flight request instead of being ignored.
   const inFlightUrlRef = useRef<string | null>(null);
+  // Highest progress shown for the active request: backend fallback stages
+  // can repeat a value, but progress must never visibly rewind mid-request
+  // (the 75% → 35% loop). Reset only when a genuinely new extraction begins
+  // in handleSubmit/handleRetry/handleClear — never on a transport fallback.
+  const maxProgressRef = useRef(0);
+  // The single plain-POST fallback may run at most once per submitted
+  // request (only when the SSE stream drops WITHOUT a server verdict). This
+  // flag — not render state — is the source of truth, so re-renders and
+  // duplicate error events can never turn one user action into a retry loop.
+  const fallbackTriedRef = useRef(false);
+
+  // Request-lifecycle tracing for the Network-tab audit (one click = one
+  // request). Development only: compiled out of production behaviour — the
+  // guard is a NODE_ENV check around console.debug, so prod emits nothing.
+  const storyFlowLog = useCallback((stage: string, extra?: Record<string, unknown>) => {
+    if (process.env.NODE_ENV !== "development") return;
+    console.debug(`[STORY-FLOW] ${stage}`, { seq: requestSeqRef.current, ...extra });
+  }, []);
 
   const clearWatchdog = useCallback(() => {
     if (watchdogRef.current !== null) {
@@ -215,6 +254,12 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
     // stale result over the current request. Clearing the in-flight marker
     // here (and on every terminal settle below) is what keeps the
     // single-flight guard truthful: a ref, never stale React state.
+    if (inFlightUrlRef.current !== null && process.env.NODE_ENV === "development") {
+      console.debug("[STORY-FLOW] resolve-abort", {
+        seq: requestSeqRef.current,
+        url: inFlightUrlRef.current,
+      });
+    }
     requestSeqRef.current++;
     closeStream();
     clearWatchdog();
@@ -234,6 +279,9 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
   // Without this the job lingers until an SSE error event or the 60s silence
   // watchdog fires. Reconnecting never auto-starts a job: the user retries
   // explicitly with "Try again" → submit, which creates exactly one new job.
+  // NOTE: Next.js dev HMR WebSocket warnings are build tooling, not
+  // connectivity signals — nothing here listens to HMR sockets, and their
+  // console noise must never trigger a resolve, retry, or progress reset.
   useEffect(() => {
     const onOffline = () => {
       if (inFlightUrlRef.current === null) return;
@@ -273,6 +321,8 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
     setError("");
     setState("IDLE");
     setAudioExtractionRequested(false);
+    maxProgressRef.current = 0;
+    fallbackTriedRef.current = false;
     setProgress(0);
     setProgressStage("");
   }, [invalidateRequest, onActiveTabChange]);
@@ -280,6 +330,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
+      storyFlowLog("click");
       const trimmed = url.trim();
       if (!trimmed) {
         setError(t.errors.empty);
@@ -294,11 +345,20 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       // Double-submit guard: the same link is already resolving — one user
       // action must produce exactly one API request. The ref (not React
       // state) is the source of truth, so the guard can never go stale
-      // across re-renders. (A different link still supersedes the in-flight
-      // one below.)
-      if (inFlightUrlRef.current === trimmed) {
+      // across re-renders. Comparison ignores trailing slashes because the
+      // backend normalizes them: without this, the same Story pasted with
+      // and without "/" would start a second request that merely coalesces
+      // server-side. (A different link still supersedes the in-flight one
+      // below.)
+      const normalizedTrimmed = trimmed.replace(/\/+$/, "");
+      if (
+        inFlightUrlRef.current !== null &&
+        inFlightUrlRef.current.replace(/\/+$/, "") === normalizedTrimmed
+      ) {
+        storyFlowLog("resolve-duplicate-suppressed", { url: trimmed });
         return;
       }
+      storyFlowLog("resolve-start", { url: trimmed });
       // Offline gate: submitting or retrying with no connectivity must create
       // zero API requests instead of a doomed SSE + POST pair that only logs
       // ERR_INTERNET_DISCONNECTED. Placed after the guard (an active job is
@@ -317,6 +377,10 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       setAudioExtractionRequested(activeTab === "audio");
       const seq = ++requestSeqRef.current;
       inFlightUrlRef.current = trimmed;
+      // A genuinely new extraction begins here — and only here — so progress
+      // restarts exactly once per user submit.
+      maxProgressRef.current = 0;
+      fallbackTriedRef.current = false;
       setResult(null);
       setError("");
       setProgress(0);
@@ -350,15 +414,25 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       const postController = new AbortController();
       postAbortRef.current = postController;
       armSilenceWatchdog(seq);
+      storyFlowLog("resolve-request", { transport: "sse", url: trimmed });
       const handle = startResolveStream(trimmed, {
         onProgress: (p, stage) => {
           if (requestSeqRef.current !== seq) return;
           armSilenceWatchdog(seq);
+          // Never restart/rewind progress mid-request: the stream may repeat
+          // a value across resolver fallback stages, but only a new submit
+          // (handleSubmit above) resets the bar.
+          if (!Number.isFinite(p) || p < maxProgressRef.current) {
+            if (stage) setProgressStage(stage);
+            return;
+          }
+          maxProgressRef.current = p;
           setProgress(p);
           if (stage) setProgressStage(stage);
         },
         onComplete: (data) => {
           if (requestSeqRef.current !== seq) return;
+          storyFlowLog("resolve-complete", { mediaType: data.type });
           clearWatchdog();
           closeStream();
           inFlightUrlRef.current = null;
@@ -371,14 +445,37 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
         },
         onError: (err) => {
           if (requestSeqRef.current !== seq) return;
+          storyFlowLog("resolve-error", { code: err.code });
           clearWatchdog();
           closeStream();
           inFlightUrlRef.current = null;
-          setError(err.message || t.errors.failed);
+          // Per-class Story error mapping: the real backend reason is shown,
+          // and an auth/rate-limit/challenge/timeout failure can never render
+          // as "no active Story".
+          setError(storyErrorMessage(err.code, err.message) || t.errors.failed);
           setState("ERROR");
         },
         onTransportError: () => {
           if (requestSeqRef.current !== seq) return;
+          storyFlowLog("resolve-transport-error", { fallback: "single-post" });
+          // Exactly ONE fallback per request: a second transport error for
+          // the same submit reports the connection failure instead of
+          // starting another extraction (no retry loop, ever).
+          if (fallbackTriedRef.current) {
+            clearWatchdog();
+            closeStream();
+            inFlightUrlRef.current = null;
+            logApiFailure({
+              requestType: "resolve-sse",
+              requestUrl: `${getApiBase()}/api/resolve/stream`,
+              status: null,
+              error: new Error("resolve-sse-duplicate-transport-error"),
+            });
+            setError(t.errors.unreachable);
+            setState("ERROR");
+            return;
+          }
+          fallbackTriedRef.current = true;
           // Offline now: the POST fallback could never succeed, so skip it
           // and report the connection failure directly — one user action
           // then costs exactly one (failed) stream and zero retries.
@@ -404,6 +501,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
           // This single fallback is the only automatic retry in the resolve
           // flow; anything after it needs an explicit user retry.
           armSilenceWatchdog(seq);
+          storyFlowLog("resolve-request", { transport: "post-fallback", url: trimmed });
           resolveInstagramUrl(trimmed, postController.signal)
             .then((data) => {
               if (requestSeqRef.current !== seq) return;
@@ -411,7 +509,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
               closeStream();
               inFlightUrlRef.current = null;
               if (!data.success) {
-                setError(data.error?.message || t.errors.failed);
+                setError(storyErrorMessage(data.error?.code ?? "", data.error?.message) || t.errors.failed);
                 setState("ERROR");
                 return;
               }
@@ -442,7 +540,7 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
       });
       streamRef.current = handle;
     },
-    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange]
+    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange, storyFlowLog]
   );
 
   const isAudioMode = activeTab === "audio" || (audioExtractionRequested && state === "SUCCESS");
@@ -470,6 +568,8 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
     prevStateRef.current = state;
   }, [state]);
 
+  const TitleTag = titleAs as "h1" | "p";
+
   return (
     <section
       id="hero"
@@ -495,12 +595,12 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
               <span className="truncate">{t.hero.badge}</span>
             </div>
 
-            <h1 className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
+            <TitleTag className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
               <span
                 className="hero-title-a block text-balance break-words text-[32px] sm:text-[42px] xl:text-[48px] font-extrabold text-fg tracking-tight"
                 style={{ fontFamily: "var(--font-sans)" }}
               >
-                {"Instagram Video "}
+                {titleA}
               </span>
               <span
                 className="hero-title-b block text-balance break-words text-[28px] sm:text-[38px] xl:text-[44px] font-semibold italic"
@@ -512,12 +612,12 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
                   backgroundClip: "text",
                 }}
               >
-                Downloader
+                {titleB}
               </span>
-            </h1>
+            </TitleTag>
 
             <p className="hero-subtitle mt-4 text-[16px] sm:text-[16px] leading-[1.65] text-fg-muted max-w-xl">
-              Download Instagram Reels, Videos &amp; Photos in HD — paste a public link and save public Reels, videos, photos, stories and audio to your phone or desktop with Downloadit. No login required.
+              {subtitle}
             </p>
 
             {/* Hero Category Row — 5 types: Reels, Videos, Photos, Stories, Audio.
@@ -584,6 +684,8 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
                     <div className="relative min-w-0 flex-1">
                       <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
                       <input
+                        id="downloadit-url-input"
+                        name="instagram-url"
                         type="text"
                         value={url}
                         onChange={(e) => {
@@ -651,6 +753,8 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
                     <div className="relative">
                       <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
                       <input
+                        id="downloadit-url-input-mobile"
+                        name="instagram-url"
                         type="text"
                         value={url}
                         onChange={(e) => {
@@ -942,19 +1046,58 @@ export default function HeroDownloader({ activeTab, onActiveTabChange }: HeroDow
   );
 }
 
+const RESERVED_PROFILE_SEGMENTS = new Set([
+  "accounts",
+  "direct",
+  "explore",
+  "stories",
+  "story",
+  "s",
+  "reel",
+  "reels",
+  "p",
+  "tv",
+  "about",
+  "developer",
+  "embed",
+]);
+
+function isValidInstagramUsername(value: string): boolean {
+  return /^[a-zA-Z0-9._]{1,30}$/.test(value);
+}
+
 function isValidInstagramUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return (
-      (parsed.hostname === "www.instagram.com" ||
-        parsed.hostname === "instagram.com" ||
-        parsed.hostname === "m.instagram.com") &&
-      (parsed.pathname.includes("/p/") ||
-        parsed.pathname.includes("/reel/") ||
-        parsed.pathname.includes("/reels/") ||
-        parsed.pathname.includes("/tv/") ||
-        parsed.pathname.includes("/stories/"))
-    );
+    if (
+      parsed.hostname !== "www.instagram.com" &&
+      parsed.hostname !== "instagram.com" &&
+      parsed.hostname !== "m.instagram.com"
+    ) {
+      return false;
+    }
+    const pathname = parsed.pathname;
+    // Standard Reel/Post/Video/Story paths (includes() preserves existing
+    // behavior; /stories/USERNAME/ profile URLs contain "/stories/").
+    if (
+      pathname.includes("/p/") ||
+      pathname.includes("/reel/") ||
+      pathname.includes("/reels/") ||
+      pathname.includes("/tv/") ||
+      pathname.includes("/stories/") ||
+      pathname.includes("/story/")
+    ) {
+      return true;
+    }
+    // Bare profile URL (/USERNAME/) used for public Story lookup: a single
+    // clean username segment that is not a reserved/system route.
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments.length === 1) {
+      const candidate = segments[0];
+      if (RESERVED_PROFILE_SEGMENTS.has(candidate.toLowerCase())) return false;
+      return isValidInstagramUsername(candidate);
+    }
+    return false;
   } catch {
     return false;
   }

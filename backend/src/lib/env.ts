@@ -93,6 +93,25 @@ export function validateServerEnv(): { ok: boolean; warnings: string[] } {
   }
   // NOTE: RESOLVER_PROVIDER=puppeteer intentionally requires no API
   // credentials — do not add PROVIDER_API_URL/KEY requirements here.
+  //
+  // Optional dedicated Story provider (STORY_PROVIDER=puppeteer|auto|external,
+  // default auto). Names only here — values must never reach logs.
+  const storyProvider = (process.env.STORY_PROVIDER || "auto").trim().toLowerCase();
+  if (storyProvider !== "puppeteer" && storyProvider !== "auto" && storyProvider !== "external") {
+    warnings.push(
+      `STORY_PROVIDER has an unknown value; falling back to "auto" (built-in Story chain first, external only when configured).`
+    );
+  }
+  if (storyProvider === "external") {
+    const hasStoryCreds =
+      (process.env.STORY_PROVIDER_URL || process.env.PROVIDER_API_URL) &&
+      (process.env.STORY_PROVIDER_API_KEY || process.env.PROVIDER_API_KEY);
+    if (!hasStoryCreds) {
+      warnings.push(
+        `STORY_PROVIDER=external requires STORY_PROVIDER_URL and STORY_PROVIDER_API_KEY (or PROVIDER_API_URL/PROVIDER_API_KEY); Story resolution will fall back to the built-in chain.`
+      );
+    }
+  }
 
   if (!process.env.CORS_ORIGIN) {
     warnings.push(
@@ -109,6 +128,14 @@ export function validateServerEnv(): { ok: boolean; warnings: string[] } {
     "IG_SESSIONID",
     "INSTAGRAM_SESSION_ID",
     "SESSIONID",
+    "INSTAGRAM_CSRFTOKEN",
+    "IG_CSRFTOKEN",
+    "CSRFTOKEN",
+    "INSTAGRAM_CSRF_TOKEN",
+    "INSTAGRAM_DS_USER_ID",
+    "IG_DS_USER_ID",
+    "DS_USER_ID",
+    "INSTAGRAM_DS_USERID",
   ];
   const hasSession = sessionSources.some((name) => {
     const raw = process.env[name];

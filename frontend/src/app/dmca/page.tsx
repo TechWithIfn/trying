@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function DmcaPage() {
   return (
-    <LegalPage title="DMCA / Copyright" updated="September 2026" crumbPath="/dmca">
+    <LegalPage title="DMCA / Copyright" updated="October 2026" crumbPath="/dmca">
       <p>
         Downloadit respects the intellectual property rights of others. Only download content
         you own or have permission to save.
@@ -38,6 +38,11 @@ export default function DmcaPage() {
         report it via the email link on this page. Please include identification of the
         copyrighted work, the location of the material in question, and your contact
         information so we can review the report.
+      </p>
+      <p>
+        Reports can only concern content reachable through the service. Because private and
+        restricted content is never accessed here, only publicly available links can be
+        reviewed against a report.
       </p>
     </LegalPage>
   );

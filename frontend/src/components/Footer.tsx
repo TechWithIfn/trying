@@ -61,6 +61,8 @@ export default function Footer() {
     { label: t.nav.features, href: "/#features" },
     { label: t.nav.faq, href: "/#faq" },
     { label: t.common.help, href: "/help" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
   ];
 
   const LEGAL_LINKS = [

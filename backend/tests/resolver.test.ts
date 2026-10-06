@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { resolveUrl, resetResolver, normalizeResultType } from "@/lib/resolvers";
+import { resolveUrl, resetResolver, normalizeResultType, createMonotonicProgress } from "@/lib/resolvers";
 import type { ResolverResult, MediaItem } from "@/lib/types";
 
 const originalEnv = process.env;
@@ -87,5 +87,53 @@ describe("resolveUrl", () => {
     const result1 = await resolveUrl(url);
     const result2 = await resolveUrl(url);
     expect(result1).toBe(result2);
+  });
+
+  it("coalesced joiner emits no progress (never rewinds the owner UI)", async () => {
+    process.env.RESOLVER_PROVIDER = "mock";
+    const url = "https://www.instagram.com/p/COALESCE123/";
+    const ownerProgress: number[] = [];
+    const joinerProgress: number[] = [];
+    // No await between the two calls: the second must observe the first as
+    // in-flight and subscribe to its result without emitting progress.
+    const p1 = resolveUrl(url, (p) => {
+      ownerProgress.push(p);
+    });
+    const p2 = resolveUrl(url, (p) => {
+      joinerProgress.push(p);
+    });
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r2).toEqual(r1);
+    expect(joinerProgress).toEqual([]);
+  });
+
+  it("createMonotonicProgress drops rollbacks but keeps repeats", () => {
+    const seen: Array<[number, string]> = [];
+    const emit = createMonotonicProgress((p, s) => {
+      seen.push([p, s]);
+    });
+    for (const [p, s] of [
+      [0, "a"],
+      [10, "b"],
+      [10, "c"],
+      [70, "d"],
+      [30, "stale-joiner"],
+      [70, "e"],
+      [100, "f"],
+    ] as Array<[number, string]>) {
+      emit(p, s);
+    }
+    expect(seen.map(([p]) => p)).toEqual([0, 10, 10, 70, 70, 100]);
+    expect(seen.map(([, s]) => s)).not.toContain("stale-joiner");
+  });
+
+  it("createMonotonicProgress ignores non-finite values", () => {
+    const seen: number[] = [];
+    const emit = createMonotonicProgress((p) => {
+      seen.push(p);
+    });
+    emit(Number.NaN, "x");
+    emit(50, "y");
+    expect(seen).toEqual([50]);
   });
 });

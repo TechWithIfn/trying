@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
   title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
@@ -23,56 +24,99 @@ export const metadata: Metadata = {
   },
 };
 
+const PAGE_NAME = "Instagram Video Downloader";
+const PAGE_PATH = "/instagram-video-downloader";
+
+const FAQS = [
+  {
+    q: "What is the difference between the Video and Reels downloaders?",
+    a: "The tabs are presets for the same pipeline. Paste any public video link on either page and detection sorts out the type by itself — this page simply opens with the Videos tab already selected.",
+  },
+  {
+    q: "What quality are downloaded videos?",
+    a: "The original MP4 Instagram serves for playback, in HD. Nothing is re-compressed and no watermark is added.",
+  },
+  {
+    q: "How large are video files and how long does saving take?",
+    a: "It depends on the clip's length — a minute-long video is a few dozen megabytes, longer ones proportionally more. Transfer time depends on your connection, so longer videos need a steady signal and free storage space.",
+  },
+  {
+    q: "Can I download a private video?",
+    a: "No. Private, Close Friends and removed videos return a clear error. Only videos anyone can watch without logging in are eligible.",
+  },
+  {
+    q: "Can I watch a saved video offline?",
+    a: "Yes. The MP4 plays in any video player — your phone gallery, VLC, or a desktop player — with no internet needed.",
+  },
+  {
+    q: "Do I need an account to download Instagram videos?",
+    a: "None. If a stranger with no account can play it, you can download it the same way.",
+  },
+];
+
 export default function VideoDownloaderPage() {
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pt-8 sm:pt-12 pb-12">
-          <h1 className="text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Video Downloader</h1>
+        <ToolDownloader
+          initialTab="videos"
+          titleA="Paste a video link,"
+          titleB="keep it offline."
+          subtitle="Save public Instagram videos and long clips as MP4 for offline watching — preview the file first, no account needed."
+        />
+        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
+          <Link
+            href="/"
+            className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
+          >
+            ← Back to Instagram Downloader
+          </Link>
+          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Video Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Download public Instagram videos as MP4 with Downloadit. Whether it’s a standard feed video, IGTV-style clip, or long-form post, paste the video link, preview the file and save it to your device — no login required.
+            Not everything on Instagram is a fifteen-second reel. Interviews, match highlights, talks, full-length clips people post to their grid — the kind of video you want to finish on a flight or rewatch without burning mobile data. This page saves those as MP4 files you can keep.
           </p>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            This video downloader extracts the original MP4 served by Instagram. You get the same file for offline viewing on your phone, without installing an app or creating an account. It’s a fast way to save Instagram videos online — the same simple flow works if you searched for an insta video download or an insta video saver for your phone.
+            Paste the link to a public video post above and you get the original file Instagram streams: same picture, same sound, playable anywhere. One thing to know upfront — longer videos mean bigger files, so check you have storage space and a decent connection before a long clip.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/#hero" className="inline-flex min-h-[48px] items-center justify-center rounded-2xl px-6 text-[16px] font-bold text-white shadow-[var(--shadow-brand)]" style={{ background: "var(--brand-gradient)" }}>
-              Download a Video — Paste Link
-            </Link>
-            <Link href="/" className="inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-border bg-card px-6 text-[16px] font-semibold text-fg hover:bg-primary-light">Back to Instagram Downloader</Link>
-          </div>
 
           <div className="mt-12 grid gap-6 rounded-[24px] p-6 sm:p-8" style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-            <h2 className="text-[20px] font-bold text-fg">How the Instagram video downloader works</h2>
+            <h2 className="text-[20px] font-bold text-fg">How to download a video</h2>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-              <li><strong className="text-fg">Copy the video link</strong> — open the Instagram video and copy its share link.</li>
-              <li><strong className="text-fg">Paste it in Downloadit</strong> — use the <Link href="/" className="text-primary-strong hover:underline">Instagram Downloader</Link> homepage.</li>
-              <li><strong className="text-fg">Preview and save</strong> — confirm the preview, then download the MP4 in HD.</li>
+              <li><strong className="text-fg">Copy the video link</strong> — on desktop open the post and use the three dots → Copy Link; on mobile open the post, tap Share, then Copy link. Copy the post itself, not your profile grid.</li>
+              <li><strong className="text-fg">Paste it above</strong> — the Videos tab is already selected. Tap Get Media. If the link turns out to be a reel, the tab switches over by itself; you do not need to start over.</li>
+              <li><strong className="text-fg">Preview, then save</strong> — confirm it is the right video and tap Download. For long clips give the transfer time; the file plays offline afterwards in any player.</li>
             </ol>
-            <p className="text-[14px] leading-[1.6] text-fg-subtle">No-login workflow: only videos you can view publicly in a browser without signing in are eligible. Private videos always return a clear error.</p>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Supported format</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">MP4 — Instagram video to MP4 converter, keep original quality for phone or desktop.</p>
+              <h3 className="text-[16px] font-bold text-fg">Format and quality</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">MP4 in the original HD Instagram serves — the same stream your phone plays, saved as a file. No conversion, no added watermark.</p>
             </div>
             <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Download to phone</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Works on mobile, tablet and desktop. Save Instagram videos to phone directly in the browser.</p>
+              <h3 className="text-[16px] font-bold text-fg">Watch anywhere after</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">The MP4 opens in gallery apps, VLC and desktop players with no internet. Good for flights, commutes and weak-signal areas.</p>
             </div>
           </div>
 
-          <h2 className="mt-12 text-[24px] font-bold text-fg">Save Instagram videos without login</h2>
+          <h2 className="mt-12 text-[24px] font-bold text-fg">Videos this page cannot fetch</h2>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            Many users search for “download Instagram video without login”. Downloadit solves that: paste a public video URL and get an MP4 without providing your Instagram password. The file is the same HD stream Instagram uses, so you can save Instagram videos and watch them offline.
+            Private, Close Friends, deleted and restricted videos are out — the backend names the actual category instead of handing you a broken file. Media links also expire: Instagram signs them for a short window, so a link that worked an hour ago may need re-resolving. That is normal, not a bug.
+          </p>
+          <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
+            Only interested in the soundtrack? The <Link href="/instagram-audio-downloader" className="font-bold text-primary-strong hover:underline">Instagram Audio Downloader</Link> pulls the audio out as MP3.
           </p>
 
-          <h2 className="mt-10 text-[18px] font-bold text-fg">Privacy and limitations</h2>
-          <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-            Downloadit processes links temporarily and does not store your videos permanently. If a video is private, deleted, or restricted, the backend explains the actual category (private/expired/blocked) instead of faking a download. Only download content you have the right to save.
-          </p>
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Video troubleshooting</h2>
+          <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
+              <p><strong className="text-fg">The download stalls halfway.</strong> Usually a dropped connection or full storage on a big file. Free up space, get back on stable Wi-Fi, and resolve the link again so the URLs are fresh.</p>
+              <p><strong className="text-fg">It plays in the preview but will not save on my iPhone.</strong> iPhones put the file in Downloads rather than Photos. Open the Files app → Downloads and it should be there.</p>
+              <p><strong className="text-fg">The preview shows the wrong video.</strong> You likely copied a profile or grid URL instead of the post URL. Open the video post itself and copy its link.</p>
+              <p><strong className="text-fg">“Expired link” message.</strong> Signed media URLs die fast. Paste the original post link once more and download promptly.</p>
+            </div>
+          </div>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -93,33 +137,48 @@ export default function VideoDownloaderPage() {
           <section className="mt-12">
             <h2 className="text-[20px] font-bold text-fg">Video downloading FAQ</h2>
             <div className="mt-4 space-y-3">
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">Do I need an account to download Instagram videos?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">No. Downloadit is an Instagram downloader no login tool. Use public links only.</p>
-              </details>
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">Can I download a private video?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">No. Private or Close Friends videos are never supported and return a clear error.</p>
-              </details>
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">Why did the MP4 link expire?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Instagram signs media URLs temporarily. Resolve the original post link again for a fresh download URL.</p>
-              </details>
-              <details className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                <summary className="cursor-pointer text-[16px] font-semibold text-fg">How do I download Instagram videos to my phone?</summary>
-                <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Open the video, copy its link, and paste it into Downloadit. After the preview loads, tap Download to save the MP4 directly to your phone — no app install needed.</p>
-              </details>
+              {FAQS.map((item) => (
+                <details key={item.q} className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                  <summary className="cursor-pointer text-[16px] font-semibold text-fg">{item.q}</summary>
+                  <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">{item.a}</p>
+                </details>
+              ))}
             </div>
           </section>
 
           <p className="mt-10 text-[12px] text-fg-subtle">
-            See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, <Link href="/#faq" className="text-primary-strong hover:underline">FAQ</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
+            See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
           </p>
         </section>
       </main>
       <Footer />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQS.map((item) => ({
+              "@type": "Question",
+              name: item.q,
+              acceptedAnswer: { "@type": "Answer", text: item.a },
+            })),
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
+            ],
+          }),
+        }}
+      />
     </>
   );
 }
-
-

@@ -66,7 +66,17 @@ export default function AdvertiseWithUsPage() {
             <p>
               We do not run ads for misleading downloads, fake system warnings,
               adult content, gambling, or anything that mimics Downloadit itself.
-              Ads must be clearly distinguishable from the downloader interface.
+              For any direct arrangement, placement stays around the content —
+              never inside the input field and never dressed up as a download
+              button. Ads must be clearly distinguishable from the downloader
+              interface.
+            </p>
+            <h2 className="text-[20px] font-bold text-fg">What to include in your enquiry</h2>
+            <p>
+              Three lines are enough: what you sell, why it fits people saving
+              Instagram media, and roughly when you want to run. That is all
+              that is needed for a first answer about availability — traffic
+              figures and rate cards come later, if there is a fit.
             </p>
             <h2 className="text-[20px] font-bold text-fg">Contact</h2>
             <p>

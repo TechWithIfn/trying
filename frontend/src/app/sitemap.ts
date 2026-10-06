@@ -10,6 +10,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/instagram-story-downloader", priority: 0.8, changeFreq: "monthly" },
     { path: "/instagram-audio-downloader", priority: 0.8, changeFreq: "monthly" },
     { path: "/help", priority: 0.5, changeFreq: "yearly" },
+    { path: "/about", priority: 0.5, changeFreq: "yearly" },
+    { path: "/contact", priority: 0.5, changeFreq: "yearly" },
     { path: "/advertise-with-us", priority: 0.4, changeFreq: "yearly" },
     { path: "/privacy", priority: 0.3, changeFreq: "yearly" },
     { path: "/terms", priority: 0.3, changeFreq: "yearly" },
@@ -18,7 +20,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   // Fixed date: `new Date()` churned lastmod on every build and caused
   // needless recrawls. Bump manually only when page content changes.
-  const lastModified = new Date("2026-09-28T00:00:00.000Z");
+  // Bumped 2026-10-06: homepage editorial sections, tool-page rewrites,
+  // Help Center expansion, new /about + /contact, legal accuracy updates.
+  const lastModified = new Date("2026-10-06T00:00:00.000Z");
   return pages.map(({ path, priority, changeFreq }) => ({
     url: `${SITE_URL}${path}`,
     lastModified,

@@ -64,20 +64,20 @@ export const en: Strings = {
   steps: {
     eyebrow: "Simple by Design",
     title: "Three steps, that's it",
-    subtitle: "A straightforward process that gets out of your way.",
+    subtitle: "Copy a public Instagram link, preview the available media, and save it.",
     stepWord: "STEP",
     items: [
       {
         title: "Copy the link",
-        desc: "Open the Instagram post, reel, or story you want to save and copy its share link.",
+        desc: "Copy the share link from the public Instagram content you want to save.",
       },
       {
         title: "Paste it here",
-        desc: "Drop the link into Downloadit. One paste is all it takes — no complicated setup.",
+        desc: "Paste the link into Downloadit and select Get Media.",
       },
       {
         title: "Preview and save",
-        desc: "We fetch the available media instantly. Choose what you want and download it in full quality.",
+        desc: "Review the available media and download the file you want.",
       },
     ],
   },
@@ -94,31 +94,31 @@ export const en: Strings = {
   features: {
     eyebrow: "Capabilities",
     title: "Everything you need to save",
-    subtitle: "Supports all the major Instagram content formats, in one refined place.",
+    subtitle: "Download supported public Instagram media from one simple place.",
     items: [
       {
         title: "Reels",
-        desc: "Download Instagram Reels in full quality — short-form videos and trending clips, saved without extra compression.",
+        desc: "Save supported Instagram Reels as video files.",
       },
       {
         title: "Videos",
-        desc: "Download Instagram Videos as MP4. Standard video posts and IGTV content, ready to watch offline anywhere.",
+        desc: "Download supported Instagram video posts.",
       },
       {
         title: "Photos",
-        desc: "Individual image posts preserved at their original resolution and detail.",
+        desc: "Save supported Instagram images at the available resolution.",
       },
       {
         title: "Multi-Photo Posts",
-        desc: "Download individual photos from multi-image posts — every image saved separately in full resolution.",
+        desc: "Save supported images from multi-photo posts individually.",
       },
       {
         title: "Stories",
-        desc: "Public stories from any profile, captured before they disappear.",
+        desc: "Save supported public Stories while they are available.",
       },
       {
         title: "Audio",
-        desc: "Extract and save just the audio track from any reel or video, as a clean MP3.",
+        desc: "Extract the available audio from supported Reels and videos as MP3.",
       },
     ],
   },
@@ -155,48 +155,48 @@ export const en: Strings = {
   },
   quick: {
     items: [
-      { title: "HD Quality", desc: "Best quality output, every time" },
-      { title: "Safe & Secure", desc: "Your privacy matters — no login" },
-      { title: "Fast & Reliable", desc: "Download content in seconds" },
-      { title: "All Devices", desc: "Works on mobile, tablet & desktop" },
+      { title: "Public Content", desc: "Download supported public Instagram media without an Instagram login." },
+      { title: "No App Required", desc: "Use Downloadit directly from a supported modern browser." },
+      { title: "Preview Before Saving", desc: "Check the detected media before downloading it." },
+      { title: "Multiple Media Types", desc: "Supports Reels, videos, photos, multi-photo posts, Stories and audio." },
     ],
   },
   faq: {
     eyebrow: "Support",
-    title: "Common questions",
-    subtitle: "Quick answers to what people usually ask.",
+    title: "Frequently asked questions",
+    subtitle: "Short answers to what visitors actually ask.",
     items: [
       {
-        q: "How do I download an Instagram Reel without login?",
-        a: "Copy the public Reels link from Instagram, paste it into Downloadit, and tap Get Media. Preview the MP4 and save it to your phone — no login or app install required.",
+        q: "What can I download with Downloadit?",
+        a: "Supported public Reels, videos, photos, multi-photo posts and Stories — plus MP3 audio extracted from supported videos and Reels.",
       },
       {
-        q: "Can I download Instagram videos as MP4?",
-        a: "Yes. Paste a public Instagram video link and Downloadit returns the original MP4. Use it as an Instagram video to MP4 converter for phone or desktop.",
+        q: "Do I need an Instagram account?",
+        a: "No. Public links are enough, and the site never asks for your Instagram password.",
       },
       {
-        q: "How do I download Instagram photos in original quality?",
-        a: "Paste a public photo link. Downloadit shows each image in original quality — download any photo as JPG/PNG.",
+        q: "Does Downloadit work on mobile?",
+        a: "Yes. It runs in the mobile browser — files land in Downloads or Gallery on Android and in the Files app on iPhone.",
       },
       {
-        q: "How does the Instagram story downloader work?",
-        a: "Stories expire after 24 hours. Paste a public story link before it expires, preview the story image or video, and save it. Private or expired stories show a clear error.",
+        q: "Can I download private Instagram content?",
+        a: "No. If a logged-out visitor cannot view it, it cannot be downloaded here.",
       },
       {
-        q: "How do I download Instagram audio as MP3?",
-        a: "Switch to the Audio tab, paste a public Reels or video link, and Downloadit extracts the sound as an MP3 file you can play or save offline.",
+        q: "Why can't some Stories be downloaded?",
+        a: "Usually expiry — Stories vanish 24 hours after posting. Private, deleted or removed Stories fail the same way.",
       },
       {
-        q: "What formats are supported?",
-        a: "Videos and Reels are saved as MP4, photos as JPG, PNG or WebP, and extracted audio as MP3. Stories keep their original image or video format.",
+        q: "What file formats are supported?",
+        a: "Video saves as MP4, images as JPG, PNG or WebP when provided, and extracted audio as MP3.",
       },
       {
-        q: "Is Downloadit free and does it require login?",
-        a: "Yes. Downloadit is free to use and needs no login, no app install and no account. It works only with public links you can already view in a browser without signing in.",
+        q: "Does Downloadit install an app?",
+        a: "No. There is nothing to install and no extension — it works directly in a modern browser.",
       },
       {
-        q: "Why might a download fail for public content?",
-        a: "Links are temporary and expire quickly, or the post was deleted or made private/restricted. The backend reports the actual category (private/expired/blocked) — resolve the original URL again for a fresh link.",
+        q: "Is Downloadit affiliated with Instagram?",
+        a: "No. It is an independent service, not affiliated with, endorsed by, or sponsored by Instagram or Meta.",
       },
     ],
   },

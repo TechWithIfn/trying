@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { validateInstagramUrl } from "../lib/validators/instagram-url.js";
 import type { ParsedInstagramUrl } from "../lib/validators/instagram-url.js";
-import { resolveUrl, getActiveProviderName, isResolutionInFlight } from "../lib/resolvers/index.js";
+import { resolveUrl, getActiveProviderName, isResolutionInFlight, createMonotonicProgress } from "../lib/resolvers/index.js";
 import { checkRateLimit, peekRateLimit } from "../lib/rate-limit.js";
 import { generateToken } from "../lib/crypto.js";
 import { storeMedia } from "../lib/temp-store.js";
@@ -9,6 +9,7 @@ import { logger } from "../lib/logger.js";
 import { AppError, createError, createErrorResponse, toAppError, withRequestDiagnostics } from "../lib/errors.js";
 import { KeyedConcurrency, getGate } from "../lib/capacity.js";
 import { getBuildVersion, readBoundedInt, readPositiveInt } from "../lib/env.js";
+import type { InstagramContentType } from "../lib/types.js";
 import { getClientIp } from "../lib/media-proxy.js";
 import type { ResolveResponse, ResolveErrorResponse } from "../lib/types.js";
 
@@ -66,6 +67,23 @@ function upstreamRetryAfterSeconds(error: AppError): number | null {
   const value = error.details?.upstreamRetryAfterSeconds;
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
   return Math.min(Math.ceil(value), 300);
+}
+
+/**
+ * Story-scoped per-IP bucket (in ADDITION to the shared resolve bucket).
+ * Story extraction fans out to several Instagram requests per resolve, and
+ * repeated story requests are served from the 5–10 minute story cache — so a
+ * client hammering story URLs is throttled here before any Instagram traffic
+ * starts. Non-Story URLs never touch this bucket.
+ */
+function isStoryContentType(contentType: InstagramContentType | string | null): boolean {
+  return contentType === "STORY" || contentType === "STORY_PROFILE" || contentType === "HIGHLIGHT";
+}
+
+function checkStoryRateLimit(ip: string): { allowed: boolean; retryAfterMs: number } {
+  const windowMs = readPositiveInt("RATE_LIMIT_WINDOW_MS", 60_000);
+  const maxRequests = readBoundedInt("STORY_RATE_LIMIT_MAX_REQUESTS", 20, 1, 100);
+  return checkRateLimit(`story-resolve:${ip}`, { windowMs, maxRequests });
 }
 
 /** [Downloadit Media Debug] first-item type + hostname only (never query/tokens). */
@@ -175,6 +193,17 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
         return;
       }
       rateLimitRemaining = rateLimitResult.remaining;
+      // Story-scoped bucket: story extraction is multi-request upstream, so
+      // story URLs get their own per-IP budget on top of the shared one.
+      if (isStoryContentType(parsed.contentType)) {
+        const storyLimit = checkStoryRateLimit(ip);
+        if (!storyLimit.allowed) {
+          logger.warn("Story rate limit exceeded", { requestId, ip });
+          res.setHeader("Retry-After", String(Math.ceil(storyLimit.retryAfterMs / 1000)));
+          fail(429, "RATE_LIMITED");
+          return;
+        }
+      }
     }
     if (!joiningInflight && !perIpResolve.tryAcquire(ip)) {
       logger.warn("Resolve per-client limit reached", { requestId, ip });
@@ -217,11 +246,11 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       }
       if (error instanceof AppError) {
         if (error.statusCode === 503) res.setHeader("Retry-After", "3");
-        if (error.code === "INSTAGRAM_RATE_LIMITED" || error.code === "PROVIDER_RATE_LIMITED") {
+        if (error.code === "PROVIDER_RATE_LIMITED" || (error.code === "RATE_LIMITED" && error.details?.upstreamRetryAfterSeconds != null)) {
           // Genuine upstream throttling: answer with the backoff Instagram
           // asked for when it sent one, so the client backs off instead of
-          // hammering. This header is set ONLY for real upstream 429s — never
-          // for our own quota (handled above) or other failures.
+          // hammering. Own-quota RATE_LIMITED (no upstream details) never
+          // takes this branch — its Retry-After was set at admission above.
           res.setHeader("Retry-After", String(upstreamRetryAfterSeconds(error) ?? 30));
         }
         res.status(error.statusCode).json(withRequestDiagnostics(error.toResponse(), requestDiagnostics(requestId, startTime)));
@@ -472,6 +501,9 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
     if (!settled) {
       settled = true;
       clearTimeout(timer);
+      // The heartbeat must die with the stream: otherwise a disconnected
+      // client leaves an interval writing to a dead socket on every tick.
+      clearInterval(heartbeat);
       controller.abort();
       logger.info("Resolve stream client disconnected", { requestId });
     }
@@ -517,6 +549,17 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
         finish();
         return;
       }
+      // Story-scoped bucket (mirrors the POST route): story extraction fans
+      // out upstream, so story URLs are throttled per-IP before any work.
+      if (isStoryContentType(validation.parsed.contentType)) {
+        const storyLimit = checkStoryRateLimit(ip);
+        if (!storyLimit.allowed) {
+          logger.warn("Story rate limit exceeded", { requestId, ip });
+          failEvent("RATE_LIMITED");
+          finish();
+          return;
+        }
+      }
     }
 
     // Per-client admission for the expensive part only, and only once the URL
@@ -537,12 +580,19 @@ router.get("/stream", async (req: Request, res: Response): Promise<void> => {
     }
     send("progress", { progress: 10, stage: "Link validated" });
 
+    // Monotonic per-request gate: resolver progress may legitimately repeat a
+    // value (stage text), but must never move backwards on one stream (a
+    // late event from a coalesced/superseded job would otherwise rewind UI
+    // state, e.g. 70 → 30). The coalescing fix is primary; this is defense.
+    const emitProgress = createMonotonicProgress((progress, stage) => {
+      send("progress", { progress, stage });
+    });
     const result = await resolveGate.run(
       () =>
         resolveUrl(
           validation.parsed!.normalized,
           (progress, stage) => {
-            send("progress", { progress, stage });
+            emitProgress(progress, stage);
           },
           { signal: controller.signal, requestId }
         ),

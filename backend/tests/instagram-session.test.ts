@@ -6,7 +6,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getInstagramSessionCookie,
+  getSessionState,
   isInstagramSessionConfigured,
+  markSessionInvalid,
+  normalizeSessionIdValue,
+  noteSessionLive,
   parseSessionCookies,
 } from "@/lib/instagram-session.js";
 import { fetchMetadata } from "@/lib/providers/puppeteer.js";
@@ -60,6 +64,23 @@ describe("instagram session helper", () => {
     process.env.INSTAGRAM_SESSIONID = "abc123value";
     expect(getInstagramSessionCookie()).toBe("sessionid=abc123value");
     expect(isInstagramSessionConfigured()).toBe(true);
+  });
+
+  it("decodes a URL-encoded sessionid to browser form (literal colons)", () => {
+    expect(normalizeSessionIdValue("62906554821%3AN2K48vJbPOdjuR%3A15%3AAYFk")).toBe(
+      "62906554821:N2K48vJbPOdjuR:15:AYFk"
+    );
+    process.env.INSTAGRAM_SESSIONID = "62906554821%3AN2K48vJbPOdjuR%3A15%3AAYFk";
+    expect(getInstagramSessionCookie()).toBe("sessionid=62906554821:N2K48vJbPOdjuR:15:AYFk");
+    expect(parseSessionCookies()).toEqual([
+      { name: "sessionid", value: "62906554821:N2K48vJbPOdjuR:15:AYFk", domain: ".instagram.com" },
+    ]);
+  });
+
+  it("leaves plain and malformed values untouched", () => {
+    expect(normalizeSessionIdValue("62906554821:N2:15:AY")).toBe("62906554821:N2:15:AY");
+    expect(normalizeSessionIdValue("abc%ZZdef")).toBe("abc%ZZdef");
+    expect(normalizeSessionIdValue("notasession")).toBe("notasession");
   });
 
   it("removes dashboard-style surrounding quotes before forwarding the cookie", () => {
@@ -133,5 +154,51 @@ describe("instagram session helper", () => {
     for (const headers of captured) {
       expect(headers.Cookie).toBeUndefined();
     }
+  });
+
+  it("reports UNCONFIGURED lifecycle with no session", () => {
+    expect(getSessionState()).toEqual({
+      configured: false,
+      usable: false,
+      state: "UNCONFIGURED",
+      source: null,
+      validated: false,
+    });
+  });
+
+  it("quarantines a dead session so later requests degrade to anonymous", () => {
+    process.env.INSTAGRAM_SESSIONID = "62906554821:dead:15:toquarantine";
+    expect(getSessionState().state).toBe("CONFIGURED_UNKNOWN");
+    expect(isInstagramSessionConfigured()).toBe(true);
+    markSessionInvalid();
+    const quarantined = getSessionState();
+    expect(quarantined.state).toBe("INVALID");
+    expect(quarantined.usable).toBe(false);
+    expect(quarantined.configured).toBe(true);
+    expect(quarantined.source).toBe("INSTAGRAM_SESSIONID");
+    // Cookie and jar both go dark: nothing can re-attach the dead value.
+    expect(getInstagramSessionCookie()).toBeUndefined();
+    expect(isInstagramSessionConfigured()).toBe(false);
+    expect(parseSessionCookies()).toEqual([]);
+  });
+
+  it("lifts quarantine when credentials rotate (no restart needed)", () => {
+    process.env.INSTAGRAM_SESSIONID = "62906554821:dead:15:toquarantine";
+    markSessionInvalid();
+    expect(getSessionState().state).toBe("INVALID");
+    process.env.INSTAGRAM_SESSIONID = "62906554821:fresh:15:rotated";
+    const after = getSessionState();
+    expect(after.state).toBe("CONFIGURED_UNKNOWN");
+    expect(after.usable).toBe(true);
+    expect(getInstagramSessionCookie()).toContain("sessionid=");
+  });
+
+  it("marks a proven-live session VALID", () => {
+    process.env.INSTAGRAM_SESSIONID = "62906554821:live:15:provenok";
+    noteSessionLive();
+    const live = getSessionState();
+    expect(live.state).toBe("VALID");
+    expect(live.validated).toBe(true);
+    expect(live.usable).toBe(true);
   });
 });

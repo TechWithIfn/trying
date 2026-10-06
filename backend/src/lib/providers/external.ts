@@ -166,6 +166,8 @@ export class ExternalProvider extends BaseProvider {
       carousel: "CAROUSEL",
       STORY: "STORY",
       story: "STORY",
+      STORY_PROFILE: "STORY_PROFILE",
+      story_profile: "STORY_PROFILE",
       HIGHLIGHT: "HIGHLIGHT",
       highlight: "HIGHLIGHT",
       VIDEO: "VIDEO",

@@ -58,6 +58,24 @@ export default function LegalPage({
       <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
         {children}
       </div>
+      <p className="mt-8 text-[14px] text-fg-subtle">
+        Related:{" "}
+        {[
+          { label: "Privacy", href: "/privacy" },
+          { label: "Terms", href: "/terms" },
+          { label: "DMCA", href: "/dmca" },
+          { label: "Disclaimer", href: "/disclaimer" },
+        ]
+          .filter((l) => l.href !== crumbPath)
+          .map((l, i, arr) => (
+            <span key={l.href}>
+              <Link href={l.href} className="font-semibold text-fg transition-colors hover:text-primary">
+                {l.label}
+              </Link>
+              {i < arr.length - 1 ? " · " : ""}
+            </span>
+          ))}
+      </p>
       <p className="mt-8 text-[16px] text-fg-muted">
         Questions about this page? Contact us at{" "}
         <a

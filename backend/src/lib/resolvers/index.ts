@@ -55,6 +55,24 @@ export function normalizeResultType(result: ResolverResult): ResolverResult {
   return result;
 }
 
+/**
+ * Defensive progress gate: forwards only non-decreasing percentages so one
+ * stream can never visibly roll backwards (e.g. a late event from a
+ * superseded job arriving after newer progress). Equal values still pass so
+ * stage text keeps updating. This is a safeguard only — duplicate callers
+ * themselves must still be fixed at the source.
+ */
+export function createMonotonicProgress(
+  onProgress?: ResolveProgressCallback
+): ResolveProgressCallback {
+  let max = -1;
+  return (progress: number, stage: string) => {
+    if (!Number.isFinite(progress) || progress < max) return;
+    max = progress;
+    onProgress?.(progress, stage);
+  };
+}
+
 /** Drop byte-identical URL duplicates (exact string match). */
 export function dedupeExactUrls(items: MediaItem[]): MediaItem[] {
   const seen = new Set<string>();
@@ -168,11 +186,13 @@ export async function resolveUrl(
   const key = hashUrl(url);
   const existing = inflight.get(key);
   if (existing) {
+    // A coalesced caller subscribes to the owner's result ONLY. It must not
+    // emit its own progress: a synthetic low value here would roll the UI
+    // backwards (e.g. 70 → 30) on a stream whose owner is already ahead.
+    // The owner remains the sole emitter of authoritative resolver progress.
     logger.info("Request coalesced", { url: url.slice(0, 80) });
     inc("coalescedResolutions");
-    onProgress?.(30, "Joining active resolution");
     const result = await existing;
-    onProgress?.(95, "Preparing result");
     observe("resolve", Date.now() - startedAt);
     return result;
   }
@@ -223,7 +243,7 @@ export async function resolveUrl(
     if (isStoryOrHighlightUrl(url) && providerName !== "mock") {
       logger.info("Resolving via dedicated story resolver", { url: url.slice(0, 80) });
       const storyResult = await providerGate.run(
-        () => resolveStoryUrl(url, onProgress),
+        () => resolveStoryUrl(url, onProgress, { requestId: opts?.requestId, bypassCache: opts?.bypassCache }),
         { signal }
       );
       const normalized = normalizeResultType(storyResult);

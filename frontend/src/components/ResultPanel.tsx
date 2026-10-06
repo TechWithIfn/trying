@@ -68,6 +68,7 @@ function getContentTypeLabel(type: string, badges: Strings["typeBadges"]): strin
     POST: badges.post,
     CAROUSEL: badges.carousel,
     STORY: badges.story,
+    STORY_PROFILE: badges.story,
     VIDEO: badges.video,
     PHOTO: badges.photo,
     AUDIO: badges.content,
@@ -812,7 +813,8 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
         (currentMedia.width === 206 && currentMedia.height === 206) ||
         (currentMedia.type === "image" && currentMedia.width === 150 && currentMedia.height === 150))
   );
-  const isStoryProfileFallback = result.type === "STORY" && isProfileMediaFrontend;
+  const isStoryProfileFallback =
+    (result.type === "STORY" || result.type === "STORY_PROFILE") && isProfileMediaFrontend;
   // Carousel controls ONLY for real carousel posts. Reels, single videos,
   // single photos, stories and audio never show a counter/arrows —
   // even if the backend returned more than one media item for them.

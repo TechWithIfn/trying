@@ -122,6 +122,39 @@ describe("validateServerEnv", () => {
     const result = validateServerEnv();
     expect(result.warnings.join(" ")).toContain("unknown");
   });
+
+  it("warns on unknown STORY_PROVIDER values without leaking secrets", () => {
+    setEnv("STORY_PROVIDER", "magic");
+    setEnv("STORY_PROVIDER_API_KEY", "must-never-appear");
+    const result = validateServerEnv();
+    expect(result.ok).toBe(true);
+    expect(result.warnings.join(" ")).toContain("STORY_PROVIDER");
+    expect(JSON.stringify(result)).not.toContain("must-never-appear");
+    setEnv("STORY_PROVIDER", undefined);
+    setEnv("STORY_PROVIDER_API_KEY", undefined);
+  });
+
+  it("warns when STORY_PROVIDER=external lacks credentials", () => {
+    setEnv("STORY_PROVIDER", "external");
+    setEnv("STORY_PROVIDER_URL", undefined);
+    setEnv("STORY_PROVIDER_API_KEY", undefined);
+    setEnv("PROVIDER_API_URL", undefined);
+    setEnv("PROVIDER_API_KEY", undefined);
+    const result = validateServerEnv();
+    expect(result.warnings.join(" ")).toContain("STORY_PROVIDER=external");
+    setEnv("STORY_PROVIDER", undefined);
+  });
+
+  it("stays silent for auto mode without credentials (scraper chain applies)", () => {
+    setEnv("STORY_PROVIDER", "auto");
+    setEnv("STORY_PROVIDER_URL", undefined);
+    setEnv("STORY_PROVIDER_API_KEY", undefined);
+    setEnv("PROVIDER_API_URL", undefined);
+    setEnv("PROVIDER_API_KEY", undefined);
+    const result = validateServerEnv();
+    expect(result.warnings.join(" ")).not.toContain("STORY_PROVIDER");
+    setEnv("STORY_PROVIDER", undefined);
+  });
 });
 
 describe("getBuildVersion", () => {

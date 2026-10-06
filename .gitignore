@@ -4,3 +4,13 @@ dist/
 .env
 .env.local
 .env.*.local
+# Runtime outputs must never pollute the tree (or the dev watcher): server
+# logs, temp downloads and OS/editor debris. App code itself writes no files
+# into the project — backend temp media goes to os.tmpdir(), logs go to the
+# console. Applies to untracked files (already-tracked logs stay as-is).
+*.log
+*.tmp
+tmp/
+.temp/
+.DS_Store
+Thumbs.db
