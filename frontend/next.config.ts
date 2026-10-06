@@ -106,9 +106,11 @@ const nextConfig: NextConfig = {
               // Production backend host + local dev origins (unreachable in
               // production). A custom NEXT_PUBLIC_API_BASE_URL needs its host
               // added here.
-              "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 https://backend-chi-orpin-90.vercel.app https://pagead2.googlesyndication.com https://*.adtrafficquality.google",
+              "connect-src 'self' http://localhost:3001 http://127.0.0.1:3001 https://backend-chi-orpin-90.vercel.app https://pagead2.googlesyndication.com https://*.adtrafficquality.google https://www.google.com https://www.gstatic.com",
               // next/font is self-hosted: no Google Fonts request needed.
-              "font-src 'self' data:",
+              // fonts.gstatic.com is allowed for AdSense creatives only (some
+              // display ads load webfonts; the app itself never requests them).
+              "font-src 'self' data: https://fonts.gstatic.com",
               "media-src 'self' blob: http://localhost:3001 http://127.0.0.1:3001 https://backend-chi-orpin-90.vercel.app https://*.cdninstagram.com https://cdninstagram.com https://*.fbcdn.net https://fbcdn.net",
               "frame-src https://*.googlesyndication.com https://googleads.g.doubleclick.net https://www.google.com https://*.adtrafficquality.google",
               "object-src 'none'",
