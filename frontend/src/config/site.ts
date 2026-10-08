@@ -1,16 +1,16 @@
 export const SITE_URL = "https://www.downloadit.pro";
 export const BRAND_NAME = "Downloadit";
-export const BRAND_TITLE = "Instagram Video Downloader \u2013 Reels, Videos & Photos | Downloadit";
+export const BRAND_TITLE = "Instagram Video Downloader \u2013 Reels, Videos & Carousels | Downloadit";
 export const BRAND_DESCRIPTION =
-  "Download Instagram Reels, videos, photos, Stories and audio in HD with Downloadit. Paste a public Instagram link and download without creating an account.";
+  "Download Instagram Reels, videos, carousels, Stories and audio in HD with Downloadit. Paste a public Instagram link and download without creating an account.";
 export const HOME_OG_IMAGE_ALT =
-  "Downloadit \u2014 Instagram video downloader for public Reels, videos and photos";
+  "Downloadit \u2014 Instagram video downloader for public Reels, videos and carousels";
 export const HOME_KEYWORDS = [
   "instagram video downloader",
   "instagram reels downloader",
   "download instagram reels",
   "download instagram videos",
-  "instagram photo downloader",
+  "instagram carousel downloader",
   "instagram downloader",
 ];
 export const SUPPORT_EMAIL = "supportdownloadit.pro@gmail.com";

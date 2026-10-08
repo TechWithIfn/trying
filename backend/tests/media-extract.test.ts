@@ -3,6 +3,7 @@ import {
   extractMediaFromJson,
   extractSidecarFromJson,
   extractSidecarFromEmbedHtml,
+  collectEmbedCandidates,
   sortVideoFirst,
   fetchMetadata,
 } from "@/lib/providers/puppeteer";
@@ -67,14 +68,15 @@ describe("extractSidecarFromJson", () => {
       },
     });
     const page = extractSidecarFromJson(payload);
-    // 10 images + 1 video + its poster = 12 entries, images in slide order.
-    expect(page.items).toHaveLength(12);
+    // 10 images + 1 video = 11 slides (poster is not a separate entry).
+    expect(page.items).toHaveLength(11);
     expect(page.items[0].url).toContain("slide1.jpg");
     expect(page.items[0].width).toBe(1080);
     expect(page.items[0].height).toBe(1350);
     const videos = page.items.filter((m) => m.type === "video");
     expect(videos).toHaveLength(1);
     expect(videos[0].url).toContain("clip6.mp4");
+    expect(page.items[5].type).toBe("video");
     expect(page.hasMore).toBe(false);
   });
 
@@ -119,6 +121,9 @@ describe("extractSidecarFromJson", () => {
     expect(urls).toContain("https://scontent.cdninstagram.com/v/a-big.jpg");
     expect(urls).not.toContain("https://scontent.cdninstagram.com/v/a-small.jpg");
     expect(urls).toContain("https://scontent.cdninstagram.com/v/b.mp4");
+    // Poster must not become a second carousel slide next to the video.
+    expect(urls).not.toContain("https://scontent.cdninstagram.com/v/b-poster.jpg");
+    expect(page.items).toHaveLength(2);
     const big = page.items.find((m) => m.url.includes("a-big"));
     expect(big?.width).toBe(1440);
     expect(big?.height).toBe(1440);
@@ -134,6 +139,37 @@ describe("extractSidecarFromJson", () => {
     const page = extractSidecarFromJson(payload);
     expect(page.items).toHaveLength(1);
     expect(page.items[0].type).toBe("image");
+  });
+
+  it("counts a video edge as one slide (not video + poster)", () => {
+    const payload = JSON.stringify({
+      edge_sidecar_to_children: {
+        edges: [
+          {
+            node: {
+              is_video: true,
+              video_url: "https://scontent.cdninstagram.com/v/clip.mp4",
+              display_url: "https://scontent.cdninstagram.com/v/poster.jpg",
+              dimensions: { width: 720, height: 1280 },
+            },
+          },
+          {
+            node: {
+              is_video: false,
+              display_url: "https://scontent.cdninstagram.com/v/photo.jpg",
+              dimensions: { width: 1080, height: 1350 },
+            },
+          },
+        ],
+        page_info: { has_next_page: false },
+      },
+    });
+    const page = extractSidecarFromJson(payload);
+    expect(page.items).toHaveLength(2);
+    expect(page.items.map((m) => m.type)).toEqual(["video", "image"]);
+    expect(page.items.map((m) => m.url)).not.toContain(
+      "https://scontent.cdninstagram.com/v/poster.jpg"
+    );
   });
 
   it("returns an empty page for invalid JSON", () => {
@@ -252,5 +288,103 @@ describe("sortVideoFirst", () => {
 
   it("leaves image-only reels untouched", () => {
     expect(sortVideoFirst([img1, img2], "REEL")).toEqual([img1, img2]);
+  });
+});
+
+describe("collectEmbedCandidates", () => {
+  const B = "\\";
+  /** A separator escaped to `depth` backslash levels, as nested JSON embeds it. */
+  const sep = (depth: number) => B.repeat(depth) + "/";
+
+  function sidecarEmbedHtml(childCount: number): string {
+    const edges = Array.from({ length: childCount }, (_, i) => ({
+      node: {
+        id: `id-${i + 1}`,
+        is_video: false,
+        display_url: `https://scontent.cdninstagram.com/v/slide${i + 1}.jpg`,
+        dimensions: { width: 1080, height: 1350 },
+      },
+    }));
+    const inner = JSON.stringify({
+      edge_sidecar_to_children: {
+        edges,
+        page_info: { has_next_page: false, end_cursor: null },
+      },
+    }).replace(/"/g, '\\"');
+    return (
+      `<html><body><script>window.__emb=` +
+      JSON.stringify({ gql_data: { shortcode_media: { data: inner } } }) +
+      `;</script></body></html>`
+    );
+  }
+
+  it("returns only the structured slides when the document also carries scraped chrome", () => {
+    const avatar =
+      "https://scontent.cdninstagram.com/v/t51.82787-19/753247464_17909806293436842_3867685361047468276_n.jpg";
+    const s = sep(3);
+    const escapedSlide = `https:${s}${s}scontent.cdninstagram.com${s}v${s}slide1.jpg`;
+    const html =
+      sidecarEmbedHtml(3) +
+      `<meta property="og:image" content="${avatar}" />` +
+      `<script>{"display_url":"${escapedSlide}"}</script>`;
+
+    const page = collectEmbedCandidates(html);
+    expect(page.items.map((m) => m.url)).toEqual([
+      "https://scontent.cdninstagram.com/v/slide1.jpg",
+      "https://scontent.cdninstagram.com/v/slide2.jpg",
+      "https://scontent.cdninstagram.com/v/slide3.jpg",
+    ]);
+    expect(page.items.map((m) => m.width)).toEqual([1080, 1080, 1080]);
+    expect(page.hasMore).toBe(false);
+    expect(page.endCursor).toBeNull();
+  });
+
+  it("surfaces truncation instead of silently returning a partial carousel", () => {
+    const inner = JSON.stringify({
+      edge_sidecar_to_children: {
+        edges: [1, 2].map((i) => ({
+          node: {
+            id: `id-${i}`,
+            is_video: false,
+            display_url: `https://scontent.cdninstagram.com/v/slide${i}.jpg`,
+            dimensions: { width: 1080, height: 1350 },
+          },
+        })),
+        page_info: { has_next_page: true, end_cursor: "CURSOR123" },
+      },
+    }).replace(/"/g, '\\"');
+    const html =
+      `<html><body><script>window.__emb=` +
+      JSON.stringify({ gql_data: { shortcode_media: { data: inner } } }) +
+      `;</script></body></html>`;
+
+    const page = collectEmbedCandidates(html);
+    expect(page.items).toHaveLength(2);
+    expect(page.hasMore).toBe(true);
+    expect(page.endCursor).toBe("CURSOR123");
+  });
+
+  it("falls back to the scrape for single photos and drops avatar chrome", () => {
+    const html =
+      `<html><head>` +
+      `<meta property="og:image" content="https://scontent.cdninstagram.com/v/t51.2885-15/post.jpg" />` +
+      `<meta property="og:image" content="https://scontent.cdninstagram.com/v/t51.2885-19/42_42_42_n.jpg" />` +
+      `</head><body></body></html>`;
+
+    const page = collectEmbedCandidates(html);
+    expect(page.items.map((m) => m.url)).toEqual([
+      "https://scontent.cdninstagram.com/v/t51.2885-15/post.jpg",
+    ]);
+  });
+
+  it("fully unescapes deeply escaped URLs in the scrape fallback", () => {
+    const s = sep(3);
+    const escaped = `https:${s}${s}scontent.cdninstagram.com${s}v${s}photo.jpg`;
+    const html = `<html><body><script>{"display_url":"${escaped}"}</script></body></html>`;
+
+    const page = collectEmbedCandidates(html);
+    expect(page.items).toHaveLength(1);
+    expect(page.items[0].url).toBe("https://scontent.cdninstagram.com/v/photo.jpg");
+    expect(page.items[0].url).not.toContain("\\");
   });
 });

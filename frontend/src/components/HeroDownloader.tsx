@@ -68,8 +68,8 @@ const HERO_CATEGORIES = [
   },
   {
     id: "photos" as const,
-    title: "Photos",
-    subtitle: "Get Photos",
+    title: "Carousels",
+    subtitle: "Get Carousels",
     icon: ImageIcon,
     iconBg: "rgba(245, 142, 91, 0.14)",
     iconColor: "#f58e5b",
@@ -204,7 +204,7 @@ interface HeroDownloaderProps {
 }
 
 const DEFAULT_SUBTITLE =
-  "Download Instagram Reels, Videos & Photos in HD — paste a public link and save public Reels, videos, photos, stories and audio to your phone or desktop with Downloadit. No login required.";
+  "Download Instagram Reels, Videos & Carousels in HD — paste a public link and save public Reels, videos, carousels, stories and audio to your phone or desktop with Downloadit. No login required.";
 
 export default function HeroDownloader({
   activeTab,
@@ -1030,10 +1030,10 @@ export default function HeroDownloader({
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-bold text-fg">Photos</span>
+                    <span className="text-[14px] font-bold text-fg">Carousels</span>
                     <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-amber-500/10">Original</span>
                   </div>
-                  <span className="block text-[12px] font-medium text-fg-subtle">Get Photos</span>
+                  <span className="block text-[12px] font-medium text-fg-subtle">Get Carousels</span>
                 </div>
               </div>
             </div>
@@ -1124,6 +1124,14 @@ function isValidInstagramUrl(url: string): boolean {
       pathname.includes("/stories/") ||
       pathname.includes("/story/")
     ) {
+      return true;
+    }
+    // Short share links (/s/<code>, often with ?story_media_id=) are what
+    // Instagram's own Share button produces for Stories. The backend follows
+    // the redirect to the canonical URL, so accept them here instead of
+    // rejecting a perfectly good Story link before any request is made.
+    const pathSegments = pathname.split("/").filter(Boolean);
+    if (pathSegments[0]?.toLowerCase() === "s" && pathSegments.length >= 2 && pathSegments[1]) {
       return true;
     }
     // Bare profile URL (/USERNAME/) used for public Story lookup: a single

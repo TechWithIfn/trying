@@ -246,6 +246,34 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     status: 404,
     retryable: false,
   },
+  /**
+   * The session was accepted (verified-live) yet the story endpoints returned
+   * no media. Identity proven, data withheld-or-absent: absence is
+   * unprovable here, so this never claims "no Story" — it reports exactly
+   * what happened.
+   */
+  INSTAGRAM_AUTH_EMPTY_RESPONSE: {
+    message: "Instagram accepted the authenticated request but returned no Story media. The Story may not exist, or access may be limited for this session.",
+    status: 502,
+    retryable: false,
+  },
+  INSTAGRAM_CHALLENGE: {
+    message: "Instagram asked for verification for this session (challenge required). The server session needs to be refreshed.",
+    status: 401,
+    retryable: false,
+  },
+  /**
+   * Anonymous-only evidence is never sufficient to declare absence: Instagram
+   * serves datacenter/anonymous clients empty trays and shells even when it
+   * answers HTTP 200, so an empty result without a verified-live session
+   * means "cannot determine", never "no Story". Emitted only after the full
+   * public chain (plus the external provider when configured) found nothing.
+   */
+  STORY_PROVIDER_REQUIRED: {
+    message: "Instagram is not returning Story media to this server. Configure a supported Story provider to resolve public Stories.",
+    status: 502,
+    retryable: false,
+  },
   STORY_NOT_FOUND: {
     message: "Story not found. It may have been deleted or never existed.",
     status: 404,

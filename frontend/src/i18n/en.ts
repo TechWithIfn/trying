@@ -34,8 +34,8 @@ export const en: Strings = {
   hero: {
     badge: "Fast · Free · No login required",
     titleA: "Instagram Downloader",
-    titleB: "Reels, Videos, Photos & Audio",
-    subtitle: "Download public Instagram Reels, videos, photos and audio with Downloadit. Preview media and save it to your device quickly, no login required.",
+    titleB: "Reels, Videos, Carousels & Audio",
+    subtitle: "Download public Instagram Reels, videos, carousels and audio with Downloadit. Preview media and save it to your device quickly, no login required.",
     cardTitle: "Paste an Instagram Link",
     placeholder: "https://www.instagram.com/reel/...",
     audioPlaceholder: "https://www.instagram.com/reel/...",
@@ -48,7 +48,7 @@ export const en: Strings = {
   tabs: {
     reels: "Reels",
     videos: "Videos",
-    photos: "Photos",
+    photos: "Carousels",
     stories: "Stories",
     audio: "Audio",
   },
@@ -58,7 +58,7 @@ export const en: Strings = {
     carousel: "Carousel",
     story: "Story",
     video: "Video",
-    photo: "Photo",
+    photo: "Carousel",
     content: "Content",
   },
   steps: {
@@ -105,12 +105,12 @@ export const en: Strings = {
         desc: "Download supported Instagram video posts.",
       },
       {
-        title: "Photos",
+        title: "Carousels",
         desc: "Save supported Instagram images at the available resolution.",
       },
       {
-        title: "Multi-Photo Posts",
-        desc: "Save supported images from multi-photo posts individually.",
+        title: "Carousel Posts",
+        desc: "Save supported images from carousel posts individually.",
       },
       {
         title: "Stories",
@@ -141,7 +141,7 @@ export const en: Strings = {
       },
       {
         title: "Multiple content types",
-        desc: "Reels, photos, videos and stories — all in one tool.",
+        desc: "Reels, carousels, videos and stories — all in one tool.",
       },
       {
         title: "No account required",
@@ -158,7 +158,7 @@ export const en: Strings = {
       { title: "Public Content", desc: "Download supported public Instagram media without an Instagram login." },
       { title: "No App Required", desc: "Use Downloadit directly from a supported modern browser." },
       { title: "Preview Before Saving", desc: "Check the detected media before downloading it." },
-      { title: "Multiple Media Types", desc: "Supports Reels, videos, photos, multi-photo posts, Stories and audio." },
+      { title: "Multiple Media Types", desc: "Supports Reels, videos, carousels, Stories and audio." },
     ],
   },
   faq: {
@@ -168,7 +168,7 @@ export const en: Strings = {
     items: [
       {
         q: "What can I download with Downloadit?",
-        a: "Supported public Reels, videos, photos, multi-photo posts and Stories — plus MP3 audio extracted from supported videos and Reels.",
+        a: "Supported public Reels, videos, carousels and Stories — plus MP3 audio extracted from supported videos and Reels.",
       },
       {
         q: "Do I need an Instagram account?",
@@ -232,7 +232,7 @@ export const en: Strings = {
   },
   footer: {
     tagline: "Fast, simple & secure public-media downloader.",
-    desc: "Download publicly available videos, photos, reels and audio in a clean, easy-to-use experience.",
+    desc: "Download publicly available videos, carousels, reels and audio in a clean, easy-to-use experience.",
     product: "Product",
     resources: "Resources",
     legal: "Legal",
@@ -326,7 +326,7 @@ export const en: Strings = {
       },
       {
         q: "Which content types are supported?",
-        a: "Reels, videos, photos, stories and audio extraction from videos.",
+        a: "Reels, videos, carousels, stories and audio extraction from videos.",
       },
       {
         q: "Why did my media link expire?",

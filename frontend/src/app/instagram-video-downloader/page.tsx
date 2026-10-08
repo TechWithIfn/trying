@@ -112,7 +112,7 @@ export default function VideoDownloaderPage() {
           <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
             <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
               <p><strong className="text-fg">The download stalls halfway.</strong> Usually a dropped connection or full storage on a big file. Free up space, get back on stable Wi-Fi, and resolve the link again so the URLs are fresh.</p>
-              <p><strong className="text-fg">It plays in the preview but will not save on my iPhone.</strong> iPhones put the file in Downloads rather than Photos. Open the Files app → Downloads and it should be there.</p>
+              <p><strong className="text-fg">It plays in the preview but will not save on my iPhone.</strong> iPhones put the file in Downloads rather than the gallery. Open the Files app → Downloads and it should be there.</p>
               <p><strong className="text-fg">The preview shows the wrong video.</strong> You likely copied a profile or grid URL instead of the post URL. Open the video post itself and copy its link.</p>
               <p><strong className="text-fg">“Expired link” message.</strong> Signed media URLs die fast. Paste the original post link once more and download promptly.</p>
             </div>
@@ -122,7 +122,7 @@ export default function VideoDownloaderPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
               { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Save photos as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },

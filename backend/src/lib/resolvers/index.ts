@@ -106,7 +106,11 @@ export function dedupeMediaItems(items: MediaItem[]): MediaItem[] {
   for (const item of items) {
     let key: string;
     try {
-      key = new URL(item.url).pathname;
+      // A half-unescaped CDN URL ("https:\/\/…") parses to a doubled-slash
+      // pathname that never equals the clean copy of the same image, so it
+      // would survive dedupe as a phantom extra slide. Backslashes never
+      // occur in a real URL — strip them first so both forms key identically.
+      key = new URL(item.url.replace(/\\/g, "")).pathname;
     } catch {
       key = `\0unkeyed-${unkeyed++}`;
     }

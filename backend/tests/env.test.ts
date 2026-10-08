@@ -108,6 +108,24 @@ describe("validateServerEnv", () => {
     expect(result.warnings.join(" ")).toContain("PROVIDER_API_URL");
   });
 
+  it("warns when a session lacks its csrftoken companion, stays silent when complete", () => {
+    setEnv("RESOLVER_PROVIDER", "puppeteer");
+    setEnv("CORS_ORIGIN", "https://www.downloadit.pro");
+    setEnv("INSTAGRAM_COOKIE", undefined);
+    setEnv("INSTAGRAM_SESSIONID", "bare-session-without-csrf");
+    setEnv("INSTAGRAM_CSRFTOKEN", undefined);
+    setEnv("IG_CSRFTOKEN", undefined);
+    setEnv("CSRFTOKEN", undefined);
+    setEnv("INSTAGRAM_CSRF_TOKEN", undefined);
+    const without = validateServerEnv();
+    expect(without.warnings.join(" ")).toContain("csrftoken");
+    setEnv("INSTAGRAM_CSRFTOKEN", "companion-csrf-value");
+    const complete = validateServerEnv();
+    expect(complete.warnings.join(" ")).not.toContain("csrftoken");
+    const raw = JSON.stringify(complete);
+    expect(raw).not.toContain("companion-csrf-value");
+  });
+
   it("warns on placeholder provider and missing session without crashing", () => {
     setEnv("RESOLVER_PROVIDER", undefined);
     clearSession();

@@ -45,6 +45,17 @@ const server = app.listen(PORT, () => {
     detail: "Set AUDIO_PROVIDER_URL + AUDIO_PROVIDER_KEY to enable direct audio-page resolution",
   });
 
+  // Story provider status (names and presence only — values never logged).
+  // Mirrors externalStoryCredentials(): shared PROVIDER_* fallbacks count.
+  logger.info("Story provider status", {
+    storyProvider: (process.env.STORY_PROVIDER || "auto").trim().toLowerCase(),
+    storyProviderConfigured: Boolean(
+      (process.env.STORY_PROVIDER_URL || process.env.PROVIDER_API_URL || "").trim() &&
+        (process.env.STORY_PROVIDER_API_KEY || process.env.PROVIDER_API_KEY || "").trim()
+    ),
+    detail: "Set STORY_PROVIDER_URL + STORY_PROVIDER_API_KEY to resolve Stories via an external provider",
+  });
+
   logger.info("Workload capacity", { capacity: capacitySnapshot() });
 
   // Non-fatal env validation: warn about misconfiguration (missing session,

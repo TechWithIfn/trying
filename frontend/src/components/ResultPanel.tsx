@@ -5,7 +5,7 @@
 // Loaded on demand when the first resolve succeeds; the hero form,
 // progress ring, and error states stay in the critical bundle.
 import { useState, useCallback, useRef, useEffect } from "react";
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react";
 import {
   Download as DownloadIcon,
   Pause,
@@ -726,6 +726,9 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   // Tracks the current slide's decode so the reserved-space loading state
   // shows until the bitmap is ready, then fades in (opacity only, no layout).
   const [imgLoaded, setImgLoaded] = useState(false);
+  // Real bitmap size from onLoad — preferred over provider dims so the
+  // preview frame matches the photo and stays centered (no forced 4:5 crop).
+  const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
   const imgRetriedRef = useRef(false);
   // Stable fallback message for the audio fetch below: reading it from a ref
   // keeps the fetch effect from re-running on language switches.
@@ -824,59 +827,33 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   const resetPerItemState = useCallback(() => {
     setImgSrc(null);
     setImgFailed(false);
+    setImgNatural(null);
     imgRetriedRef.current = false;
     setRealDuration(null);
     setRealResolution(null);
   }, []);
 
-  // ── Carousel flicker fix: keep current image visible until next is preloaded ──
-  // Stable container + Image() preload prevents white/black flash and layout shift.
-  // Only `currentIndex` (hence currentMedia) is changed, and only after the
-  // target src has loaded. Rapid clicks are de-duplicated via version counter.
-  const carouselVersionRef = useRef(0);
+  // Carousel navigation must never wait on the stream proxy — a hung preload
+  // used to freeze Next/Back. Switch the index immediately; warm neighbours
+  // in the background so the next click is usually cache-hit. The ref tracks
+  // the latest requested slide so rapid clicks can advance before re-render.
   const carouselTargetRef = useRef<number | null>(null);
 
   const preloadAndSwitch = useCallback(
     (targetIndex: number) => {
       if (targetIndex < 0 || targetIndex >= items.length) return;
-      const safe = Math.min(currentIndex, items.length - 1);
-      if (targetIndex === safe && carouselTargetRef.current === null) return;
-      const version = ++carouselVersionRef.current;
+      const base = carouselTargetRef.current ?? Math.min(currentIndex, items.length - 1);
+      if (targetIndex === base) return;
       carouselTargetRef.current = targetIndex;
-      const targetMedia = items[targetIndex];
-      if (!targetMedia || targetMedia.type === "video") {
-        // Video slides are handled by VideoPlayer (remount is cheap and video
-        // has its own poster); switch immediately without preload.
-        setCurrentIndex(targetIndex);
-        resetPerItemState();
-        carouselTargetRef.current = null;
-        return;
-      }
-      const targetSrc = getStreamUrl(targetMedia.url, result.sourceUrl);
-      const img = new Image();
-      img.onload = () => {
-        if (carouselVersionRef.current !== version) return;
-        // Switch only when target is decoded and cached → no flash
-        setCurrentIndex(targetIndex);
-        setImgSrc(null);
-        setImgFailed(false);
-        imgRetriedRef.current = false;
-        // Do not reset video-only states abruptly for images
-        carouselTargetRef.current = null;
-      };
-      img.onerror = () => {
-        if (carouselVersionRef.current !== version) return;
-        // Still switch to let retry/error UI appear, avoiding blank
-        setCurrentIndex(targetIndex);
-        setImgSrc(null);
-        setImgFailed(false);
-        imgRetriedRef.current = false;
-        carouselTargetRef.current = null;
-      };
-      img.src = targetSrc;
+      setCurrentIndex(targetIndex);
+      resetPerItemState();
     },
-    [items, result.sourceUrl, currentIndex, resetPerItemState]
+    [items.length, currentIndex, resetPerItemState]
   );
+
+  useEffect(() => {
+    carouselTargetRef.current = safeIndex;
+  }, [safeIndex]);
 
   // Preload neighbours after a slide is displayed (instant next navigation)
   useEffect(() => {
@@ -956,7 +933,7 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
       const ext = extForMedia(currentMedia);
       const filename = items.length > 1
         ? `${safeHandle}-${safeIndex + 1}.${ext}`
-        : `${safeHandle}-${currentMedia.type === "video" ? "video" : "photo"}.${ext}`;
+        : `${safeHandle}-${currentMedia.type === "video" ? "video" : "carousel"}.${ext}`;
       const downloadUrl = getDownloadUrl(currentMedia.url, filename, result.sourceUrl);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -1010,18 +987,20 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   const rawPoster = currentMedia?.thumbnail ?? undefined;
   const validPoster = isValidImagePoster(rawPoster) ? rawPoster : undefined;
 
-  // Reserve the image's own ratio before the bytes arrive (CLS fix): with
-  // width 100% + aspect-ratio, the box has its final height pre-load, so
-  // neither the first paint nor slide switches move surrounding layout.
-  const imgAspect =
-    currentMedia &&
-    currentMedia.type !== "video" &&
-    currentMedia.width &&
-    currentMedia.height &&
-    currentMedia.width > 0 &&
-    currentMedia.height > 0
-      ? `${currentMedia.width} / ${currentMedia.height}`
+  // Frame the photo with its real aspect ratio (bitmap → provider → 1:1).
+  // Matching the image prevents tall empty bars and keeps the subject centered.
+  const imgAspect = (() => {
+    if (!currentMedia || currentMedia.type === "video") return undefined;
+    if (imgNatural && imgNatural.w > 0 && imgNatural.h > 0) {
+      return `${imgNatural.w} / ${imgNatural.h}`;
+    }
+    const w = currentMedia.width;
+    const h = currentMedia.height;
+    if (w && h && w > 0 && h > 0) return `${w} / ${h}`;
+    return isCarouselPost || result.type === "POST" || result.type === "CAROUSEL" || result.type === "PHOTO"
+      ? "1 / 1"
       : undefined;
+  })();
 
   // Reset the loaded flag per media item during render (React "adjust state
   // on change" pattern — synchronous, so the fresh slide never inherits the
@@ -1031,6 +1010,7 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   if (loadedSrc !== streamSrc) {
     setLoadedSrc(streamSrc);
     setImgLoaded(false);
+    setImgNatural(null);
   }
 
   const logPreviewDiag = useCallback(
@@ -1092,6 +1072,34 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
 
   // Derived metadata for the new two-column card
   const previewRef = useRef<HTMLDivElement>(null);
+  // Touch swipe for the carousel (buttons remain the primary control and keep
+  // working): horizontal swipe past 50px with horizontal dominance navigates.
+  // Vertical gestures are ignored so page scroll never fights the carousel.
+  // Taps (including on the arrow buttons) have ~zero travel and never trigger.
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const onPreviewTouchStart = useCallback((e: ReactTouchEvent<HTMLDivElement>) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }, []);
+  const onPreviewTouchEnd = useCallback(
+    (e: ReactTouchEvent<HTMLDivElement>) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+      // Taps on controls must never swipe: buttons handle their own clicks.
+      if ((e.target as HTMLElement | null)?.closest?.("button")) return;
+      if (!showCarouselNav || items.length <= 1) return;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy)) return;
+      if (dx < 0) goNext();
+      else goPrev();
+    },
+    [showCarouselNav, items.length, goNext, goPrev]
+  );
   const handlePreview = useCallback(() => {
     const v = previewRef.current?.querySelector<HTMLVideoElement>("video");
     if (v) {
@@ -1201,7 +1209,11 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
         <div className="result-grid grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,1fr)] lg:gap-6">
           {/* LEFT: large preview */}
           <div ref={previewRef} className="result-video-wrap min-w-0">
-            <div className="relative">
+            <div
+              className="relative"
+              onTouchStart={showCarouselNav ? onPreviewTouchStart : undefined}
+              onTouchEnd={showCarouselNav ? onPreviewTouchEnd : undefined}
+            >
             {isAudio ? (
               <>
                 {audioLoading && (
@@ -1262,17 +1274,15 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 </p>
               </div>
             ) : (
-              // Natural-height render: the image keeps its own aspect ratio
-              // (portrait / landscape / square) with object-fit contain, so it
-              // is never cropped, stretched, or boxed into a fixed ratio.
-              // The wrapper reserves that ratio pre-load (no CLS); the bitmap
-              // fades in on decode (opacity only, no layout, no flash).
+              // Centered photo preview: frame matches the bitmap's own ratio so
+              // the full picture sits in the middle — clear, uncropped, no
+              // tall empty crop from a forced Story/4:5 box.
               <div
-                className="relative w-full overflow-hidden rounded-[20px]"
-                style={{ background: "#0a0a14", aspectRatio: imgAspect ?? "auto" }}
+                className="media-frame media-post relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-[20px]"
+                style={{ background: "#0a0a14", aspectRatio: imgAspect ?? "1 / 1" }}
               >
                 {!imgLoaded && !imgFailed && (
-                  <div aria-hidden="true" className="absolute inset-0 flex min-h-[180px] items-center justify-center">
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <svg className="h-8 w-8 animate-spin text-white/60" viewBox="0 0 24 24" fill="none">
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
                       <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
@@ -1284,10 +1294,23 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                   key={currentMedia.url}
                   src={imgSrc ?? streamSrc}
                   alt={result.title ? decodeHtmlEntities(result.title).slice(0, 120) : t.typeBadges.photo}
-                  onLoad={() => setImgLoaded(true)}
+                  onLoad={(e) => {
+                    const el = e.currentTarget;
+                    if (el.naturalWidth > 0 && el.naturalHeight > 0) {
+                      setImgNatural({ w: el.naturalWidth, h: el.naturalHeight });
+                    }
+                    setImgLoaded(true);
+                  }}
                   onError={handleImgError}
-                  className="media-frame media-natural relative w-full rounded-[20px] object-contain"
-                  style={{ background: "transparent", aspectRatio: imgAspect ?? "auto", height: "auto", display: "block", opacity: imgLoaded ? 1 : 0, transition: "opacity 180ms ease-out" } as CSSProperties}
+                  className="max-h-full max-w-full object-contain object-center"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    objectPosition: "center center",
+                    opacity: imgLoaded ? 1 : 0,
+                    transition: "opacity 180ms ease-out",
+                  } as CSSProperties}
                 />
               </div>
             )}
@@ -1300,7 +1323,7 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                     onClick={goPrev}
                     disabled={safeIndex === 0}
                     aria-label="Previous image"
-                    className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-white backdrop-blur-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="absolute left-2 top-1/2 z-10 flex h-11 w-11 touch-manipulation -translate-y-1/2 items-center justify-center rounded-full text-white backdrop-blur-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                     style={{ background: "rgba(10,10,20,0.55)", border: "1px solid rgba(255,255,255,0.25)" }}
                   >
                     <ChevronLeft className="h-5 w-5" />
@@ -1310,7 +1333,7 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                     onClick={goNext}
                     disabled={safeIndex === items.length - 1}
                     aria-label="Next image"
-                    className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-white backdrop-blur-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="absolute right-2 top-1/2 z-10 flex h-11 w-11 touch-manipulation -translate-y-1/2 items-center justify-center rounded-full text-white backdrop-blur-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                     style={{ background: "rgba(10,10,20,0.55)", border: "1px solid rgba(255,255,255,0.25)" }}
                   >
                     <ChevronRight className="h-5 w-5" />

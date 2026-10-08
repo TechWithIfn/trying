@@ -202,6 +202,9 @@ export type ErrorCode =
   | "PRIVATE_ACCOUNT"
   | "FETCH_FAILED"
   | "NO_STORY"
+  | "INSTAGRAM_AUTH_EMPTY_RESPONSE"
+  | "INSTAGRAM_CHALLENGE"
+  | "STORY_PROVIDER_REQUIRED"
   | "STORY_NOT_FOUND"
   | "STORY_EXPIRED"
   | "STORY_PRIVATE"
@@ -357,19 +360,27 @@ export interface ExternalProviderResponse {
       display_name?: string;
     };
     thumbnail?: string;
+    thumbnail_url?: string;
     media?: Array<{
-      url: string;
+      url?: string;
+      video_url?: string;
+      image_url?: string;
+      media_url?: string;
+      thumbnail?: string;
+      thumbnail_url?: string;
+      video_versions?: Array<{ url?: string; width?: number; height?: number }>;
+      image_versions2?: { candidates?: Array<{ url?: string; width?: number; height?: number }> };
       type?: "image" | "video" | "audio" | string;
       width?: number;
       height?: number;
       duration?: number;
       size?: number;
       format?: string;
-      thumbnail?: string;
     }>;
   };
   error?: {
     code?: string;
     message?: string;
+    reason?: string;
   };
 }

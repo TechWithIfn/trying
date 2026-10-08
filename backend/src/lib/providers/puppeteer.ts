@@ -273,9 +273,8 @@ function hostnameOf(raw: string): string | null {
 }
 
 function unescapeInstagramString(s: string): string {
-  return s
+  const out = s
     .replace(/\\u0026/g, "&")
-    .replace(/\\\//g, "/")
     .replace(/\\u003C/g, "<")
     .replace(/\\u003E/g, ">")
     .replace(/\\u0022/g, '"')
@@ -285,6 +284,20 @@ function unescapeInstagramString(s: string): string {
     // Page HTML/JSON embeds URLs with &amp; entities (e.g. "...?a=1&amp;b=2").
     // Decode to the real query separator or the CDN signature breaks.
     .replace(/&amp;/g, "&");
+  // The same URL is embedded at varying escape depths: `https:\/\/…`,
+  // `https:\\/\\/…` (JSON inside JSON inside an HTML attribute), sometimes
+  // deeper. One `\/`→`/` pass peels only one layer, and a half-unescaped URL
+  // is a DIFFERENT string from the real one — it survives exact-URL dedupe and
+  // pathname dedupe (Node renders the leftover backslashes as doubled path
+  // separators) as a phantom extra slide. Collapse until stable, bounded so a
+  // pathological input can never loop.
+  let clean = out;
+  for (let pass = 0; pass < 4; pass++) {
+    const next = clean.replace(/\\\//g, "/");
+    if (next === clean) break;
+    clean = next;
+  }
+  return clean;
 }
 
 /**
@@ -538,7 +551,10 @@ function parseSidecarRoot(root: unknown): SidecarPage {
     const w = dims && typeof dims === "object" ? (dims as Record<string, unknown>)["width"] : n["width"];
     const h = dims && typeof dims === "object" ? (dims as Record<string, unknown>)["height"] : n["height"];
     if (n["is_video"] === true && typeof n["video_url"] === "string") {
+      // One slide = one media item. The poster/display_url is preview chrome,
+      // never a separate carousel entry.
       push(n["video_url"], "video", w, h);
+      return;
     }
     push(n["display_url"] ?? n["display_src"], "image", w, h);
   };
@@ -569,8 +585,8 @@ function parseSidecarRoot(root: unknown): SidecarPage {
     if (Array.isArray(vids) && vids.length > 0) {
       const best = bestByArea(vids);
       if (best) {
+        // Video slide only — do not also emit the poster as a fake extra slide.
         push(best["url"], "video", best["width"], best["height"]);
-        push(c["display_url"] ?? c["display_src"], "image", best["width"], best["height"]);
         return;
       }
     }
@@ -1087,7 +1103,12 @@ const FETCH_META_FN = `
 (function() {
   var result = { videos: [], images: [], hasArticle: false, bodySnippet: '' };
 
-  var videos = document.querySelectorAll('video');
+  var article = document.querySelector('article');
+  result.hasArticle = !!article;
+  // Prefer the post article so suggested/explore chrome never becomes slides.
+  var root = article || document;
+
+  var videos = root.querySelectorAll('video');
   for (var i = 0; i < videos.length; i++) {
     var v = videos[i];
     var src = v.getAttribute('src');
@@ -1099,18 +1120,29 @@ const FETCH_META_FN = `
     }
   }
 
-  var imgs = document.querySelectorAll('img[src]');
-  for (var k = 0; k < imgs.length; k++) {
-    var imgSrc = imgs[k].getAttribute('src') || '';
-    if (imgSrc.indexOf('scontent') !== -1 || imgSrc.indexOf('fbcdn') !== -1 || imgSrc.indexOf('cdninstagram') !== -1) {
-      if (imgSrc.indexOf('static.cdninstagram.com') === -1) {
-        result.images.push(imgSrc);
-      }
-    }
+  function isCdn(u) {
+    return u.indexOf('scontent') !== -1 || u.indexOf('fbcdn') !== -1 || u.indexOf('cdninstagram') !== -1;
+  }
+  function isJunkImage(u) {
+    if (!u || u.indexOf('static.cdninstagram.com') !== -1) return true;
+    if (/\\/t51\\.[^/]+-19\\//i.test(u)) return true;
+    if (/[/_]s(64|75|100|130|150|240|320)x\\d+/i.test(u)) return true;
+    if (/stp=[^&]*_(?:s(64|75|100|130|150|240|320)x|e15)/i.test(u)) return true;
+    if (u.indexOf('profile_pic') !== -1 || u.indexOf('avatar') !== -1) return true;
+    return false;
   }
 
-  var article = document.querySelector('article');
-  result.hasArticle = !!article;
+  var imgs = root.querySelectorAll('img[src]');
+  for (var k = 0; k < imgs.length; k++) {
+    var el = imgs[k];
+    var imgSrc = el.getAttribute('src') || '';
+    if (!isCdn(imgSrc) || isJunkImage(imgSrc)) continue;
+    // Skip obviously tiny decoded bitmaps (avatars / UI chips) when available.
+    var nw = el.naturalWidth || 0;
+    var nh = el.naturalHeight || 0;
+    if (nw > 0 && nh > 0 && (nw < 320 || nh < 320)) continue;
+    result.images.push(imgSrc);
+  }
 
   result.bodySnippet = (document.body ? document.body.innerText || '' : '').slice(0, 500);
 
@@ -2271,20 +2303,41 @@ export async function selectReelVideo(
 }
 
 /**
- * Merge the embed endpoint's structured sidecar items and tag-scraped media
- * into one deduplicated candidate list (first-seen order). Shared by the
- * og:video fast path and the embed fast path so both rank the same pool.
+ * Embed endpoint candidate pool.
+ *
+ * `items` is the slide list to rank; `hasMore`/`endCursor` mirror the
+ * structured sidecar's page_info so a caller can tell a COMPLETE collection
+ * from a truncated one before trusting a fast path.
  */
-function collectEmbedCandidates(embedHtml: string): ExtractedMedia[] {
+export interface EmbedCandidates {
+  items: ExtractedMedia[];
+  hasMore: boolean;
+  endCursor: string | null;
+}
+
+/**
+ * Structured sidecar children first: `gql_data.shortcode_media` carries the
+ * real carousel — every slide, in order, with dimensions. Tag-scraping the
+ * same document instead re-collects those slides as double-escaped URL
+ * variants (which pathname-dedupe cannot collapse) plus page chrome such as
+ * the author avatar, inflating a 3-slide post to 7 items. So when the
+ * structured collection exists it is THE list; the scrape is only a fallback
+ * for documents without one (single photos, Reels), where avatar/thumbnail
+ * renditions are dropped so chrome can never become a result.
+ */
+export function collectEmbedCandidates(embedHtml: string): EmbedCandidates {
   const embedSidecar = extractSidecarFromEmbedHtml(embedHtml);
-  const embedMedia = extractMediaFromHtml(embedHtml);
-  const combined: ExtractedMedia[] = [...embedSidecar.items];
-  for (const item of embedMedia) {
-    if (!combined.some((m) => m.url === item.url)) {
-      combined.push(item);
-    }
+  if (embedSidecar.items.length > 0) {
+    return {
+      items: embedSidecar.items,
+      hasMore: embedSidecar.hasMore,
+      endCursor: embedSidecar.endCursor,
+    };
   }
-  return combined;
+  const scraped = extractMediaFromHtml(embedHtml).filter(
+    (item) => item.type === "video" || !isLikelyPostThumbnailUrl(item.url)
+  );
+  return { items: scraped, hasMore: false, endCursor: null };
 }
 
 /**
@@ -2356,7 +2409,13 @@ async function fetchPageSnapshot(url: string, timeoutMs = 7_000): Promise<PageFe
       ...(isVideoContent ? { "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none", "Sec-Fetch-User": "?1" } : {}),
     };
     const sessionCookie = getInstagramSessionCookie();
-    if (sessionCookie) {
+    // Only a COMPLETE session (sessionid + csrftoken) is attached to a page
+    // snapshot. A sessionid without its csrftoken is silently rejected by
+    // Instagram (302 → /login for every reel/video/post hit), which turns
+    // this ~1s prefetch into a ~6s redirect-follow against the login page
+    // for zero media. Anonymous prefetch keeps the fast paths intact; the
+    // browser pass carries the session when it is whole.
+    if (sessionCookie && sessionCookie.includes("csrftoken=")) {
       headers.Cookie = sessionCookie;
     }
     const res = await fetch(url, {
@@ -2471,6 +2530,25 @@ export function detectSessionAccepted(html: string | null | undefined): boolean 
 function isLikelyProfileImageUrl(url: string): boolean {
   try {
     return /\/t51\.[^/]+-19\//i.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Tiny / UI / avatar renditions that must never become carousel slides.
+ * Instagram serves every real post image at ≥640px (usually 1080); anything
+ * sized like s150/s320 in the path or `stp=` transform is chrome, not a slide.
+ */
+function isLikelyPostThumbnailUrl(url: string): boolean {
+  if (isLikelyProfileImageUrl(url) || isLikelyStaticInstagramAssetUrl(url)) return true;
+  try {
+    const u = new URL(url);
+    const hay = `${u.pathname}?${u.search}`.toLowerCase();
+    if (hay.includes("profile_pic") || hay.includes("avatar")) return true;
+    if (/[/_]s(64|75|100|130|150|240|320)x\d+/i.test(hay)) return true;
+    if (/stp=[^&]*_(?:s(64|75|100|130|150|240|320)x|e15)/i.test(hay)) return true;
+    return false;
   } catch {
     return false;
   }
@@ -3352,7 +3430,7 @@ export class PuppeteerProvider extends BaseProvider {
         let embedCands: ExtractedMedia[] = [];
         try {
           const earlyEmbed = embedHtmlPromise ? await embedHtmlPromise : null;
-          if (earlyEmbed) embedCands = collectEmbedCandidates(earlyEmbed);
+          if (earlyEmbed) embedCands = collectEmbedCandidates(earlyEmbed).items;
         } catch {
           // Embed fetch failed: the page-graph pool stands alone.
         }
@@ -3380,7 +3458,8 @@ export class PuppeteerProvider extends BaseProvider {
         const embedHtml = embedHtmlPromise ? await embedHtmlPromise : null;
         timings.embedMs = Date.now() - embedStart;
         if (embedHtml) {
-          const combinedEmbedMedia: ExtractedMedia[] = collectEmbedCandidates(embedHtml);
+          const embedCandidates = collectEmbedCandidates(embedHtml);
+          const combinedEmbedMedia: ExtractedMedia[] = embedCandidates.items;
 
           if (combinedEmbedMedia.length > 0) {
             const validEmbed: MediaItem[] = [];
@@ -3427,7 +3506,17 @@ export class PuppeteerProvider extends BaseProvider {
               }
             }
 
-            if (validEmbed.length > 0 && currentType !== "REEL" && currentType !== "VIDEO") {
+            // A structured sidecar that reports further pages is only a
+            // PREFIX of the carousel: answering from it would report fewer
+            // slides than the post actually has. Falling through lets the
+            // browser follow end_cursor until page_info says complete.
+            const sidecarTruncated = embedCandidates.hasMore && embedCandidates.endCursor !== null;
+            if (
+              validEmbed.length > 0 &&
+              currentType !== "REEL" &&
+              currentType !== "VIDEO" &&
+              !sidecarTruncated
+            ) {
               const author = fetchMeta.author || extractAuthorFromUrl(url);
               const rawTitle = fetchMeta.title || fetchMeta.description;
               const decodedAuthor: Author | null = author
@@ -3457,9 +3546,16 @@ export class PuppeteerProvider extends BaseProvider {
                 media: validEmbed,
               };
             }
-            logger.info("Embed html had no verified media, continuing to browser", {
-              discovered: combinedEmbedMedia.length,
-            });
+            if (sidecarTruncated) {
+              logger.info("Embed sidecar truncated, continuing to browser", {
+                contentType: currentType,
+                discovered: validEmbed.length,
+              });
+            } else {
+              logger.info("Embed html had no verified media, continuing to browser", {
+                discovered: combinedEmbedMedia.length,
+              });
+            }
           }
         }
       }
@@ -3520,9 +3616,20 @@ export class PuppeteerProvider extends BaseProvider {
       // a video-stripped DOM for automated clients. Cookies are scoped to
       // .instagram.com by the parser and failures here must never fail the
       // resolve (anonymous extraction still gets its chance).
+      // SYNTAX GATE: only a complete session (csrftoken present) is worth
+      // injecting. A sessionid-only cookie is rejected by Instagram with a
+      // hard 302 on every content page — that is exactly the "bounced once,
+      // then re-navigate" first round-trip this avoids.
       if (isInstagramSessionConfigured()) {
         try {
-          const jar = parseSessionCookies();
+          const complete = Boolean(
+            getInstagramSessionCookie()?.includes("csrftoken=")
+          );
+          // Only a COMPLETE session (sessionid + csrftoken) is injected. A
+          // sessionid-only cookie is silently rejected by Instagram with a
+          // hard 302 on every content page — that exact bounce is the
+          // "redirected away, then re-navigate" round-trip this avoids.
+          const jar = complete ? parseSessionCookies() : [];
           if (jar.length > 0) {
             await page.setCookie(...jar);
           }
@@ -3534,6 +3641,7 @@ export class PuppeteerProvider extends BaseProvider {
             count: jar.length,
             cookies: jar.map((c) => c.name),
             sessionConfigured: true,
+            completeSession: complete,
           });
         } catch {
           /* anonymous fallback below */
@@ -4727,19 +4835,22 @@ export class PuppeteerProvider extends BaseProvider {
 
       // Carousel expansion: post slides beyond the first lazy-load as the
       // user advances, so a single DOM snapshot undercounts multi-image
-      // posts. For /p/ URLs, click the carousel "Next" control (bounded:
-      // stop after the carousel reports no next control or two consecutive
-      // advances with no new media, and accumulate every exposed item.
+      // posts. For /p/ URLs, click ONLY the article carousel "Next" control
+      // (never feed/explore Next buttons). Instagram allows at most 20
+      // slides — stop after that, after the control disappears, or after
+      // two consecutive advances with no new article media.
       if (url.includes("/p/") && !redirectedAway) {
         const seenDom = new Set<string>([...domResult.videos, ...domResult.images]);
         let quietClicks = 0;
-        for (let step = 0; step < 100 && quietClicks < 2; step++) {
+        const IG_CAROUSEL_MAX = 20;
+        for (let step = 0; step < IG_CAROUSEL_MAX && quietClicks < 2; step++) {
           let clicked = false;
           try {
             clicked = await page.evaluate(
               `(function(){` +
-                `var btns=Array.from(document.querySelectorAll('button[aria-label="Next"]'));` +
-                `if(!btns.length){btns=Array.from(document.querySelectorAll('button')).filter(function(b){return (b.getAttribute('aria-label')||'').toLowerCase().indexOf('next')!==-1;});}` +
+                `var root=document.querySelector('article')||document;` +
+                `var btns=Array.from(root.querySelectorAll('button[aria-label="Next"]'));` +
+                `if(!btns.length){btns=Array.from(root.querySelectorAll('button')).filter(function(b){return (b.getAttribute('aria-label')||'').toLowerCase().indexOf('next')!==-1;});}` +
                 `for(var i=0;i<btns.length;i++){var r=btns[i].getBoundingClientRect();if(r.width>0&&r.height>0){btns[i].click();return true;}}` +
                 `return false;` +
                 `})()`
@@ -5168,7 +5279,25 @@ export class PuppeteerProvider extends BaseProvider {
           });
         }
       } else if (validMedia.length > 0) {
-        const firstOrigin = originByUrl.get(validMedia[0]?.url ?? "");
+        // Photo / carousel posts: drop avatar/thumbnail chrome, then prefer
+        // structured API sidecar children over page-wide HTML scrapes so the
+        // slide count matches the real Instagram carousel.
+        const cleaned = validMedia.filter(
+          (m) => m.type === "video" || !isLikelyPostThumbnailUrl(m.url)
+        );
+        const fromApi = cleaned.filter((m) => {
+          const src = originByUrl.get(m.url)?.source;
+          return src === "api-json" || src === "embed-html" || src === "prefetch-embed";
+        });
+        const fromDom = cleaned.filter((m) => originByUrl.get(m.url)?.source === "dom");
+        if (fromApi.length > 0) {
+          playableMedia = fromApi;
+        } else if (fromDom.length > 0) {
+          playableMedia = fromDom;
+        } else {
+          playableMedia = cleaned.length > 0 ? cleaned : validMedia;
+        }
+        const firstOrigin = originByUrl.get(playableMedia[0]?.url ?? "");
         selectedCandidateSource = firstOrigin?.source ?? null;
       }
 

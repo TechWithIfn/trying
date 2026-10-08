@@ -6,7 +6,7 @@ import { SITE_URL, SUPPORT_EMAIL, SUPPORT_GMAIL_URL } from "@/config/site";
 
 const ADVERTISE_TITLE = "Advertise With Us | Downloadit";
 const ADVERTISE_DESCRIPTION =
-  "Reach people downloading public Instagram Reels, videos, photos and audio with Downloadit. Learn about advertising options and how to contact us.";
+  "Reach people downloading public Instagram Reels, videos, carousels and audio with Downloadit. Learn about advertising options and how to contact us.";
 
 export const metadata: Metadata = {
   title: { absolute: ADVERTISE_TITLE },
@@ -51,7 +51,7 @@ export default function AdvertiseWithUsPage() {
           <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
             <p>
               Downloadit is a free tool people use to save public Instagram Reels, videos,
-              photos, stories and audio. If your product or service fits that audience,
+              carousels, stories and audio. If your product or service fits that audience,
               advertising on Downloadit puts your message in front of them while they
               download.
             </p>

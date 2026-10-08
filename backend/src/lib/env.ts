@@ -145,6 +145,26 @@ export function validateServerEnv(): { ok: boolean; warnings: string[] } {
     warnings.push(
       `No Instagram session configured (info): anonymous resolution works from residential IPs, but datacenter-hosted backends get video-stripped pages and Reels fail with VIDEO_SOURCE_NOT_FOUND. Set INSTAGRAM_SESSIONID server-side to fix.`
     );
+  } else {
+    // A bare sessionid without its csrftoken companion authenticates almost
+    // nothing: Instagram's web API rejects authed reads, the probe quarantines
+    // the session, and Story resolution silently stays anonymous. Warn (names
+    // only, never values) so a fresh paste that "doesn't work" is diagnosable
+    // from boot logs alone.
+    const csrfVars = ["INSTAGRAM_CSRFTOKEN", "IG_CSRFTOKEN", "CSRFTOKEN", "INSTAGRAM_CSRF_TOKEN"];
+    const hasCsrfVar = csrfVars.some((name) => {
+      const raw = process.env[name];
+      return Boolean(raw && raw.trim().length > 0);
+    });
+    const hasCsrfInJar = sessionSources.some((name) => {
+      const raw = process.env[name];
+      return Boolean(raw && raw.toLowerCase().includes("csrftoken="));
+    });
+    if (!hasCsrfVar && !hasCsrfInJar) {
+      warnings.push(
+        `Instagram session is configured without a csrftoken (set INSTAGRAM_CSRFTOKEN or include csrftoken= in INSTAGRAM_COOKIE from the same browser session): authenticated Instagram reads will likely fail and Story resolution will stay anonymous.`
+      );
+    }
   }
 
   return { ok: true, warnings };

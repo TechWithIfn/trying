@@ -480,9 +480,9 @@ describe("story final errors never masquerade", () => {
     expect(err.statusCode).toBe(429);
   });
 
-  it("challenge outranks empty tray (verification, not absence)", () => {
+  it("challenge outranks empty tray (dedicated code, not absence, not generic session)", () => {
     const err = finalProfileError("storyuser", { ...base, sawChallenge: true });
-    expect(err.code).toBe("SESSION_EXPIRED");
+    expect(err.code).toBe("INSTAGRAM_CHALLENGE");
     expect(err.message).toMatch(/challenge/i);
   });
 
@@ -533,7 +533,7 @@ describe("story resolve: video and image media", () => {
     expect(first.url).not.toMatch(/profile|avatar|s150x150/);
   });
 
-  it("reports NO_STORY only for a proven-live empty tray", async () => {
+  it("reports INSTAGRAM_AUTH_EMPTY_RESPONSE for a proven-live empty tray (accepted but empty, never absence)", async () => {
     process.env.INSTAGRAM_SESSIONID = "proven-live-session";
     // Session-owner probe proves the session live; the target tray is
     // genuinely empty.
@@ -564,7 +564,7 @@ describe("story resolve: video and image media", () => {
     // Browser fallback would need Chromium — disable via puppeteer provider
     // guard by leaving RESOLVER_PROVIDER unset (placeholder skips browser).
     await expect(resolveStoryUrl("https://www.instagram.com/stories/emptystoryuser/")).rejects.toMatchObject({
-      code: "NO_STORY",
+      code: "INSTAGRAM_AUTH_EMPTY_RESPONSE",
     });
   }, 30_000);
 });
@@ -701,7 +701,7 @@ describe("story URL robustness (@ handles, query params, slashes)", () => {
   });
 });
 
-describe("story session fail-fast (no fallback chain on dead sessions)", () => {
+describe("story session fallback (dead sessions fall back to anonymous)", () => {
   beforeEach(() => {
     savedEnv = {};
     for (const key of SESSION_KEYS) savedEnv[key] = process.env[key];
@@ -717,7 +717,7 @@ describe("story session fail-fast (no fallback chain on dead sessions)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("stops with SESSION_EXPIRED on an invalid session without user lookup", async () => {
+  it("continues anonymously on an invalid session instead of SESSION_EXPIRED", async () => {
     process.env.INSTAGRAM_SESSIONID = "dead-failfast-session";
     const fetched: string[] = [];
     vi.stubGlobal(
@@ -727,13 +727,16 @@ describe("story session fail-fast (no fallback chain on dead sessions)", () => {
         return jsonResponse({ message: "Please wait", require_login: true }, 401);
       }) as never
     );
+    // The dead owner probe quarantines the session and the public chain runs:
+    // the terminal verdict comes from what anonymous resolution actually
+    // found (here: gated everywhere → PRIVATE_ACCOUNT), never an immediate
+    // SESSION_EXPIRED without any lookup.
     await expect(
       resolveStoryUrl("https://www.instagram.com/stories/someuser/")
-    ).rejects.toMatchObject({ code: "SESSION_EXPIRED" });
-    // Exactly one request (the owner probe) — no user lookup, no tray fetch,
-    // no page scrapes, no browser fallback on a dead identity.
-    expect(fetched).toHaveLength(1);
+    ).rejects.toMatchObject({ code: "PRIVATE_ACCOUNT" });
     expect(fetched[0]).toContain("current_user");
+    expect(fetched.length).toBeGreaterThan(1);
+    expect(fetched.slice(1).some((u) => !u.includes("current_user"))).toBe(true);
   });
 });
 

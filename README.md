@@ -101,6 +101,25 @@ npm run dev:backend    # http://localhost:3001
 | `RATE_LIMIT_WINDOW_MS` | Rate limit window | `60000` |
 | `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `30` |
 | `RESOLVER_TIMEOUT_MS` | Provider request timeout | `15000` |
+| `INSTAGRAM_COOKIE` | Full Instagram cookie string (`sessionid=...; csrftoken=...; ...`) — optional | - |
+| `INSTAGRAM_SESSIONID` | Bare Instagram session ID (wrapped automatically) — optional, alternative to `INSTAGRAM_COOKIE` | - |
+
+The Instagram session is **optional**. When configured, Story resolution tries it
+first and automatically falls back to anonymous/public resolution if Instagram
+proves it invalid or expired — a dead session never fails a public Story. When
+absent (e.g. Vercel without these variables set), Story resolution runs
+anonymously from the start. Accepted names: `INSTAGRAM_COOKIE`, `IG_COOKIE`,
+`INSTAGRAM_COOKIE_STRING`, `INSTAGRAM_SESSION_COOKIE`, `INSTAGRAM_SESSIONID`,
+`IG_SESSIONID`, `INSTAGRAM_SESSION_ID`, `SESSIONID` (first non-empty wins).
+
+A bare `sessionid` alone is usually **not enough**: Instagram's web API also
+wants the matching `csrftoken` (and ideally `ds_user_id`) from the same logged-in
+browser session. Either paste the full cookie string —
+`INSTAGRAM_COOKIE="sessionid=...; csrftoken=...; ds_user_id=..."` — or pair
+`INSTAGRAM_SESSIONID` with `INSTAGRAM_CSRFTOKEN`. The backend logs a warning at
+boot when the companion is missing. After editing `backend/.env` locally, **restart
+the backend process** (file changes are read once at boot, not watched); on Vercel,
+set the variables in Project Settings → Environment Variables and redeploy.
 
 ## Provider Modes
 

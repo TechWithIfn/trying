@@ -3,9 +3,9 @@ import Script from "next/script";
 import HelpClient from "./HelpClient";
 import { SITE_URL } from "@/config/site";
 
-const HELP_TITLE = "How to Download Instagram Reels, Videos & Photos | Downloadit";
+const HELP_TITLE = "How to Download Instagram Reels, Videos & Carousels | Downloadit";
 const HELP_DESCRIPTION =
-  "Learn how to use Downloadit to download public Instagram Reels, videos, photos, Stories and audio quickly and easily.";
+  "Learn how to use Downloadit to download public Instagram Reels, videos, carousels, Stories and audio quickly and easily.";
 
 export const metadata: Metadata = {
   title: { absolute: HELP_TITLE },

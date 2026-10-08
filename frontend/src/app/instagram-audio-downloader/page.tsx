@@ -123,7 +123,7 @@ export default function AudioDownloaderPage() {
             {[
               { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Save photos as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
             ].map((l) => (

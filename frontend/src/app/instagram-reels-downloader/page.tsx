@@ -124,7 +124,7 @@ export default function ReelsDownloaderPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save standard video posts as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Save photos and carousel slides as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels and carousel slides as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 audio from Reels" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },

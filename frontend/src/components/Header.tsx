@@ -278,7 +278,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
           {([
             ["/instagram-reels-downloader", "Instagram Reels Downloader", Film, "bg-pink-500/10"] as const,
             ["/instagram-video-downloader", "Instagram Video Downloader", Video, "bg-primary-light"] as const,
-            ["/instagram-photo-downloader", "Instagram Photo Downloader", ImageIcon, "bg-orange-500/10"] as const,
+            ["/instagram-photo-downloader", "Instagram Carousel Downloader", ImageIcon, "bg-orange-500/10"] as const,
             ["/instagram-story-downloader", "Instagram Story Downloader", Clock, "bg-sky-500/10"] as const,
             ["/instagram-audio-downloader", "Instagram Audio Downloader", Music2, "bg-emerald-500/10"] as const,
           ]).map(([href, label, Icon, bg]) => {

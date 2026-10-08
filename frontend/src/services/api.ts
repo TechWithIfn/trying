@@ -322,10 +322,11 @@ export function storyErrorMessage(code: string, backendMessage?: string | null):
     case "SESSION_EXPIRED":
     case "INSTAGRAM_AUTH_INVALID":
     case "INSTAGRAM_LOGIN_REQUIRED":
-      // Fixed operator-facing text: the backend reason is session-side, so
-      // the UI always shows this line (the exact Instagram response stays in
-      // server logs + diagnostics for the operator).
-      return "Server session expired, please try again later.";
+      // The backend only surfaces these after attempting public resolution
+      // without the dead session, so the message says so: the failure is the
+      // session's, and the public path was already tried. (The exact
+      // Instagram response stays in server logs + diagnostics.)
+      return "The configured Instagram session has expired. Public Story access was attempted without it — if this persists, the Story may be private or gone.";
     case "PRIVATE_ACCOUNT":
     case "STORY_PRIVATE":
       return fallback("Private account — Story unavailable.");
@@ -356,6 +357,15 @@ export function storyErrorMessage(code: string, backendMessage?: string | null):
     case "NO_ACTIVE_PUBLIC_STORY":
     case "STORY_NOT_ACTIVE":
       return backend || "This account has no active public Story right now. Stories expire after 24 hours.";
+    case "INSTAGRAM_AUTH_EMPTY_RESPONSE":
+      return backend || "Instagram accepted the request but returned no Story media. The Story may not exist, or access may be limited right now.";
+    case "INSTAGRAM_CHALLENGE":
+      return backend || "Instagram asked for verification. Please try again later.";
+    case "STORY_PROVIDER_REQUIRED":
+      // Fixed text: the backend emits this only after the full public chain
+      // (plus any configured external provider) found nothing without a live
+      // session — absence unprovable, not absence proven.
+      return "Instagram is not returning Story media to this server. Configure a supported Story provider to resolve public Stories.";
     default:
       return backend || "Something went wrong while fetching the media. Please try again.";
   }

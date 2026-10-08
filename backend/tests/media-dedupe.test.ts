@@ -56,4 +56,17 @@ describe("dedupeMediaItems", () => {
     const good = item("https://scontent.cdninstagram.com/a.jpg");
     expect(dedupeMediaItems([bad, good])).toHaveLength(2);
   });
+
+  it("collapses a half-unescaped copy of the same image with its clean twin", () => {
+    const clean =
+      "https://instagram.fdel93-3.fna.fbcdn.net/v/t51.82787-15/830453516_17920216380436842_4764884966635084907_n.heic?oh=x&oe=y";
+    const escaped =
+      "https:\\/\\/instagram.fdel93-3.fna.fbcdn.net\\/v\\/t51.82787-15\\/830453516_17920216380436842_4764884966635084907_n.heic?oh=x&oe=y";
+    const out = dedupeMediaItems([
+      item(clean, { width: 1440, height: 1920 }),
+      item(escaped),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].url).toBe(clean);
+  });
 });

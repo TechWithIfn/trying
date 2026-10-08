@@ -506,6 +506,25 @@ main li a[href]:hover {
   height: auto;
   max-width: 100%;
 }
+
+/* Photo / carousel posts: square-first feed box, image centered inside.
+   Never inherit the Story/Reel 9:16 frame (that shoved subjects off-center). */
+.result-video-wrap .media-frame.media-post {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: min(100%, 480px);
+  max-height: min(70vh, 640px);
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+}
+.result-video-wrap .media-frame.media-post img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+}
 @media (max-width: 639.98px) {
   .media-frame {
     max-height: 70vh;
@@ -827,6 +846,13 @@ svg {
   .result-video-wrap .media-frame {
     aspect-ratio: 9 / 16;
     max-height: min(56dvh, 480px);
+    margin-inline: auto;
+  }
+  .result-video-wrap .media-frame.media-post {
+    aspect-ratio: 1 / 1;
+    max-height: min(70dvh, 560px);
+    width: 100%;
+    max-width: min(100%, 420px);
     margin-inline: auto;
   }
   .result-download {

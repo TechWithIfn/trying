@@ -38,7 +38,7 @@ export default function AboutPage() {
       </p>
       <p>
         It was built out of a small, everyday annoyance: Instagram has no save
-        button. People screenshot photos and lose quality, or screen-record
+        button. People screenshot images and lose quality, or screen-record
         clips and get something barely watchable. I wanted one page with one
         field that skips all of that — paste a public link, get the original
         file, done. No popups in the way, no password asked, nothing to sign
@@ -58,10 +58,10 @@ export default function AboutPage() {
         The tool covers the media types people actually ask for:{" "}
         <Link href="/instagram-reels-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Reels</Link>,{" "}
         <Link href="/instagram-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">videos</Link>,{" "}
-        <Link href="/instagram-photo-downloader" className="font-semibold text-fg transition-colors hover:text-primary">photos and carousels</Link>,{" "}
+        <Link href="/instagram-photo-downloader" className="font-semibold text-fg transition-colors hover:text-primary">carousels</Link>,{" "}
         <Link href="/instagram-story-downloader" className="font-semibold text-fg transition-colors hover:text-primary">stories</Link>, and{" "}
         <Link href="/instagram-audio-downloader" className="font-semibold text-fg transition-colors hover:text-primary">audio extracted as MP3</Link>.
-        Videos save as MP4, photos keep their original JPG, PNG or WebP, and
+        Videos save as MP4, images keep their original JPG, PNG or WebP, and
         stories keep whatever image or video format they were posted in. The{" "}
         <Link href="/help" className="font-semibold text-fg transition-colors hover:text-primary">Help page</Link>{" "}
         walks through each of these with troubleshooting for the common

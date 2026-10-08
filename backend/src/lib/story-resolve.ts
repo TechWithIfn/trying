@@ -7,6 +7,7 @@ import {
   getInstagramSessionCookie as getInstagramCookie,
   getSessionState,
   isInstagramSessionConfigured as isInstagramCookieConfigured,
+  markSessionInvalid,
   type SessionLifecycleState,
 } from "./instagram-session.js";
 import {
@@ -147,6 +148,23 @@ interface StoryResolveState {
    */
   sessionWasConfigured: boolean;
   /**
+   * True once a reels_media endpoint answered HTTP 200 with a RECOGNIZED
+   * (parseable, tray-keyed) but empty tray. That is positive evidence from
+   * Instagram itself that no active Story exists — independent of session
+   * state — so an exhausted chain ends in NO_STORY rather than blaming the
+   * session. Never set for unknown structures (see trayStructureUnknown).
+   */
+  publicTrayCheckedEmpty: boolean;
+  /**
+   * True once a configured session was PROVEN dead (owner probe or an
+   * authenticated wall) and the chain continued anonymously anyway. A dead
+   * optional session must never fail a potentially-public Story: with this
+   * set, an empty recognized tray resolves to NO_STORY (the public check
+   * genuinely shows nothing) instead of SESSION_EXPIRED, and dead-session
+   * verdicts below defer to whatever the anonymous chain actually found.
+   */
+  anonymousFallbackRan: boolean;
+  /**
    * Profile-page HTML already fetched during user lookup. Strategy B reuses
    * it instead of requesting the same page twice — one fewer Instagram hit
    * per resolve, which matters for upstream throttle budgets. Null until a
@@ -185,6 +203,8 @@ export function createStoryResolveState(): StoryResolveState {
     sawAuthedWall: false,
     sawChallenge: false,
     sessionWasConfigured: false,
+    anonymousFallbackRan: false,
+    publicTrayCheckedEmpty: false,
   };
 }
 
@@ -509,6 +529,14 @@ export function parseStoryUrl(url: string): { username: string; storyId: string 
     const storyId = segments[2] || null;
     return { username, storyId, highlightId: null };
   }
+  // Short share links (/s/<code>, often with ?story_media_id=) wrap story
+  // shares. The code carries no username, so return it as the story
+  // identifier: the caller follows the redirect to the canonical Story URL
+  // and re-parses. Never reject these — they are the links Instagram's own
+  // Share button produces for Stories.
+  if (first === "s" && segments[1]) {
+    return { username: "", storyId: segments[1], highlightId: null };
+  }
   // Bare profile URL (/USERNAME/) used for public story lookup: the single
   // segment is the username, there is never a Story ID.
   if (segments.length === 1 && !STORY_RESERVED_SINGLE.has(first ?? "")) {
@@ -724,7 +752,7 @@ async function sniffStoryHeadBytes(url: string): Promise<string | null> {
  * sometimes blocks HEAD; profile safety already passed, so the candidate
  * stays usable but unconfirmed).
  */
-async function validateStoryMedia(media: MediaItem): Promise<string | null> {
+export async function validateStoryMedia(media: MediaItem): Promise<string | null> {
   if (isProbablyProfileMedia(media)) {
     throw mediaNotUsable("media-validation", "candidate is a profile/avatar image, not Story media.");
   }
@@ -1694,6 +1722,8 @@ export function finalProfileError(
     | "reelsStatus"
     | "lastParsedCount"
     | "sessionWasConfigured"
+    | "anonymousFallbackRan"
+    | "publicTrayCheckedEmpty"
   > & {
     sawExpiredMedia?: boolean;
     sawInvalidCandidates?: boolean;
@@ -1719,11 +1749,7 @@ export function finalProfileError(
     );
   }
   if (state.sawChallenge) {
-    return new AppError(
-      "SESSION_EXPIRED",
-      "Instagram asked for verification for this session (challenge required). The server session needs to be refreshed.",
-      401
-    );
+    return new AppError("INSTAGRAM_CHALLENGE", ERRORS.INSTAGRAM_CHALLENGE.message, 401);
   }
   if (state.privateHint) {
     return new AppError(
@@ -1750,10 +1776,12 @@ export function finalProfileError(
   // 401 only proves the endpoint wants auth (expected), while a clean
   // authenticated empty tray is positive evidence of no active Story.
   // An authenticated 401/403 proves the CONFIGURED session is dead — that is a
-  // credential verdict, not content evidence. It outranks tray emptiness but
-  // is reported as auth failure, never as "restricted" or "no story".
+  // credential verdict, not content evidence — BUT only when no anonymous
+  // fallback ran. Once a proven-dead session fell back to the public chain,
+  // an empty tray means the public check genuinely shows nothing (NO_STORY),
+  // never "session expired".
   const sessionDead = state.sawAuthedWall === true && state.authedStatus !== 200;
-  if (sessionDead && state.strategiesTried.length > 0) {
+  if (sessionDead && state.strategiesTried.length > 0 && !state.anonymousFallbackRan) {
     return new AppError(
       "SESSION_EXPIRED",
       "Instagram session expired or requires verification.",
@@ -1766,9 +1794,11 @@ export function finalProfileError(
   const worked = state.strategiesTried.length > 0 && state.emptyShellCount === 0;
   if (worked && lookupBlocked) {
     // Gated lookup with no session proof: a configured session means the
-    // wall is a credential verdict (SESSION_EXPIRED); anonymous runs get a
+    // wall is a credential verdict (SESSION_EXPIRED) — unless a proven-dead
+    // session already fell back to anonymous, in which case the wall is just
+    // gating evidence like any anonymous run. Anonymous runs get a
     // stage-tagged fetch failure — never "no story".
-    if (state.sessionWasConfigured) {
+    if (state.sessionWasConfigured && !state.anonymousFallbackRan) {
       return new AppError(
         "SESSION_EXPIRED",
         "Instagram session expired or requires verification.",
@@ -1795,26 +1825,34 @@ export function finalProfileError(
       502
     );
   }
-  // FALSE-NEGATIVE PROTECTION: an empty tray becomes NO_STORY ONLY after
-  // every check passes — verified-live session (or a purely anonymous run
-  // whose public chain completed ungated), resolved user, non-private
-  // account, successful requests, no rate-limit/challenge/auth walls, and a
-  // recognized (parseable) tray structure. Anything else maps to its own
-  // code above and can never fall through to "no story".
+  // ABSENCE REQUIRES PROOF: NO_STORY fires ONLY with a verified-live session
+  // (an authenticated 200 on a story endpoint) plus a resolved user and an
+  // empty recognized tray. Anonymous-only emptiness — unconfigured runs,
+  // dead-session fallbacks, even positively-empty public trays — is NOT
+  // absence evidence: Instagram serves anonymous datacenter clients empty
+  // trays and shells over HTTP 200 regardless of reality. Those cases fall
+  // through to STORY_PROVIDER_REQUIRED below, never "no story".
   const sessionLive = state.authedStatus === 200;
-  if (state.userExists && (sessionLive || !state.sessionWasConfigured)) {
-    return new AppError(
-      "NO_STORY",
-      `The account "@${username}" has no active public Story right now. Stories expire after 24 hours.`,
-      404
-    );
+  if (state.userExists && sessionLive) {
+    // Identity verified AND tray empty: the session is accepted yet no media
+    // came back. That is "accepted but empty" — never an absence claim.
+    return new AppError("INSTAGRAM_AUTH_EMPTY_RESPONSE", ERRORS.INSTAGRAM_AUTH_EMPTY_RESPONSE.message, 502);
   }
-  if (state.userExists && state.sessionWasConfigured && !sessionLive) {
+  // A positively-empty public tray downgrades even this: the session may be
+  // unproven-dead, but Instagram itself answered emptiness — absence stays
+  // unprovable either way, so the PROVIDER_REQUIRED branch below owns it.
+  if (state.userExists && state.sessionWasConfigured && !sessionLive && !state.anonymousFallbackRan && !state.publicTrayCheckedEmpty) {
     return new AppError(
       "SESSION_EXPIRED",
       "Instagram session expired or requires verification.",
       401
     );
+  }
+  if (
+    state.userExists &&
+    (state.anonymousFallbackRan || state.publicTrayCheckedEmpty || !state.sessionWasConfigured)
+  ) {
+    return new AppError("STORY_PROVIDER_REQUIRED", ERRORS.STORY_PROVIDER_REQUIRED.message, 502);
   }
   if (state.externalFailed) {
     return new AppError(
@@ -2004,6 +2042,10 @@ async function fetchReelsMedia(
       const obj = result.json as Record<string, unknown>;
       if (!("reels_media" in obj) && !("reels" in obj)) {
         state.trayStructureUnknown = true;
+      } else if (items.length === 0) {
+        // Recognized keys + zero items: Instagram positively reports an empty
+        // tray. Recorded independent of session state (see publicTrayCheckedEmpty).
+        state.publicTrayCheckedEmpty = true;
       }
     }
     // HTTP 200 with zero parsed items is an EMPTY TRAY, never evidence of
@@ -2237,7 +2279,12 @@ async function resolveHighlightById(highlightId: string, originalUrl: string, st
     if (status === 401 || status === 403 || (result.textSnippet && looksLikeLoginWall(result.textSnippet))) {
       logHighlight("reels_media auth required", { usedCookie: tryUseCookie, status });
       if (tryUseCookie) {
-        throw new AppError("SESSION_EXPIRED", "Instagram session expired or requires verification.", 401);
+        // Dead session on this endpoint: quarantine and try the next method
+        // instead of failing the Highlight — the public chain may still work.
+        markSessionInvalid();
+        if (state) state.anonymousFallbackRan = true;
+        logger.info("[STORY_SESSION_INVALID]", { endpoint: "highlight-reels_media", status });
+        logger.info("[STORY_ANONYMOUS_FALLBACK]", { reason: "dead-session-midchain", highlightId });
       }
       // Public 401 with no cookie → try next (authed if available), else continue to final error
       continue;
@@ -2280,14 +2327,20 @@ async function resolveHighlightById(highlightId: string, originalUrl: string, st
         }
       }
       if (authedResult.status === 401 || authedResult.status === 403) {
-        throw new AppError("SESSION_EXPIRED", "Instagram session expired or requires verification.", 401);
+        // Dead session on the final authed attempt: quarantine and fall
+        // through to the exhausted verdict below (STORY_NOT_FOUND when the
+        // public chain also saw nothing) instead of SESSION_EXPIRED.
+        markSessionInvalid();
+        state.anonymousFallbackRan = true;
+        logger.info("[STORY_SESSION_INVALID]", { endpoint: "highlight-reels_media_authed_final", status: authedResult.status });
+        logger.info("[STORY_ANONYMOUS_FALLBACK]", { reason: "dead-session-final", highlightId });
       }
       if (authedResult.status === 429) {
         if (state) markRateLimited(state);
         throw new AppError("RATE_LIMITED", "Instagram is temporarily rate-limiting requests. Please try again later.", 429);
       }
     } catch (err) {
-      if (err instanceof AppError && ["SESSION_EXPIRED", "RATE_LIMITED", "STORY_EXPIRED"].includes(err.code)) throw err;
+      if (err instanceof AppError && ["RATE_LIMITED", "STORY_EXPIRED"].includes(err.code)) throw err;
       logHighlight("authed final fallback failed", { error: err instanceof Error ? err.message : String(err) });
     }
   }
@@ -2935,7 +2988,21 @@ async function resolveViaExternalStoryFallback(
   try {
     const { ExternalProvider } = await import("./providers/external.js");
     const provider = new ExternalProvider(creds.apiUrl, creds.apiKey);
-    const result = await provider.resolve(url);
+    // Handle-based providers (GET ?handle=USERNAME) serve STORY and
+    // STORY_PROFILE lookups by username. Anything else (notably HIGHLIGHT,
+    // which carries no username) keeps the generic POST protocol so its
+    // behavior is unchanged.
+    let storyUsername: string | null = null;
+    if (classification === "STORY" || classification === "STORY_PROFILE") {
+      try {
+        storyUsername = parseStoryUrl(url).username || null;
+      } catch {
+        storyUsername = null;
+      }
+    }
+    const result = storyUsername
+      ? await provider.resolveStoryUrl(url, storyUsername)
+      : await provider.resolve(url);
     const ordered = [...(result.media || [])].sort((a, b) =>
       a.type === b.type ? 0 : a.type === "video" ? -1 : 1
     );
@@ -2945,16 +3012,13 @@ async function resolveViaExternalStoryFallback(
       images: ordered.filter((m) => m.type === "image").length,
       rejected: 0,
     });
-    // Same poster rule as the browser fallback: external media without tray
-    // authority may only contribute video, never a primary image.
+    // Video AND image items are accepted when they verify: profile/avatar
+    // impostors are still skipped up front and validateStoryMedia re-checks
+    // content type, size and dimensions, so a wrong file can never ship.
     const verified: MediaItem[] = [];
-    let externalImageCount = 0;
-    for (const item of ordered.slice(0, 3)) {
+    for (const item of ordered.slice(0, 5)) {
       if (isProbablyProfileMedia(item)) continue;
-      if (item.type !== "video") {
-        externalImageCount++;
-        continue;
-      }
+      if (item.type !== "video" && item.type !== "image") continue;
       try {
         const mime = await validateStoryMedia({ ...item });
         if (mime) item.mimeType = mime;
@@ -2967,13 +3031,12 @@ async function resolveViaExternalStoryFallback(
           reason: err instanceof AppError ? err.code : "invalid",
         });
       }
-      if (verified.length > 0) break;
     }
     if (verified.length === 0) {
       state.externalFailed = true;
       logger.info("[STORY] strategy failed", {
         strategy: "external",
-        reason: externalImageCount > 0 ? "image-only-poster-refused" : "all-invalid",
+        reason: "all-invalid",
       });
       return null;
     }
@@ -3366,10 +3429,11 @@ async function resolveStoryUrlInner(
     state.sessionWasConfigured = getSessionState().configured;
     logStorySessionStatus("profile-start", state);
     // Session validation FIRST with a lightweight authenticated call to the
-    // session-owner endpoint — before any username lookup or Story fetch. An
-    // invalid session stops here with SESSION_EXPIRED (no fallback chain
-    // burning budget on a dead identity); rate-limiting stops with
-    // RATE_LIMITED. An "ok" proof skips the tray probe below (one fewer
+    // session-owner endpoint — before any username lookup or Story fetch. A
+    // PROVEN-DEAD session is quarantined and the chain CONTINUES anonymously:
+    // a dead optional session must never fail a potentially-public Story.
+    // Only rate-limiting stops here with RATE_LIMITED (anonymous would hit the
+    // same wall). An "ok" proof skips the tray probe below (one fewer
     // Instagram request); inconclusive verdicts fall through to it.
     onProgress?.(15, "Validating session");
     {
@@ -3377,9 +3441,18 @@ async function resolveStoryUrlInner(
       if (quick.status === "login_required" && quick.challenge) state.sawChallenge = true;
       const quickError = sessionValidationError(quick);
       if (quickError) {
-        logger.info("[STORY] session-live", { live: false, validation: quick.status, lifecycle: getSessionState().state });
-        logStorySessionStatus("quick-validation", state);
-        throw quickError;
+        if (quickError.code === "RATE_LIMITED") {
+          logger.info("[STORY] session-live", { live: false, validation: quick.status, lifecycle: getSessionState().state });
+          logStorySessionStatus("quick-validation", state);
+          throw quickError;
+        }
+        // STORY_SESSION_INVALID: quarantine this attempt (idempotent — the
+        // probe usually already did) and fall through to the anonymous chain.
+        markSessionInvalid();
+        state.anonymousFallbackRan = true;
+        logger.info("[STORY_SESSION_INVALID]", { validation: quick.status, lifecycle: getSessionState().state });
+        logger.info("[STORY_ANONYMOUS_FALLBACK]", { reason: "dead-session-probe", username });
+        logStorySessionStatus("quick-validation-dead", state);
       }
       if (quick.status === "ok") {
         logger.info("[STORY] session-live", { live: true, validation: quick.status, lifecycle: getSessionState().state });
@@ -3683,9 +3756,9 @@ async function resolveStoryUrlInner(
   state.sessionWasConfigured = getSessionState().configured;
   logStorySessionStatus("direct-start", state);
 
-  // Session validation FIRST with the lightweight session-owner call: an
-  // invalid session stops here with SESSION_EXPIRED (no fallback chain on a
-  // dead identity); rate-limiting stops with RATE_LIMITED.
+  // Session validation FIRST with the lightweight session-owner call: a
+  // proven-dead session is quarantined and the chain CONTINUES anonymously
+  // (see profile chain above); only rate-limiting stops with RATE_LIMITED.
   if (isInstagramCookieConfigured() && state.authedStatus === null) {
     onProgress?.(21, "Validating session");
     const directValidation = await validateSessionOwner(state);
@@ -3694,13 +3767,21 @@ async function resolveStoryUrlInner(
     }
     const directError = sessionValidationError(directValidation);
     if (directError) {
-      logger.info("[STORY] session-live", {
-        live: false,
-        validation: directValidation.status,
-        lifecycle: getSessionState().state,
-      });
-      logStorySessionStatus("direct-session-check", state);
-      throw directError;
+      if (directError.code === "RATE_LIMITED") {
+        logger.info("[STORY] session-live", {
+          live: false,
+          validation: directValidation.status,
+          lifecycle: getSessionState().state,
+        });
+        logStorySessionStatus("direct-session-check", state);
+        throw directError;
+      }
+      // STORY_SESSION_INVALID: quarantine + anonymous fallback, same as above.
+      markSessionInvalid();
+      state.anonymousFallbackRan = true;
+      logger.info("[STORY_SESSION_INVALID]", { validation: directValidation.status, lifecycle: getSessionState().state });
+      logger.info("[STORY_ANONYMOUS_FALLBACK]", { reason: "dead-session-probe", storyId });
+      logStorySessionStatus("direct-session-check-dead", state);
     }
     logger.info("[STORY] session-live", {
       live: directValidation.status === "ok",
@@ -3771,7 +3852,16 @@ async function resolveStoryUrlInner(
     if (err instanceof AppError) {
       // Map to accurate categories, never conflate. Stage-tagged FETCH_FAILED
       // errors pass through untouched (their messages name the failed stage).
-      if (["INSTAGRAM_AUTH_NOT_CONFIGURED", "SESSION_EXPIRED", "NO_STORY", "PRIVATE_ACCOUNT", "FETCH_FAILED", "RATE_LIMITED", "USER_NOT_FOUND"].includes(err.code)) throw err;
+      // SESSION_EXPIRED / INSTAGRAM_AUTH_NOT_CONFIGURED are NOT rethrown: the
+      // public HTML attempt below runs without any session, so a dead or
+      // missing session must not skip it.
+      if (err.code === "SESSION_EXPIRED" || err.code === "INSTAGRAM_AUTH_NOT_CONFIGURED") {
+        markSessionInvalid();
+        state.anonymousFallbackRan = true;
+        logger.info("[STORY_SESSION_INVALID]", { stage: "direct-story-info", code: err.code });
+        logger.info("[STORY_ANONYMOUS_FALLBACK]", { reason: "dead-session-attempt1", storyId });
+        logger.info("[story-resolve] direct Story ID attempt hit dead session, trying page HTML", { storyId });
+      } else if (["NO_STORY", "PRIVATE_ACCOUNT", "FETCH_FAILED", "RATE_LIMITED", "USER_NOT_FOUND"].includes(err.code)) throw err;
       if (["PROVIDER_RATE_LIMITED", "RATE_LIMITED"].includes(err.code)) throw new AppError("RATE_LIMITED", "Instagram is rate-limiting requests. Please try again shortly.", 429);
       if (err.code === "CONTENT_NOT_FOUND") throw new AppError("NO_STORY", `Story ${storyId} not found for "@${username}". It may have been deleted or never existed.`, 404);
       if (err.code === "CONTENT_UNAVAILABLE" || err.code === "UPSTREAM_FORBIDDEN") {
@@ -3838,8 +3928,14 @@ async function resolveStoryUrlInner(
     }
   } catch (err) {
     if (err instanceof AppError) {
-      // Preserve distinct auth errors, but allow fallback for generic public failures
-      if (["INSTAGRAM_AUTH_NOT_CONFIGURED", "SESSION_EXPIRED", "PRIVATE_ACCOUNT"].includes(err.code)) throw err;
+      // A dead or missing session must not skip the username-list fallback
+      // below (it runs publicly); only genuinely restricted accounts stop here.
+      if (err.code === "SESSION_EXPIRED" || err.code === "INSTAGRAM_AUTH_NOT_CONFIGURED") {
+        markSessionInvalid();
+        state.anonymousFallbackRan = true;
+        logger.info("[STORY_SESSION_INVALID]", { stage: "direct-story-page-html", code: err.code });
+        logger.info("[STORY_ANONYMOUS_FALLBACK]", { reason: "dead-session-attempt2", storyId });
+      } else if (err.code === "PRIVATE_ACCOUNT") throw err;
     }
     logger.info("[story-resolve] direct story page HTML attempt failed, falling back to list", { storyId, error: err instanceof Error ? err.message : String(err) });
   }
@@ -3907,16 +4003,25 @@ async function resolveStoryUrlInner(
       throw new AppError("FETCH_FAILED", "Story request failed during tray-parse: Instagram returned an unexpected Story format.", 502);
     }
     const directSessionLive = state.authedStatus === 200;
+    // Absence requires a live session (see finalProfileError doctrine above).
+    // Anonymous-only emptiness — unconfigured, dead-session fallback, or even
+    // a positively-empty public tray — cannot prove absence from datacenter
+    // egress, so it reports STORY_PROVIDER_REQUIRED instead. SESSION_EXPIRED
+    // is reserved for a configured session that was never proven dead.
+    const publicCheckComplete = !state.sessionWasConfigured || state.anonymousFallbackRan || state.publicTrayCheckedEmpty;
     traceStoryError(state, {
       stage: "direct-tray-empty",
-      errorCode: directSessionLive || !state.sessionWasConfigured ? "NO_STORY" : "SESSION_EXPIRED",
+      errorCode: directSessionLive ? "NO_STORY" : publicCheckComplete ? "STORY_PROVIDER_REQUIRED" : "SESSION_EXPIRED",
       reason: "empty-tray",
       httpStatus: state.reelsStatus,
       storyCount: 0,
       mediaCount: 0,
     });
-    if (directSessionLive || !state.sessionWasConfigured) {
-      throw new AppError("NO_STORY", `Story ${storyId} not found for "@${username}". It may have been deleted, never existed, or expired after 24 hours.`, 404);
+    if (directSessionLive) {
+      throw new AppError("INSTAGRAM_AUTH_EMPTY_RESPONSE", ERRORS.INSTAGRAM_AUTH_EMPTY_RESPONSE.message, 502);
+    }
+    if (publicCheckComplete) {
+      throw new AppError("STORY_PROVIDER_REQUIRED", ERRORS.STORY_PROVIDER_REQUIRED.message, 502);
     }
     throw new AppError("SESSION_EXPIRED", "Instagram session expired or requires verification.", 401);
   }

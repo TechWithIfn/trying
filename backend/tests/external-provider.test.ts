@@ -361,6 +361,66 @@ describe("ExternalProvider", () => {
     expect(result.author).toBeNull();
   });
 
+  it("resolveStoryUrl uses GET ?handle= with Bearer auth and no body", async () => {
+    const fetchMock = mockFetch({ data: { items: [] } });
+    global.fetch = fetchMock;
+
+    const provider = new ExternalProvider(
+      "https://api.profilequery.com/v1/profile/stories",
+      "story-key"
+    );
+    await expect(
+      provider.resolveStoryUrl("https://www.instagram.com/stories/someuser/", "someuser")
+    ).rejects.toMatchObject({ code: "CONTENT_UNAVAILABLE" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.profilequery.com/v1/profile/stories?handle=someuser",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ Authorization: "Bearer story-key" }),
+      })
+    );
+    const [, init] = fetchMock.mock.calls[0] as [string, { body?: unknown }];
+    expect(init.body).toBeUndefined();
+  });
+
+  it("normalizeStoryItems maps video and photo items, skipping media-less entries", async () => {
+    global.fetch = mockFetch({
+      data: {
+        items: [
+          { id: "1", shortcode: "A", type: "video", video_url: "https://cdn.example.com/s1.mp4", image_url: "https://cdn.example.com/s1.jpg", video_duration: 7 },
+          { id: "2", shortcode: "B", type: "photo", image_url: "https://cdn.example.com/s2.jpg" },
+          { id: "3", shortcode: "C", type: "video" },
+        ],
+      },
+    });
+    const provider = new ExternalProvider(
+      "https://api.profilequery.com/v1/profile/stories",
+      "story-key"
+    );
+    const result = await provider.resolveStoryUrl("https://www.instagram.com/stories/someuser/", "someuser");
+    expect(result.type).toBe("STORY");
+    expect(result.media).toHaveLength(2);
+    expect(result.media[0]).toMatchObject({ type: "video", url: "https://cdn.example.com/s1.mp4", thumbnail: "https://cdn.example.com/s1.jpg" });
+    expect(result.media[1]).toMatchObject({ type: "image", url: "https://cdn.example.com/s2.jpg" });
+    expect(result.author?.username).toBe("someuser");
+  });
+
+  it.each([
+    [401, "PROVIDER_NOT_CONFIGURED"],
+    [404, "CONTENT_NOT_FOUND"],
+    [429, "PROVIDER_RATE_LIMITED"],
+  ])("resolveStoryUrl maps HTTP %i to %s", async (status, code) => {
+    global.fetch = mockFetch({}, status);
+    const provider = new ExternalProvider(
+      "https://api.profilequery.com/v1/profile/stories",
+      "story-key"
+    );
+    await expect(
+      provider.resolveStoryUrl("https://www.instagram.com/stories/someuser/", "someuser")
+    ).rejects.toMatchObject({ code });
+  });
+
   it("handles missing optional fields", async () => {
     global.fetch = mockFetch({
       success: true,
@@ -382,5 +442,65 @@ describe("ExternalProvider", () => {
     expect(result.media[0].duration).toBeNull();
     expect(result.media[0].format).toBeNull();
     expect(result.media[0].thumbnail).toBeNull();
+  });
+
+  it.each([
+    ["video_url", { video_url: "https://cdn.example.com/v.mp4", type: "video" }],
+    ["image_url", { image_url: "https://cdn.example.com/i.jpg", type: "image" }],
+    ["media_url", { media_url: "https://cdn.example.com/m.mp4", type: "video" }],
+    ["thumbnail_url", { url: "https://cdn.example.com/m.mp4", type: "video", thumbnail_url: "https://cdn.example.com/t.jpg" }],
+  ])("accepts the %s provider dialect", async (_name, item) => {
+    global.fetch = mockFetch({ success: true, data: { type: "STORY", media: [item] } });
+    const provider = new ExternalProvider("https://api.example.com/resolve", "test-key");
+    const result = await provider.resolve("https://www.instagram.com/stories/someuser/");
+    expect(result.media).toHaveLength(1);
+    expect(result.media[0].url).toMatch(/^https:\/\/cdn\.example\.com\//);
+  });
+
+  it("accepts video_versions / image_versions2 candidates", async () => {
+    global.fetch = mockFetch({
+      success: true,
+      data: {
+        type: "STORY",
+        media: [
+          { video_versions: [{ url: "https://cdn.example.com/v.mp4", width: 1080, height: 1920 }] },
+          { image_versions2: { candidates: [{ url: "https://cdn.example.com/i.jpg" }] } },
+        ],
+      },
+    });
+    const provider = new ExternalProvider("https://api.example.com/resolve", "test-key");
+    const result = await provider.resolve("https://www.instagram.com/stories/someuser/");
+    expect(result.media).toHaveLength(2);
+  });
+
+  it("skips unsafe URLs and fails only when nothing valid remains", async () => {
+    global.fetch = mockFetch({
+      success: true,
+      data: { type: "STORY", media: [{ url: "javascript:alert(1)" }, { url: "https://169.254.169.254/x" }] },
+    });
+    const provider = new ExternalProvider("https://api.example.com/resolve", "test-key");
+    await expect(provider.resolve("https://www.instagram.com/stories/someuser/")).rejects.toMatchObject({
+      code: "CONTENT_UNAVAILABLE",
+    });
+  });
+
+  it.each([
+    [{ code: "not_found" }, "CONTENT_NOT_FOUND"],
+    [{ code: "media_expired" }, "STORY_EXPIRED"],
+    [{ code: "private_account" }, "PRIVATE_ACCOUNT"],
+    [{ code: "rate_limited" }, "PROVIDER_RATE_LIMITED"],
+    [{ code: "mystery" }, "CONTENT_UNAVAILABLE"],
+    [{ message: "Story is gone" }, "STORY_EXPIRED"],
+    [{ code: "not_found", reason: "private_account" }, "PRIVATE_ACCOUNT"],
+    [{ code: "not_found", reason: "no_public_data" }, "CONTENT_NOT_FOUND"],
+    [{ code: "insufficient_credits" }, "PROVIDER_UNAVAILABLE"],
+    [{ code: "upstream_error" }, "PROVIDER_UNAVAILABLE"],
+    [{ code: "upstream_timeout" }, "PROVIDER_TIMEOUT"],
+  ])("maps provider failure %p to %s", async (error, code) => {
+    global.fetch = mockFetch({ success: false, error });
+    const provider = new ExternalProvider("https://api.example.com/resolve", "test-key");
+    await expect(provider.resolve("https://www.instagram.com/stories/someuser/")).rejects.toMatchObject({
+      code,
+    });
   });
 });

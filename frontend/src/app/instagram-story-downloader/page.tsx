@@ -74,7 +74,7 @@ export default function StoryDownloaderPage() {
           </Link>
           <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Story Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Stories are Instagram&apos;s most time-pressured format: a photo or clip that self-destructs 24 hours after posting. Screenshots of a story are awkward mid-watch, and screen recording a 15-second clip is worse. This page exists for the narrow window while a public story is still alive — paste its link, save the original file, done.
+            Stories are Instagram&apos;s most time-pressured format: an image or clip that self-destructs 24 hours after posting. Screenshots of a story are awkward mid-watch, and screen recording a 15-second clip is worse. This page exists for the narrow window while a public story is still alive — paste its link, save the original file, done.
           </p>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
             Speed matters more here than on any other page of this site. A reel waits for you; a story does not. If you found a story worth keeping, do it now rather than tonight — expiry is the single most common reason story downloads fail.
@@ -92,7 +92,7 @@ export default function StoryDownloaderPage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
               <h3 className="text-[16px] font-bold text-fg">What stories are covered</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Public story photos (JPG) and story videos (MP4) in their original files. Public highlight links usually resolve through the same flow — paste one and see.</p>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Public story images (JPG) and story videos (MP4) in their original files. Public highlight links usually resolve through the same flow — paste one and see.</p>
             </div>
             <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
               <h3 className="text-[16px] font-bold text-fg">Phones beat desktops here</h3>
@@ -119,7 +119,7 @@ export default function StoryDownloaderPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
               { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Save photos as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels as JPG" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },

@@ -183,7 +183,7 @@ export default function HelpClient() {
               </p>
               <ul className="mt-5 flex flex-col gap-3 text-[14px] leading-[1.7] text-fg-muted">
                 <li><span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>instagram.com/reel/…</span> — any public reel, for the <Link href="/instagram-reels-downloader" className={TOOL_LINK}>Reels downloader</Link>.</li>
-                <li><span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>instagram.com/p/…</span> — photo posts, video posts and carousels, for the <Link href="/instagram-photo-downloader" className={TOOL_LINK}>Photo</Link> and <Link href="/instagram-video-downloader" className={TOOL_LINK}>Video downloaders</Link>. Older long videos may use <span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>/tv/…</span> instead.</li>
+                <li><span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>instagram.com/p/…</span> — posts, video posts and carousels, for the <Link href="/instagram-photo-downloader" className={TOOL_LINK}>Carousel</Link> and <Link href="/instagram-video-downloader" className={TOOL_LINK}>Video downloaders</Link>. Older long videos may use <span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>/tv/…</span> instead.</li>
                 <li><span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>instagram.com/stories/…</span> — a live story, for the <Link href="/instagram-story-downloader" className={TOOL_LINK}>Story downloader</Link>. Copy it while the story is still up.</li>
                 <li><span className="rounded px-1.5 py-0.5 font-mono text-[13px]" style={{ background: "var(--bg)" }}>instagram.com/username</span> — a plain public profile link is accepted as a story lookup.</li>
               </ul>
@@ -282,7 +282,7 @@ export default function HelpClient() {
                 },
                 {
                   q: "It previewed fine but will not save on my iPhone",
-                  a: <span>It probably did save — iPhones put downloads in Files, not Photos. Open the Files app, look in Downloads, and your MP4 should be sitting there. More on the <Link href="/instagram-video-downloader" className={TOOL_LINK}>Video downloader page</Link>.</span>,
+                  a: <span>It probably did save — iPhones put downloads in Files, not the gallery. Open the Files app, look in Downloads, and your MP4 should be sitting there. More on the <Link href="/instagram-video-downloader" className={TOOL_LINK}>Video downloader page</Link>.</span>,
                 },
                 {
                   q: "The preview shows the wrong video",
@@ -296,28 +296,28 @@ export default function HelpClient() {
             </section>
           </ScrollReveal>
 
-          {/* ── 4d. Photo problems ── */}
+          {/* ── 4d. Carousel problems ── */}
           <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
-                <SectionTitle>Photo problems</SectionTitle>
+                <SectionTitle>Carousel problems</SectionTitle>
               </div>
               <Accordion idPrefix="help-photos" items={[
                 {
                   q: "Only the first carousel slide saved",
-                  a: <span>That is how it is supposed to work — every slide is its own file. Watch the counter, step through with Next and Previous, and tap Download on each image you want. Ten slides means ten taps. The <Link href="/instagram-photo-downloader" className={TOOL_LINK}>Photo downloader page</Link> walks through it.</span>,
+                  a: <span>That is how it is supposed to work — every slide is its own file. Watch the counter, step through with Next and Previous, and tap Download on each image you want. Ten slides means ten taps. The <Link href="/instagram-photo-downloader" className={TOOL_LINK}>Carousel downloader page</Link> walks through it.</span>,
                 },
                 {
-                  q: "The saved photo looks soft or blurry",
+                  q: "The saved image looks soft or blurry",
                   a: "Compare the downloaded file, not the small preview on the page. The file is Instagram's original resolution; the preview is a lightweight stand-in and was never meant for judging sharpness.",
                 },
                 {
                   q: "There is no link to copy",
-                  a: "You are on the profile grid. Tap into the post so the photo or carousel opens on its own screen, then copy the link from there — three dots on desktop, Share on mobile.",
+                  a: "You are on the profile grid. Tap into the post so it opens on its own screen, then copy the link from there — three dots on desktop, Share on mobile.",
                 },
                 {
                   q: "Can I grab a profile picture this way?",
-                  a: "No, and that is deliberate scope, not a bug. This flow handles photo posts and carousels only. Profile pictures are a different thing entirely.",
+                  a: "No, and that is deliberate scope, not a bug. This flow handles carousel posts only. Profile pictures are a different thing entirely.",
                 },
               ]} />
             </section>
@@ -431,7 +431,7 @@ export default function HelpClient() {
                 },
                 {
                   q: "I cannot find the file after downloading",
-                  a: "Android: check Downloads or Gallery. iPhone: open the Files app → Downloads — Safari puts files there, not in Photos. Desktop: the browser's Downloads folder, openable from the toolbar download icon.",
+                  a: "Android: check Downloads or Gallery. iPhone: open the Files app → Downloads — Safari puts files there, not in the gallery. Desktop: the browser's Downloads folder, openable from the toolbar download icon.",
                 },
                 {
                   q: "It downloaded twice",
@@ -450,11 +450,11 @@ export default function HelpClient() {
               <Accordion idPrefix="help-mobile" items={[
                 {
                   q: "Where do files go on my phone?",
-                  a: "Android drops them in Downloads, and photos and videos also surface in Gallery. iPhones keep everything in the Files app under Downloads. If an MP4 does not appear in Photos on iPhone, that is why — it was never going there.",
+                  a: "Android drops them in Downloads, and images and videos also surface in Gallery. iPhones keep everything in the Files app under Downloads. If an MP4 does not appear in the gallery on iPhone, that is why — it was never going there.",
                 },
                 {
                   q: "How do I copy a link inside the Instagram app?",
-                  a: "Reels and videos: Share (paper plane) → Copy link. Photo posts: the same Share button. Stories: Share from the story viewer while it is live. Then switch to your browser and paste.",
+                  a: "Reels and videos: Share (paper plane) → Copy link. Carousel posts: the same Share button. Stories: Share from the story viewer while it is live. Then switch to your browser and paste.",
                 },
                 {
                   q: "Audio processing seems to die when I switch apps",
@@ -481,7 +481,7 @@ export default function HelpClient() {
                 },
                 {
                   q: "Where do desktop downloads land?",
-                  a: "Your browser's Downloads folder, every time. The toolbar's download icon jumps you straight there. MP4s open in any desktop player, photos in any viewer, MP3s in any music app.",
+                  a: "Your browser's Downloads folder, every time. The toolbar's download icon jumps you straight there. MP4s open in any desktop player, images in any viewer, MP3s in any music app.",
                 },
                 {
                   q: "Pasting does not seem to work",

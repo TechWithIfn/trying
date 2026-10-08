@@ -32,8 +32,8 @@ const QUICK_ICONS = [Globe, Smartphone, Eye, LayoutGrid];
 const MEDIA_ROWS = [
   { href: "/instagram-reels-downloader", label: "Reels", note: "Supported video downloads", Icon: Film },
   { href: "/instagram-video-downloader", label: "Videos", note: "Supported video posts", Icon: Video },
-  { href: "/instagram-photo-downloader", label: "Photos", note: "Supported image posts", Icon: ImageIcon },
-  { href: "/instagram-photo-downloader", label: "Multi-photo posts", note: "Individual supported images", Icon: Layers },
+  { href: "/instagram-photo-downloader", label: "Carousels", note: "Supported image posts", Icon: ImageIcon },
+  { href: "/instagram-photo-downloader", label: "Carousel posts", note: "Individual supported images", Icon: Layers },
   { href: "/instagram-story-downloader", label: "Stories", note: "Active public Stories", Icon: Clock },
   { href: "/instagram-audio-downloader", label: "Audio", note: "MP3 extraction", Icon: Music },
 ] as const;

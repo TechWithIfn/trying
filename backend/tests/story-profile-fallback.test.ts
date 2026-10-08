@@ -260,6 +260,8 @@ describe("finalProfileError accuracy", () => {
     reelsStatus: null as number | null,
     lastParsedCount: null as number | null,
     sessionWasConfigured: false,
+    anonymousFallbackRan: false,
+    publicTrayCheckedEmpty: false,
   };
 
   it("returns PRIVATE_ACCOUNT for private accounts", () => {
@@ -268,14 +270,13 @@ describe("finalProfileError accuracy", () => {
     expect(err.statusCode).toBe(403);
   });
 
-  it("returns NO_STORY when the user exists but the tray is empty", () => {
+  it("returns STORY_PROVIDER_REQUIRED (not NO_STORY) when the user exists but only anonymous evidence exists", () => {
     const err = finalProfileError("someuser", {
       ...base,
       userExists: true,
       strategiesTried: ["reels_media", "pages-html"],
     });
-    expect(err.code).toBe("NO_STORY");
-    expect(err.message).toContain("someuser");
+    expect(err.code).toBe("STORY_PROVIDER_REQUIRED");
   });
 
   it("returns FETCH_FAILED (never NO_STORY) on anonymous login walls", () => {
@@ -287,16 +288,17 @@ describe("finalProfileError accuracy", () => {
     expect(err.code).toBe("FETCH_FAILED");
   });
 
-  it("returns NO_STORY for anonymous 401s + clean empty tray", () => {
-    // The exact past over-classification: public-API 401s (endpoint wants a
-    // session) must not outrank an authenticated-looking empty tray.
+  it("returns STORY_PROVIDER_REQUIRED for anonymous 401s + clean empty tray", () => {
+    // Anonymous emptiness is insufficient evidence either way: a login wall
+    // plus an empty tray with no live session means "cannot determine",
+    // never "no story".
     const err = finalProfileError("someuser", {
       ...base,
       sawLoginWall: true,
       userExists: true,
       strategiesTried: ["reels_media", "pages-html"],
     });
-    expect(err.code).toBe("NO_STORY");
+    expect(err.code).toBe("STORY_PROVIDER_REQUIRED");
   });
 
   it("returns SESSION_EXPIRED on authenticated walls (dead session proof)", () => {
@@ -312,7 +314,7 @@ describe("finalProfileError accuracy", () => {
     expect(err.statusCode).toBe(401);
   });
 
-  it("returns NO_STORY for a proven-live empty tray", () => {
+  it("returns INSTAGRAM_AUTH_EMPTY_RESPONSE for a proven-live empty tray (accepted but empty, never absence)", () => {
     const err = finalProfileError("someuser", {
       ...base,
       userExists: true,
@@ -320,7 +322,7 @@ describe("finalProfileError accuracy", () => {
       sessionWasConfigured: true,
       strategiesTried: ["reels_media", "pages-html"],
     });
-    expect(err.code).toBe("NO_STORY");
+    expect(err.code).toBe("INSTAGRAM_AUTH_EMPTY_RESPONSE");
   });
 
   it("returns SESSION_EXPIRED for configured-but-unproven sessions", () => {
