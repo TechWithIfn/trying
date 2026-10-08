@@ -173,6 +173,33 @@ describe("validateServerEnv", () => {
     expect(result.warnings.join(" ")).not.toContain("STORY_PROVIDER");
     setEnv("STORY_PROVIDER", undefined);
   });
+
+  it("warns when a Story provider URL is set without its API key", () => {
+    setEnv("STORY_PROVIDER", "auto");
+    setEnv("STORY_PROVIDER_URL", "https://api.profilequery.com/v1/profile/stories");
+    setEnv("STORY_PROVIDER_API_KEY", undefined);
+    setEnv("PROVIDER_API_URL", undefined);
+    setEnv("PROVIDER_API_KEY", undefined);
+    const result = validateServerEnv();
+    expect(result.warnings.join(" ")).toContain("STORY_PROVIDER_URL is set but its API key is empty");
+    expect(JSON.stringify(result)).not.toContain("api.profilequery.com");
+    setEnv("STORY_PROVIDER", undefined);
+    setEnv("STORY_PROVIDER_URL", undefined);
+  });
+
+  it("warns when a Story provider API key is set without its URL", () => {
+    setEnv("STORY_PROVIDER", "auto");
+    setEnv("STORY_PROVIDER_URL", undefined);
+    setEnv("STORY_PROVIDER_API_KEY", "secret-key");
+    setEnv("PROVIDER_API_URL", undefined);
+    setEnv("PROVIDER_API_KEY", undefined);
+    const result = validateServerEnv();
+    expect(result.warnings.join(" ")).toContain("STORY_PROVIDER_API_KEY is set but STORY_PROVIDER_URL is empty");
+    const raw = JSON.stringify(result);
+    expect(raw).not.toContain("secret-key");
+    setEnv("STORY_PROVIDER", undefined);
+    setEnv("STORY_PROVIDER_API_KEY", undefined);
+  });
 });
 
 describe("getBuildVersion", () => {

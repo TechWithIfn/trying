@@ -406,6 +406,28 @@ describe("ExternalProvider", () => {
     expect(result.author?.username).toBe("someuser");
   });
 
+  it("prefers the video rendition over a photo label (story with music)", async () => {
+    global.fetch = mockFetch({
+      data: {
+        items: [
+          { id: "1", shortcode: "A", type: "image", video_url: "https://cdn.example.com/music.mp4", image_url: "https://cdn.example.com/music.jpg" },
+        ],
+      },
+    });
+    const provider = new ExternalProvider(
+      "https://api.profilequery.com/v1/profile/stories",
+      "story-key"
+    );
+    const result = await provider.resolveStoryUrl("https://www.instagram.com/stories/someuser/", "someuser");
+    expect(result.media).toHaveLength(1);
+    expect(result.media[0]).toMatchObject({
+      type: "video",
+      url: "https://cdn.example.com/music.mp4",
+      format: "mp4",
+    });
+    expect(result.media[0].url).not.toContain(".jpg");
+  });
+
   it.each([
     [401, "PROVIDER_NOT_CONFIGURED"],
     [404, "CONTENT_NOT_FOUND"],

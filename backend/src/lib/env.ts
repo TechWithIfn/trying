@@ -112,6 +112,23 @@ export function validateServerEnv(): { ok: boolean; warnings: string[] } {
       );
     }
   }
+  // Partial Story-provider config is the hidden trap: a URL without its key
+  // (or a key without its URL) silently keeps the external provider disabled,
+  // so gated accounts end in STORY_PROVIDER_REQUIRED instead of resolving.
+  // Warn at boot while names-only (never values) so a stray variable can't
+  // claim to be configured. Puppeteer mode NEVER consults the external
+  // provider, so set-but-unusable values there are flagged too.
+  const storyUrlValue = (process.env.STORY_PROVIDER_URL || process.env.PROVIDER_API_URL || "").trim();
+  const storyKeyValue = (process.env.STORY_PROVIDER_API_KEY || process.env.PROVIDER_API_KEY || "").trim();
+  if (storyUrlValue && !storyKeyValue) {
+    warnings.push(
+      `STORY_PROVIDER_URL is set but its API key is empty: the external Story provider stays disabled. Set STORY_PROVIDER_API_KEY (e.g. a profilequery ig_live_... key) or public-story downloads for gated accounts fail with STORY_PROVIDER_REQUIRED.`
+    );
+  } else if (storyKeyValue && !storyUrlValue) {
+    warnings.push(
+      `STORY_PROVIDER_API_KEY is set but STORY_PROVIDER_URL is empty: the external Story provider cannot run. Set STORY_PROVIDER_URL (e.g. https://api.profilequery.com/v1/profile/stories).`
+    );
+  }
 
   if (!process.env.CORS_ORIGIN) {
     warnings.push(

@@ -707,10 +707,19 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   // pasted URL carried `?img_index=N`, open the carousel on that slide
   // (clamped to the resolved items). MediaResult remounts per result, so the
   // initializer runs fresh for every new resolve.
+  // Story results can hold several live segments (photo + video with music).
+  // They get the same item navigation as carousels, and default to the first
+  // VIDEO segment so a photo thumbnail never blocks the MP4 download.
+  const isStoryResult =
+    result.type === "STORY" || result.type === "STORY_PROFILE" || result.type === "HIGHLIGHT";
   const [currentIndex, setCurrentIndex] = useState(() => {
     const s = result.startIndex;
     if (typeof s === "number" && Number.isFinite(s) && s > 0) {
       return Math.min(s, Math.max(0, result.media.length - 1));
+    }
+    if (isStoryResult) {
+      const firstVideo = result.media.findIndex((m) => m.type === "video");
+      if (firstVideo > 0) return firstVideo;
     }
     return 0;
   });
@@ -818,11 +827,11 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   );
   const isStoryProfileFallback =
     (result.type === "STORY" || result.type === "STORY_PROFILE") && isProfileMediaFrontend;
-  // Carousel controls ONLY for real carousel posts. Reels, single videos,
-  // single photos, stories and audio never show a counter/arrows —
-  // even if the backend returned more than one media item for them.
+  // Carousel controls for real carousel posts AND multi-segment stories
+  // (each live story segment is its own image or video). Reels, single
+  // videos, single photos and audio never show a counter/arrows.
   const isCarouselPost = !isAudio && (result.type === "CAROUSEL" || (result.type === "POST" && items.length > 1));
-  const showCarouselNav = isCarouselPost && items.length > 1;
+  const showCarouselNav = (isCarouselPost || isStoryResult) && items.length > 1;
 
   const resetPerItemState = useCallback(() => {
     setImgSrc(null);

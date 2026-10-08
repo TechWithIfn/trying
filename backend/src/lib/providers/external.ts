@@ -167,12 +167,16 @@ export class ExternalProvider extends BaseProvider {
       if (!raw || typeof raw !== "object") continue;
       const item = raw as Record<string, unknown>;
       const kind = typeof item["type"] === "string" ? (item["type"] as string).toLowerCase() : "";
-      const isVideo = kind === "video";
-      const isImage = kind === "photo" || kind === "image" || kind === "picture";
+      const videoUrl = this.firstValidUrl([item["video_url"], item["url"], item["media_url"]]);
+      const imageUrl = this.firstValidUrl([item["image_url"], item["url"], item["media_url"]]);
+      // A Story item that carries a playable video rendition IS a video
+      // (footage + music), even when the provider labels it "photo"/"image".
+      // Only genuinely still media (no video URL) resolves as an image — this
+      // is what guarantees an MP4 download instead of a JPEG thumbnail.
+      const isVideo = videoUrl !== null || kind === "video";
+      const isImage = videoUrl === null && (kind === "photo" || kind === "image" || kind === "picture");
       if (!isVideo && !isImage) continue;
-      const urlValue = isVideo
-        ? this.firstValidUrl([item["video_url"], item["url"], item["media_url"]])
-        : this.firstValidUrl([item["image_url"], item["url"], item["media_url"]]);
+      const urlValue = isVideo ? videoUrl : imageUrl;
       if (!urlValue) continue;
       const thumbValue = this.firstValidUrl([item["image_url"], item["thumbnail"], item["thumbnail_url"]]);
       const duration = typeof item["video_duration"] === "number" ? (item["video_duration"] as number) : null;
