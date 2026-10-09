@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import Script from "next/script";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SUPPORT_GMAIL_URL, SUPPORT_EMAIL, SITE_URL } from "@/config/site";
@@ -40,7 +39,7 @@ export default function LegalPage({
       <Header />
       <main id="main-content" className="flex-1">
         <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
-      <Script
+      <script
         id={`breadcrumb-${crumbPath.replace(/\//g, "") || "home"}`}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: breadcrumbJson }}

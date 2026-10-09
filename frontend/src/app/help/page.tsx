@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import HelpClient from "./HelpClient";
 import { SITE_URL } from "@/config/site";
 
@@ -37,7 +36,7 @@ export const metadata: Metadata = {
 export default function HelpPage() {
   return (
     <>
-      <Script
+      <script
         id="breadcrumb-help"
         type="application/ld+json"
         dangerouslySetInnerHTML={{

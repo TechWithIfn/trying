@@ -51,7 +51,7 @@ export default function Footer() {
   const PRODUCT_LINKS = [
     { label: "Instagram Reels Downloader", href: "/instagram-reels-downloader" },
     { label: "Instagram Video Downloader", href: "/instagram-video-downloader" },
-    { label: "Instagram Carousel Downloader", href: "/instagram-photo-downloader" },
+    { label: "Instagram Photo & Carousel Downloader", href: "/instagram-photo-downloader" },
     { label: "Instagram Story Downloader", href: "/instagram-story-downloader" },
     { label: "Instagram Audio Downloader", href: "/instagram-audio-downloader" },
   ];

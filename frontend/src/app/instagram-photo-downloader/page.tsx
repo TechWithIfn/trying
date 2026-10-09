@@ -6,25 +6,25 @@ import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
-  title: { absolute: "Instagram Carousel Downloader – Save Carousels & Images | Downloadit" },
-  description: "Download public Instagram carousels and images in original quality with Downloadit. Save single images or carousel slides quickly — no login required.",
+  title: { absolute: "Instagram Photo Downloader – Save Photos & Carousels | Downloadit" },
+  description: "Download public Instagram photos and carousels in original quality with Downloadit. Save single images or every slide of a carousel — no login required.",
   alternates: { canonical: "/instagram-photo-downloader" },
   openGraph: {
-    title: { absolute: "Instagram Carousel Downloader – Save Carousels & Images | Downloadit" },
-    description: "Download public Instagram carousels and images in original quality with Downloadit. Save single images or carousel slides quickly — no login required.",
+    title: { absolute: "Instagram Photo Downloader – Save Photos & Carousels | Downloadit" },
+    description: "Download public Instagram photos and carousels in original quality with Downloadit. Save single images or every slide of a carousel — no login required.",
     url: `${SITE_URL}/instagram-photo-downloader`,
     type: "website",
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Carousel Downloader — Downloadit" }],
+    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Photo & Carousel Downloader — Downloadit" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: { absolute: "Instagram Carousel Downloader – Save Carousels & Images | Downloadit" },
-    description: "Download public Instagram carousels and images in original quality with Downloadit. Save single images or carousel slides quickly — no login required.",
+    title: { absolute: "Instagram Photo Downloader – Save Photos & Carousels | Downloadit" },
+    description: "Download public Instagram photos and carousels in original quality with Downloadit. Save single images or every slide of a carousel — no login required.",
     images: ["/og-downloadit.png"],
   },
 };
 
-const PAGE_NAME = "Instagram Carousel Downloader";
+const PAGE_NAME = "Instagram Photo & Carousel Downloader";
 const PAGE_PATH = "/instagram-photo-downloader";
 
 const FAQS = [
@@ -72,7 +72,7 @@ export default function CarouselDownloaderPage() {
           >
             ← Back to Instagram Downloader
           </Link>
-          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Carousel Downloader</h1>
+          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Photo &amp; Carousel Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
             People screenshot Instagram posts because there is no save button — then wonder why the picture looks soft when they zoom in. A screenshot captures your screen; this page captures the file. Paste the link to a public post and you get Instagram&apos;s original image, not a copy of a copy.
           </p>
@@ -81,7 +81,7 @@ export default function CarouselDownloaderPage() {
           </p>
 
           <div className="mt-12 grid gap-6 rounded-[24px] p-6 sm:p-8" style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-            <h2 className="text-[20px] font-bold text-fg">How to download carousels</h2>
+            <h2 className="text-[20px] font-bold text-fg">How to download photos and carousels</h2>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li><strong className="text-fg">Copy the post link</strong> — open the carousel post itself (not the profile grid), then three dots → Copy Link on desktop or Share → Copy link on mobile.</li>
               <li><strong className="text-fg">Paste it above</strong> — the Carousels tab is already selected. Tap Get Media and the images appear in the preview.</li>
@@ -105,13 +105,20 @@ export default function CarouselDownloaderPage() {
             Private and deleted posts are out, same as everywhere else on this site. Two image-specific boundaries: profile pictures are not supported — only carousel posts — and images posted as stories belong to the <Link href="/instagram-story-downloader" className="font-bold text-primary-strong hover:underline">Instagram Story Downloader</Link>, because stories carry a 24-hour expiry this pipeline does not track.
           </p>
 
-          <h2 className="mt-10 text-[20px] font-bold text-fg">Carousel troubleshooting</h2>
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Photo and carousel troubleshooting</h2>
           <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
             <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
               <p><strong className="text-fg">Only the first slide saved.</strong> That is expected — each carousel slide is its own file. Advance with Next and tap Download on every image you want to keep.</p>
               <p><strong className="text-fg">The saved image looks blurry.</strong> Judge the downloaded file, not the small preview on the page. The file is the original resolution; the preview is just a preview.</p>
               <p><strong className="text-fg">I cannot find a link to copy.</strong> You are probably on the profile grid. Tap into the post so the single post or carousel opens, then copy the link from there.</p>
               <p><strong className="text-fg">The download starts but the file will not open.</strong> The media URL expired mid-download. Paste the post link again and save promptly.</p>
+            </div>
+          </div>
+
+          <div className="mt-10 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
+              <p><strong className="text-fg">Where the images land.</strong> Photos are small files that drop into your gallery or downloads folder in one tap. Every carousel slide is its own file, so save each one you want.</p>
+              <p><strong className="text-fg">What happens to your link.</strong> Your pasted link is used only to resolve the file for your request, then it expires. The images live on your device and nowhere else — the site keeps no copy of anything you download.</p>
             </div>
           </div>
 
@@ -132,7 +139,7 @@ export default function CarouselDownloaderPage() {
           </div>
 
           <section className="mt-12">
-            <h2 className="text-[20px] font-bold text-fg">Carousel downloading FAQ</h2>
+            <h2 className="text-[20px] font-bold text-fg">Photo and carousel FAQ</h2>
             <div className="mt-4 space-y-3">
               {FAQS.map((item) => (
                 <details key={item.q} className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>

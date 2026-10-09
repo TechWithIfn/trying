@@ -124,8 +124,10 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
 
-        {/* Website Structured Data */}
-        <Script
+        {/* Website Structured Data. Plain <script> tags so the JSON-LD is
+            server-rendered for crawlers — next/script only injects it after
+            hydration, which bots never see. */}
+        <script
           id="website-structured-data"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -144,7 +146,7 @@ export default function RootLayout({
 
         {/* Web Application Structured Data (factual claims only: no ratings,
             reviews, prices, awards, or social profiles) */}
-        <Script
+        <script
           id="webapp-structured-data"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -168,6 +170,10 @@ export default function RootLayout({
             __html: `
               (function(){
                 try {
+                  // Marks scripting as active so CSS can keep content visible
+                  // (ScrollReveal's opacity:0 state) when JS is unavailable.
+                  document.documentElement.classList.add('js');
+
                   // Dark Mode ONLY on explicit saved user choice.
                   // No saved preference (or anything else) => Light Mode.
                   // System/OS theme is deliberately ignored.

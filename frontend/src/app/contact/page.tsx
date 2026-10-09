@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Script from "next/script";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { SITE_URL, SUPPORT_CONTACT_EMAIL } from "@/config/site";
 
-const CONTACT_TITLE = "Contact Downloadit | Downloadit";
+const CONTACT_TITLE = "Contact Downloadit – Support & Feedback";
 const CONTACT_DESCRIPTION =
   "Contact Downloadit for technical support, broken download reports, general questions and copyright concerns.";
 
@@ -46,7 +45,7 @@ export default function ContactPage() {
       <Header />
       <main id="main-content" className="flex-1">
         <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
-          <Script
+          <script
             id="breadcrumb-contact"
             type="application/ld+json"
             dangerouslySetInnerHTML={{

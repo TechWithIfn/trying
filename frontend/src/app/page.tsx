@@ -7,6 +7,7 @@ import {
   HOME_KEYWORDS,
   HOME_OG_IMAGE_ALT,
   SITE_URL,
+  SUPPORT_CONTACT_EMAIL,
 } from "@/config/site";
 
 export const metadata: Metadata = {
@@ -36,5 +37,33 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <HomeClient />;
+  return (
+    <>
+      <HomeClient />
+      {/* Organization structured data — homepage only. Factual claims only:
+          name, URL, logo and the public support address; no social profiles
+          exist, so none are listed. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: BRAND_NAME,
+            url: SITE_URL,
+            logo: {
+              "@type": "ImageObject",
+              url: `${SITE_URL}/apple-touch-icon.png`,
+            },
+            contactPoint: {
+              "@type": "ContactPoint",
+              contactType: "customer support",
+              email: SUPPORT_CONTACT_EMAIL,
+              availableLanguage: "English",
+            },
+          }),
+        }}
+      />
+    </>
+  );
 }

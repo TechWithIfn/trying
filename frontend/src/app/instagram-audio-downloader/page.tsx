@@ -118,12 +118,19 @@ export default function AudioDownloaderPage() {
             </div>
           </div>
 
+          <div className="mt-10 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
+              <p><strong className="text-fg">Where the MP3 lands.</strong> You get one full-length MP3 per clip, no trimming, and it plays in any music app, messaging app or desktop player. Keep the tab open while extraction runs so the job is not interrupted.</p>
+              <p><strong className="text-fg">What happens to your link.</strong> Audio is processed on the server, so your link travels a step further than a straight video download. It is still used only for your request and expires afterwards — music you save lives on your device.</p>
+            </div>
+          </div>
+
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
               { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
             ].map((l) => (

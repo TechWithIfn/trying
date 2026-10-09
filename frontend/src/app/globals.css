@@ -461,6 +461,16 @@ main li a[href]:hover {
   transform: translateY(0);
 }
 
+/* No-JS fallback: never start reveal sections hidden when scripting is
+   unavailable. The theme-init script sets <html class="js"> before first
+   paint, which is the only state where the hidden state may apply. */
+html:not(.js) .fade-section,
+html:not(.js) .fade-section.visible {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fade-section {
     opacity: 1;

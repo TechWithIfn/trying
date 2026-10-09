@@ -115,11 +115,18 @@ export default function StoryDownloaderPage() {
             </div>
           </div>
 
+          <div className="mt-10 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
+              <p><strong className="text-fg">Where the story lands.</strong> Story files are small and save in seconds — image stories as JPG, video stories as MP4 — but only while the story is live. Save on the same day you spot one.</p>
+              <p><strong className="text-fg">What happens to your link.</strong> Every story is checked the way a logged-out visitor would see it, and your link is transient: used to resolve the file, then gone. Nothing is kept on our side.</p>
+            </div>
+          </div>
+
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
               { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels as JPG" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },

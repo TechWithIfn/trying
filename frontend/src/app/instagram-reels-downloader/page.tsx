@@ -46,7 +46,7 @@ const FAQS = [
   },
   {
     q: "What is the difference between the Reels and Video downloaders?",
-    a: "Almost nothing behind the scenes — the tabs are presets for the same pipeline, and pasting any public link lets detection sort out the type by itself. This page simply opens with the Reels tab already selected.",
+    a: "Both pages run the same tool, so the honest difference is convenience. This page starts on the Reels tab and is built for the quick save-and-share workflow of short clips; the Video page does the same for longer posts. Paste any public link and the content type is detected automatically either way.",
   },
   {
     q: "Do I need to log in to download reels?",
@@ -120,11 +120,18 @@ export default function ReelsDownloaderPage() {
             </div>
           </div>
 
+          <div className="mt-10 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
+              <p><strong className="text-fg">Where the reel lands.</strong> The MP4 saves straight from your browser — Android puts it in Downloads or Gallery, iPhone in Files → Downloads — and plays offline in any video player afterwards.</p>
+              <p><strong className="text-fg">What happens to your link.</strong> Your reel link is only used to resolve the file for your request and then expires. There are no accounts, and nothing about which reels you save is recorded anywhere.</p>
+            </div>
+          </div>
+
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save standard video posts as MP4" },
-              { href: "/instagram-photo-downloader", label: "Instagram Carousel Downloader", desc: "Save carousels and carousel slides as JPG" },
+              { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 audio from Reels" },
               { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },

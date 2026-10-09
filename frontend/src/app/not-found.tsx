@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Page Not Found",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function NotFound() {
   return (
@@ -17,6 +26,12 @@ export default function NotFound() {
       >
         Go Home
       </Link>
+      <p className="mt-6 text-[14px] text-fg-muted">
+        Or find what you need on the{" "}
+        <Link href="/help" className="font-semibold text-primary-strong hover:underline">Help page</Link>
+        {" "}or{" "}
+        <Link href="/contact" className="font-semibold text-primary-strong hover:underline">contact us</Link>.
+      </p>
     </main>
   );
 }

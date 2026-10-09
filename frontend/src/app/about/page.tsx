@@ -3,7 +3,7 @@ import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const ABOUT_TITLE = "About Downloadit | Downloadit";
+const ABOUT_TITLE = "About Downloadit – Free Instagram Downloader";
 const ABOUT_DESCRIPTION =
   "Learn what Downloadit is, why it was built, how it works, what it supports, and how to contact us.";
 

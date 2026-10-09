@@ -30,7 +30,7 @@ export const DROPDOWN_TOOLS: DropdownToolItem[] = [
   },
   {
     href: "/instagram-photo-downloader",
-    label: "Instagram Carousel Downloader",
+    label: "Instagram Photo & Carousel Downloader",
     icon: ImageIcon,
     iconBg: "rgba(245, 142, 91, 0.14)",
     iconColor: "var(--primary)",
