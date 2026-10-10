@@ -7,11 +7,11 @@ import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
   title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
-  description: "Download Instagram audio as MP3 with Downloadit. Extract and save music or sound from public Reels and videos — no login required.",
+  description: "Extract music and sound from public Reels and videos as MP3. Paste a link and download the audio track with Downloadit — free, no login required.",
   alternates: { canonical: "/instagram-audio-downloader" },
   openGraph: {
     title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
-    description: "Download Instagram audio as MP3 with Downloadit. Extract and save music or sound from public Reels and videos — no login required.",
+    description: "Extract music and sound from public Reels and videos as MP3. Paste a link and download the audio track with Downloadit — free, no login required.",
     url: `${SITE_URL}/instagram-audio-downloader`,
     type: "website",
     images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Audio Downloader — Downloadit" }],
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
-    description: "Download Instagram audio as MP3 with Downloadit. Extract and save music or sound from public Reels and videos — no login required.",
+    description: "Extract music and sound from public Reels and videos as MP3. Paste a link and download the audio track with Downloadit — free, no login required.",
     images: ["/og-downloadit.png"],
   },
 };

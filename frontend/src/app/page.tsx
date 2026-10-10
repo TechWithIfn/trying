@@ -49,6 +49,7 @@ export default function Home() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Organization",
+            "@id": `${SITE_URL}/#organization`,
             name: BRAND_NAME,
             url: SITE_URL,
             logo: {

@@ -6,20 +6,20 @@ import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
-  title: { absolute: "Instagram Photo Downloader – Save Photos & Carousels | Downloadit" },
-  description: "Download public Instagram photos and carousels in original quality with Downloadit. Save single images or every slide of a carousel — no login required.",
+  title: { absolute: "Instagram Photo & Carousel Downloader – Save Photos & Carousels | Downloadit" },
+  description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
   alternates: { canonical: "/instagram-photo-downloader" },
   openGraph: {
-    title: { absolute: "Instagram Photo Downloader – Save Photos & Carousels | Downloadit" },
-    description: "Download public Instagram photos and carousels in original quality with Downloadit. Save single images or every slide of a carousel — no login required.",
+    title: { absolute: "Instagram Photo & Carousel Downloader – Save Photos & Carousels | Downloadit" },
+    description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
     url: `${SITE_URL}/instagram-photo-downloader`,
     type: "website",
     images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Photo & Carousel Downloader — Downloadit" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: { absolute: "Instagram Photo Downloader – Save Photos & Carousels | Downloadit" },
-    description: "Download public Instagram photos and carousels in original quality with Downloadit. Save single images or every slide of a carousel — no login required.",
+    title: { absolute: "Instagram Photo & Carousel Downloader – Save Photos & Carousels | Downloadit" },
+    description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
     images: ["/og-downloadit.png"],
   },
 };

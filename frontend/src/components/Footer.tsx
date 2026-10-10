@@ -9,7 +9,7 @@ import { useLanguage } from "@/i18n";
 function LinkColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <nav aria-label={title}>
-      <h3 className="text-[14px] font-bold uppercase tracking-[0.1em] text-fg">{title}</h3>
+      <p className="text-[14px] font-bold uppercase tracking-[0.1em] text-fg">{title}</p>
       <ul className="mt-4 flex flex-col gap-1">
         {links.map((link) => {
           const isPage = link.href.startsWith("/");

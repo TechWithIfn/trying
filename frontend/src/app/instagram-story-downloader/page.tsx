@@ -7,11 +7,11 @@ import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
   title: { absolute: "Instagram Story Downloader – Save Stories | Downloadit" },
-  description: "Download public Instagram Stories before they disappear with Downloadit. Save story images and videos from public accounts quickly — no login required.",
+  description: "Save public Instagram Stories before they expire. Paste the Story link and download the image or video in HD — free, no login required.",
   alternates: { canonical: "/instagram-story-downloader" },
   openGraph: {
     title: { absolute: "Instagram Story Downloader – Save Stories | Downloadit" },
-    description: "Download public Instagram Stories before they disappear with Downloadit. Save story images and videos from public accounts quickly — no login required.",
+    description: "Save public Instagram Stories before they expire. Paste the Story link and download the image or video in HD — free, no login required.",
     url: `${SITE_URL}/instagram-story-downloader`,
     type: "website",
     images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Story Downloader — Downloadit" }],
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: { absolute: "Instagram Story Downloader – Save Stories | Downloadit" },
-    description: "Download public Instagram Stories before they disappear with Downloadit. Save story images and videos from public accounts quickly — no login required.",
+    description: "Save public Instagram Stories before they expire. Paste the Story link and download the image or video in HD — free, no login required.",
     images: ["/og-downloadit.png"],
   },
 };

@@ -134,12 +134,14 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
+              "@id": `${SITE_URL}/#website`,
               name: BRAND_NAME,
               alternateName: [
                 "Downloadit.pro",
                 "Downloadit Instagram Downloader",
               ],
               url: SITE_URL,
+              inLanguage: "en",
             }),
           }}
         />
@@ -153,10 +155,12 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
+              "@id": `${SITE_URL}/#webapplication`,
               name: BRAND_NAME,
               url: SITE_URL,
               applicationCategory: "MultimediaApplication",
               operatingSystem: "Web",
+              inLanguage: "en",
               description: BRAND_DESCRIPTION,
             }),
           }}

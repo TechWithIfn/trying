@@ -7,11 +7,11 @@ import ToolDownloader from "@/components/ToolDownloader";
 
 export const metadata: Metadata = {
   title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
-  description: "Download public Instagram videos and Reels as MP4 with Downloadit. Paste a link, preview the video and save it in HD — no login required.",
+  description: "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
   alternates: { canonical: "/instagram-video-downloader" },
   openGraph: {
     title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
-    description: "Download public Instagram videos and Reels as MP4 with Downloadit. Paste a link, preview the video and save it in HD — no login required.",
+    description: "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
     url: `${SITE_URL}/instagram-video-downloader`,
     type: "website",
     images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Video Downloader — Downloadit" }],
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
-    description: "Download public Instagram videos and Reels as MP4 with Downloadit. Paste a link, preview the video and save it in HD — no login required.",
+    description: "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
     images: ["/og-downloadit.png"],
   },
 };

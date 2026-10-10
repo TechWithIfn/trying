@@ -89,6 +89,10 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value: [
+              // Mixed content is impossible on the HTTPS-only canonical host,
+              // but the directive also shields any page that somehow loads
+              // over plain HTTP by rewriting subresources to HTTPS.
+              "upgrade-insecure-requests",
               "default-src 'self'",
               // 'unsafe-inline' is required by Next.js inline bootstrap +
               // the theme-init script AND by AdSense (Google documents it as
