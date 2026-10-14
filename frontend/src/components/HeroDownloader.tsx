@@ -95,10 +95,13 @@ const HERO_CATEGORIES = [
 /**
  * Single auto-scroll entry point for the downloader flow. Targets the shared
  * result anchor (progress, output and error all render inside it), so one
- * helper covers every scroll. `block: "start"` pairs with the anchor's
- * `scroll-mt-20` (80px clears the 72px sticky header); centering would waste
- * half the viewport above the card. Honors reduced-motion. Never called from
- * progress callbacks — only submit and success paths below may call it.
+ * helper covers every scroll. Scrolls to the anchor's page offset minus the
+ * sticky-header clearance (72px header + breathing room). Computing the
+ * position explicitly — instead of `scrollIntoView` — keeps the target
+ * stable across the layout shift when the progress card mounts, which is why
+ * `scrollIntoView` could silently miss on mobile. Honors reduced-motion.
+ * Never called from progress callbacks — only submit and success paths below
+ * may call it.
  */
 function scrollToSection(ref: { current: HTMLElement | null }) {
   const el = ref.current;
@@ -106,7 +109,13 @@ function scrollToSection(ref: { current: HTMLElement | null }) {
   const reduceMotion =
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  const HEADER_OFFSET = 88;
+  const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET);
+  if (reduceMotion) {
+    window.scrollTo(0, top);
+    return;
+  }
+  window.scrollTo({ top, behavior: "smooth" });
 }
 
 function resolveTabFromResultType(type: string): DownloaderTab | null {
@@ -143,45 +152,92 @@ function CircularProgress({ value, label }: { value: number; label: string }) {
   const C = 2 * Math.PI * R;
   const offset = C - (C * clamped) / 100;
   return (
-    <div className="animate-fade-in-up mx-auto mt-6 w-full sm:mt-10" style={{ maxWidth: "380px" }}>
+    <div className="animate-fade-in-up mx-auto mt-6 w-full sm:mt-10" style={{ maxWidth: "400px" }}>
       <div
-        className="flex flex-col items-center rounded-[24px] px-6 py-8 text-center"
-        style={{ background: "var(--card)", boxShadow: "0 20px 60px rgba(60,40,120,0.12)", border: "1px solid var(--border)" }}
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={clamped}
-        aria-label={t.hero.analyzing}
+        className="relative overflow-hidden rounded-[24px] p-px"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(236,95,168,0.85), rgba(124,77,245,0.85), rgba(245,142,91,0.85))",
+          boxShadow: "0 20px 60px rgba(60,40,120,0.14)",
+        }}
       >
-        <div className="relative h-[132px] w-[132px]">
-          <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true">
-            <defs>
-              <linearGradient id={PROGRESS_RING_ID} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#7c4df5" />
-                <stop offset="55%" stopColor="#ec5fa8" />
-                <stop offset="100%" stopColor="#f58e5b" />
-              </linearGradient>
-            </defs>
-            <circle cx="66" cy="66" r={R} fill="none" strokeWidth="11" style={{ stroke: "var(--border)" }} />
-            <circle
-              cx="66"
-              cy="66"
-              r={R}
-              fill="none"
-              stroke={`url(#${PROGRESS_RING_ID})`}
-              strokeWidth="11"
-              strokeLinecap="round"
-              strokeDasharray={C}
-              strokeDashoffset={offset}
-              transform="rotate(-90 66 66)"
-              style={{ transition: "stroke-dashoffset 0.35s ease" }}
+        <div
+          className="flex flex-col items-center rounded-[23px] px-6 py-8 text-center"
+          style={{ background: "var(--card)" }}
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={clamped}
+          aria-label={label || t.hero.analyzing}
+        >
+          <div className="relative h-[132px] w-[132px]">
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full"
+              style={{ border: "2px dashed rgba(124,77,245,0.35)", animation: "spin 14s linear infinite" }}
             />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-[26px] font-extrabold tabular-nums text-fg">{clamped}%</span>
+            <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true" className="relative z-10">
+              <defs>
+                <linearGradient id={PROGRESS_RING_ID} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#7c4df5" />
+                  <stop offset="55%" stopColor="#ec5fa8" />
+                  <stop offset="100%" stopColor="#f58e5b" />
+                </linearGradient>
+              </defs>
+              <circle cx="66" cy="66" r={R} fill="none" strokeWidth="11" style={{ stroke: "var(--border)" }} />
+              <circle
+                cx="66"
+                cy="66"
+                r={R}
+                fill="none"
+                stroke={`url(#${PROGRESS_RING_ID})`}
+                strokeWidth="11"
+                strokeLinecap="round"
+                strokeDasharray={C}
+                strokeDashoffset={offset}
+                transform="rotate(-90 66 66)"
+                style={{
+                  transition: "stroke-dashoffset 0.35s ease",
+                  filter: "drop-shadow(0 0 6px rgba(236,95,168,0.35))",
+                }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-[26px] font-extrabold tabular-nums leading-none text-fg">{clamped}%</span>
+              <span className="mt-2 flex items-center gap-1" aria-hidden="true">
+                <span className="h-1.5 w-1.5 rounded-full animate-pulse-soft" style={{ background: "#7c4df5" }} />
+                <span className="h-1.5 w-1.5 rounded-full animate-pulse-soft delay-200" style={{ background: "#ec5fa8" }} />
+                <span className="h-1.5 w-1.5 rounded-full animate-pulse-soft delay-400" style={{ background: "#f58e5b" }} />
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="mt-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5"
+            style={{ background: "var(--primary-light)" }}
+          >
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse-soft" />
+            <p className="text-[13px] font-semibold text-primary-strong">{label}</p>
+          </div>
+
+          <div
+            className="mt-5 h-2 w-full max-w-[260px] overflow-hidden rounded-full"
+            style={{ background: "var(--primary-light)" }}
+            role="presentation"
+          >
+            <div
+              className="relative h-full rounded-full"
+              style={{
+                width: `${clamped}%`,
+                background: "var(--brand-gradient)",
+                boxShadow: "0 0 12px rgba(124,77,245,0.5)",
+                transition: "width 0.35s ease",
+              }}
+            >
+              <div className="animate-progress-sheen" aria-hidden="true" />
+            </div>
           </div>
         </div>
-        <p className="mt-4 text-[14px] font-semibold text-fg">{label}</p>
       </div>
     </div>
   );
@@ -403,14 +459,10 @@ export default function HeroDownloader({
       setProgress(0);
       setProgressStage(t.hero.analyzing);
       setState("PREPARING");
-      // Auto-scroll #1 (once per request): the request genuinely started, so
-      // guide to the progress area. Validation/offline/duplicate paths return
-      // before this point and never scroll. The anchor always exists, so the
-      // scroll is safe even before the progress UI commits.
-      if (submitScrollSeqRef.current !== seq) {
-        submitScrollSeqRef.current = seq;
-        scrollToSection(resultAnchorRef);
-      }
+      // Auto-scroll #1 fires from the PREPARING transition effect below (once
+      // per request), not here: a synchronous scroll right after setState
+      // races the commit and can silently miss on mobile. Validation, offline
+      // and duplicate paths return before this point and never scroll.
       // Silence watchdog, not a total-request timer. It fires only when the backend
       // sends no SSE stage, error, or completion for this long. Resetting it on
       // every real backend event prevents a slow-but-working serverless resolve
@@ -577,7 +629,7 @@ export default function HeroDownloader({
   // request sequence (which strictly increases per submit, so a new URL or
   // retry automatically re-arms both). Refs — not state — so SSE progress
   // events and re-renders can never trigger extra scrolls.
-  const submitScrollSeqRef = useRef(0);
+  const preparingScrollSeqRef = useRef(0);
   const successScrollSeqRef = useRef(0);
 
   // Keep the active tab fully visible inside the horizontal scroller.
@@ -586,20 +638,26 @@ export default function HeroDownloader({
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [activeTab]);
 
-  // Auto-scroll #2 (once per successful request, all viewports): the actual
-  // output just rendered, so bring the result card into view — Preview and
-  // Download land under the header offset instead of below the fold. Fires on
-  // the SUCCESS transition only (never on progress percentages), and never on
-  // ERROR (the user is already at the progress/error area from scroll #1) or
-  // reset. rAF lets the result mount first. At most two programmatic scrolls
-  // per request exist, so manual scrolling is never fought.
+  // Auto-scrolls (#1 on PREPARING, #2 on SUCCESS) — each at most once per
+  // request, all viewports. Both fire on a state *transition* after the new
+  // card has mounted (rAF), so the layout is stable when the page moves; a
+  // synchronous scroll right after setState races the commit and can silently
+  // miss on mobile. Feedback lands in the same anchor: the freshly mounted
+  // progress card (#1, on the click) and then the result preview (#2, when
+  // processing completes). ERROR never scrolls: the user already sits at the
+  // anchor from #1. At most two programmatic scrolls exist per request, so
+  // manual scrolling is never fought.
   useEffect(() => {
-    if (state === "SUCCESS" && prevStateRef.current !== "SUCCESS") {
+    if (prevStateRef.current === state) return;
+    if (state === "PREPARING") {
+      if (preparingScrollSeqRef.current !== requestSeqRef.current) {
+        preparingScrollSeqRef.current = requestSeqRef.current;
+        requestAnimationFrame(() => scrollToSection(resultAnchorRef));
+      }
+    } else if (state === "SUCCESS") {
       if (successScrollSeqRef.current !== requestSeqRef.current) {
         successScrollSeqRef.current = requestSeqRef.current;
-        requestAnimationFrame(() => {
-          scrollToSection(resultAnchorRef);
-        });
+        requestAnimationFrame(() => scrollToSection(resultAnchorRef));
       }
     }
     prevStateRef.current = state;

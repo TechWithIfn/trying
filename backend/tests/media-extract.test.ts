@@ -337,6 +337,7 @@ describe("collectEmbedCandidates", () => {
     expect(page.items.map((m) => m.width)).toEqual([1080, 1080, 1080]);
     expect(page.hasMore).toBe(false);
     expect(page.endCursor).toBeNull();
+    expect(page.structured).toBe(true);
   });
 
   it("surfaces truncation instead of silently returning a partial carousel", () => {
@@ -375,6 +376,7 @@ describe("collectEmbedCandidates", () => {
     expect(page.items.map((m) => m.url)).toEqual([
       "https://scontent.cdninstagram.com/v/t51.2885-15/post.jpg",
     ]);
+    expect(page.structured).toBe(false);
   });
 
   it("fully unescapes deeply escaped URLs in the scrape fallback", () => {

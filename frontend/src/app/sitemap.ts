@@ -20,9 +20,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
   // Fixed date: `new Date()` churned lastmod on every build and caused
   // needless recrawls. Bump manually only when page content changes.
-  // Bumped 2026-10-11: SEO pass — optimized meta descriptions, photo page
-  // title aligned with its H1, schema @id anchors, HTTPS upgrade directive.
-  const lastModified = new Date("2026-10-11T00:00:00.000Z");
+  // Bumped 2026-10-14: /about content upgrade — H2 section structure,
+  // expanded meta description, AboutPage schema, contextual homepage link.
+  const lastModified = new Date("2026-10-14T00:00:00.000Z");
   return pages.map(({ path, priority, changeFreq }) => ({
     url: `${SITE_URL}${path}`,
     lastModified,

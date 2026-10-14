@@ -2313,6 +2313,14 @@ export interface EmbedCandidates {
   items: ExtractedMedia[];
   hasMore: boolean;
   endCursor: string | null;
+  /**
+   * True when `items` came from a structured `edge_sidecar_to_children` /
+   * `carousel_media` collection (a real multi-slide carousel), false when they
+   * were tag-scraped from a document without one (single photo, single video
+   * post, Reel). Lets callers tell a genuine carousel from a single-video post
+   * whose poster image was scraped alongside its video.
+   */
+  structured: boolean;
 }
 
 /**
@@ -2332,12 +2340,13 @@ export function collectEmbedCandidates(embedHtml: string): EmbedCandidates {
       items: embedSidecar.items,
       hasMore: embedSidecar.hasMore,
       endCursor: embedSidecar.endCursor,
+      structured: true,
     };
   }
   const scraped = extractMediaFromHtml(embedHtml).filter(
     (item) => item.type === "video" || !isLikelyPostThumbnailUrl(item.url)
   );
-  return { items: scraped, hasMore: false, endCursor: null };
+  return { items: scraped, hasMore: false, endCursor: null, structured: false };
 }
 
 /**
@@ -3478,7 +3487,15 @@ export class PuppeteerProvider extends BaseProvider {
             }
 
             const currentType = this.detectContentType(url);
-            if (currentType === "REEL" || currentType === "VIDEO") {
+            // A non-sidecar document whose media contains a video is a single
+            // video post (Reel/video/TV). The poster image scraped next to
+            // that video must never turn it into a 2-slide carousel.
+            const isSingleVideoPost =
+              !embedCandidates.structured &&
+              validEmbed.some((m) => m.type === "video");
+            const videoResultType =
+              isSingleVideoPost && currentType === "POST" ? "VIDEO" : currentType;
+            if (currentType === "REEL" || currentType === "VIDEO" || isSingleVideoPost) {
               if (fastRankedSelectionDone) {
                 // The og:video fast path above already ranked this same pool
                 // (page graph + embed candidates) and found nothing playable:
@@ -3494,14 +3511,16 @@ export class PuppeteerProvider extends BaseProvider {
                 );
                 if (selection) {
                   const res = this.buildReelResult(url, selection, fetchMeta);
+                  const typed =
+                    videoResultType === "VIDEO" ? { ...res, type: "VIDEO" as const } : res;
                   timings.totalMs = Date.now() - startTime;
                   logger.info("Puppeteer resolve via embed video fast path (no browser)", {
-                    contentType: currentType,
+                    contentType: videoResultType,
                     shortcode,
-                    mediaCount: res.media.length,
+                    mediaCount: typed.media.length,
                   });
                   onProgress?.(85, "Media extracted");
-                  return res;
+                  return typed;
                 }
               }
             }
@@ -3515,6 +3534,7 @@ export class PuppeteerProvider extends BaseProvider {
               validEmbed.length > 0 &&
               currentType !== "REEL" &&
               currentType !== "VIDEO" &&
+              !isSingleVideoPost &&
               !sidecarTruncated
             ) {
               const author = fetchMeta.author || extractAuthorFromUrl(url);
@@ -3793,6 +3813,11 @@ export class PuppeteerProvider extends BaseProvider {
       // Stored on a const container because TS control-flow ignores writes
       // made inside the response callback when narrowing a plain `let`.
       const sidecarState: { page: { url: string; endCursor: string } | null } = { page: null };
+      // True once a STRUCTURED sidecar/carousel collection (`carousel_media`
+      // / `edge_sidecar_to_children`) was seen in an intercepted API response.
+      // A /p/ post that is really a single video never carries one — its
+      // poster image is chrome, not a second slide.
+      const carouselState: { structured: boolean } = { structured: false };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       page.on("response", async (res: any) => {
         try {
@@ -3842,6 +3867,7 @@ export class PuppeteerProvider extends BaseProvider {
                 // Structured pass: complete ordered children with real
                 // per-slide dimensions plus pagination state.
                 const sidecar = extractSidecarFromJson(text);
+                if (sidecar.items.length > 0) carouselState.structured = true;
                 for (const item of sidecar.items) {
                   const exists = interceptedMedia.some((m) => m.url === item.url);
                   if (!exists) {
@@ -5043,7 +5069,7 @@ export class PuppeteerProvider extends BaseProvider {
         videoCandidates: allMedia.filter((m) => m.type === "video").length,
       });
 
-      const contentType = this.detectContentType(url);
+      let contentType = this.detectContentType(url);
 
       // Validate and filter. Reel/video pages must never degrade to a poster
       // or profile image when no playable video was exposed. Every drop is
@@ -5072,6 +5098,18 @@ export class PuppeteerProvider extends BaseProvider {
           const reason = classifyNormalizationRejection(item.url);
           normalizationRejections[reason] = (normalizationRejections[reason] ?? 0) + 1;
         }
+      }
+
+      // A /p/ POST (URL hint only) that carries a real video but NO structured
+      // carousel is a single video post — its poster images are chrome, not
+      // slides. Route it through the verified-video pipeline so it can never
+      // surface as a "1/2" carousel whose first item downloads as a .jpg.
+      if (
+        (contentType === "POST" || contentType === "PHOTO" || contentType === "UNKNOWN") &&
+        !carouselState.structured &&
+        validMedia.some((m) => m.type === "video")
+      ) {
+        contentType = "VIDEO";
       }
 
       // Reel/video pages accept ONLY verified playable video candidates:
@@ -5226,12 +5264,17 @@ export class PuppeteerProvider extends BaseProvider {
         selectedVideoBytes = winningEntry ? winningEntry.size : null;
         selectedCombined = winningEntry ? winningEntry.combined : null;
         if (probePassed.length > 0) {
-          playableMedia = probePassed.map((entry) => entry.item);
+          // A Reel/video is ONE file: every probe-passed entry is a rendition
+          // of the SAME clip, so only the top-ranked copy becomes the result.
+          // (Selection order is unchanged — compareReelVideoCandidates already
+          // put the audible/largest winner first.)
+          playableMedia = [probePassed[0].item];
           const firstOrigin = originByUrl.get(playableMedia[0].url);
           selectedCandidateSource = firstOrigin?.source ?? "probe-verified";
         } else if (captureFallback.length > 0) {
-          // Discovery order preserved within the fallback tier.
-          playableMedia = captureFallback.map((entry) => entry.item);
+          // Trusted network capture fallback: same single-file rule — only the
+          // first (discovery-order) captured rendition becomes the result.
+          playableMedia = [captureFallback[0].item];
           selectedCandidateSource = captureFallback[0].origin.source ?? "network-video-response";
           logger.info("Puppeteer assembly using trusted network capture (probe passed 0)", {
             requestId,
@@ -5453,7 +5496,10 @@ export class PuppeteerProvider extends BaseProvider {
         });
         // A Reel/TV page with no discoverable video must NEVER degrade into
         // a fake photo result — surface an honest diagnostic error instead.
-        const noVideoKind = this.detectContentType(url);
+        // `contentType` (not a fresh URL sniff) is used because a /p/ post
+        // carrying only a video was already reclassified to VIDEO above; a
+        // fresh URL sniff would see POST and could return its poster .jpg.
+        const noVideoKind = contentType;
         if (noVideoKind === "AUDIO") {
           // Audio pages often link the clips using the sound instead of
           // embedding a playable video: try those before giving up.

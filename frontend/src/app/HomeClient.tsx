@@ -315,7 +315,11 @@ export default function HomeClient() {
           <section className="px-5 pb-4 sm:px-6 lg:px-8" aria-label="Independence disclosure">
             <p className="mx-auto max-w-[720px] text-center text-[13px] leading-[1.7] text-fg-subtle">
               Downloadit is an independent service and is not affiliated with,
-              endorsed by, or sponsored by Instagram or Meta.
+              endorsed by, or sponsored by Instagram or Meta.{" "}
+              <Link href="/about" className="font-semibold text-primary-strong hover:underline">
+                Learn more about Downloadit
+              </Link>
+              .
             </p>
           </section>
         </ScrollReveal>

@@ -5,12 +5,16 @@ import { SITE_URL } from "@/config/site";
 
 const ABOUT_TITLE = "About Downloadit – Free Instagram Downloader";
 const ABOUT_DESCRIPTION =
-  "Learn what Downloadit is, why it was built, how it works, what it supports, and how to contact us.";
+  "Downloadit is a free, no-login tool for saving public Instagram Reels, videos, carousels, Stories and audio. Learn what it does, how it works, its limits, and who runs it.";
 
 export const metadata: Metadata = {
   title: { absolute: ABOUT_TITLE },
   description: ABOUT_DESCRIPTION,
   alternates: { canonical: "/about" },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: ABOUT_TITLE,
     description: ABOUT_DESCRIPTION,
@@ -28,14 +32,33 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const aboutJson = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "@id": `${SITE_URL}/about#webpage`,
+    url: `${SITE_URL}/about`,
+    name: ABOUT_TITLE,
+    description: ABOUT_DESCRIPTION,
+    inLanguage: "en",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": `${SITE_URL}/#webapplication` },
+  });
   return (
+    <>
+      <script
+        id="aboutpage-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: aboutJson }}
+      />
     <LegalPage title="About Downloadit" updated="October 2026" crumbPath="/about">
+      <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
       <p>
         Downloadit is a free tool for saving media from public Instagram links.
         Paste a link, preview what is found, and download it to your phone,
         tablet or desktop. No account, no app install, no login — that is the
         whole idea.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">Why it was built</h2>
       <p>
         It was built out of a small, everyday annoyance: Instagram has no save
         button. People screenshot images and lose quality, or screen-record
@@ -44,6 +67,7 @@ export default function AboutPage() {
         file, done. No popups in the way, no password asked, nothing to sign
         up for.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">How it works</h2>
       <p>
         Under the hood the flow is simple. Your link is sent to the backend,
         which resolves the publicly available media behind it and hands back a
@@ -54,6 +78,7 @@ export default function AboutPage() {
         step: the sound is extracted on the server first, which is why audio
         takes longer and can occasionally be busy.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">What you can download</h2>
       <p>
         The tool covers the media types people actually ask for:{" "}
         <Link href="/instagram-reels-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Reels</Link>,{" "}
@@ -67,6 +92,7 @@ export default function AboutPage() {
         walks through each of these with troubleshooting for the common
         failures.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">Public content only</h2>
       <p>
         One rule governs everything: public content only. The test is what a
         logged-out stranger can view. Private accounts, Close Friends,
@@ -75,6 +101,7 @@ export default function AboutPage() {
         nothing on this site will ever ask for your Instagram password to get
         around them.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">Privacy by design</h2>
       <p>
         Privacy follows from that design. There are no accounts, so there is
         nothing to tie your activity to — no download history in your browser,
@@ -82,6 +109,7 @@ export default function AboutPage() {
         transiently to complete your request and then expire. Your files live
         on your device and nowhere else.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">Honest limitations</h2>
       <p>
         A few honest limitations. Media URLs expire quickly, so a link that
         worked minutes ago may need re-resolving. Audio depends on server-side
@@ -92,6 +120,7 @@ export default function AboutPage() {
         tool reports these situations plainly rather than pretending
         everything is fine.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">An independent service</h2>
       <p>
         Downloadit is an independent service and is not affiliated with,
         endorsed by, or sponsored by Instagram or Meta. It only reads what is
@@ -101,6 +130,7 @@ export default function AboutPage() {
         <Link href="/dmca" className="font-semibold text-fg transition-colors hover:text-primary">DMCA pages</Link> if
         you are unsure.
       </p>
+      <h2 className="text-[20px] font-bold text-fg">Contact</h2>
       <p>
         Questions, broken links, or reports? Write to the support email
         linked at the bottom of this page. Include the link you tried, what
@@ -109,5 +139,6 @@ export default function AboutPage() {
         content&apos;s visibility, or something on our side.
       </p>
     </LegalPage>
+    </>
   );
 }
