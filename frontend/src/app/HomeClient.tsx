@@ -402,43 +402,83 @@ export default function HomeClient() {
           </section>
         </ScrollReveal>
 
-        {/* ── Privacy + public-content limitations: two equal cards ── */}
-        <ScrollReveal>
-          <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="trust-limits">
-            <div className="mx-auto max-w-[1000px]">
-              <div className="mb-10 text-center">
-                <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
-                  Trust &amp; Limits
-                </p>
-                <h2 id="trust-limits" className="text-[30px] font-bold tracking-[-0.02em] text-fg sm:text-[44px]">
-                  Privacy and limitations
-                </h2>
-              </div>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 items-stretch">
-                {[
-                  { title: "Privacy", desc: "Downloadit does not ask for your Instagram password or require you to log in to Instagram." },
-                  { title: "Public content only", desc: "Downloadit does not bypass Instagram privacy controls. Private, deleted, expired or inaccessible content may not be available." },
-                ].map((c, i) => (
-                  <ScrollReveal key={c.title} delay={i * 100} className="h-full">
-                    <div
-                      className="lift-card flex h-full flex-col rounded-[20px] bg-card p-6 shadow-[var(--shadow-card)]"
-                      style={{ border: "1px solid var(--border)" }}
-                    >
-                      <div
-                        className="lift-icon mb-3 flex h-[42px] w-[42px] items-center justify-center rounded-xl"
-                        style={{ background: "var(--accent-tint-purple)", border: "1px solid var(--accent-tint-purple-border)" }}
-                      >
-                        <ShieldCheck size={20} color="var(--primary)" strokeWidth={2} />
-                      </div>
-                      <h3 className="text-[18px] font-bold text-fg">{c.title}</h3>
-                      <p className="mt-1.5 text-[14px] leading-[1.5] text-fg-muted">{c.desc}</p>
-                    </div>
-                  </ScrollReveal>
-                ))}
-              </div>
+        {/* ── Privacy + limitations: three equal cards. No ScrollReveal wrappers
+            here on purpose: each card used to sit in its own reveal wrapper with
+            a different stagger delay, so the fade/translate animations never
+            settled at the same position and the right card sat a few pixels
+            higher. Plain grid items align exactly. ── */}
+        <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="trust-limits">
+          <div className="mx-auto max-w-[1000px]">
+            <div className="mb-10 text-center">
+              <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
+                Trust &amp; Limits
+              </p>
+              <h2 id="trust-limits" className="text-[30px] font-bold tracking-[-0.02em] text-fg sm:text-[44px]">
+                Privacy and limitations
+              </h2>
             </div>
-          </section>
-        </ScrollReveal>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3 items-stretch">
+              {[
+                { title: "Privacy", desc: "Downloadit never asks for your Instagram password and you never need to log in to Instagram. You only paste a public link." },
+                { title: "Public content only", desc: "Downloadit does not bypass Instagram privacy controls. Private, deleted or expired content cannot be downloaded." },
+                { title: "Your responsibility", desc: "Only save content you own or have permission to reuse. Downloadit is independent and not affiliated with Instagram or Meta." },
+              ].map((c) => (
+                <div
+                  key={c.title}
+                  className="lift-card flex h-full flex-col rounded-[20px] bg-card p-7 shadow-[var(--shadow-card)]"
+                  style={{ border: "1px solid var(--border)" }}
+                >
+                  <div
+                    className="lift-icon mb-3 flex h-[42px] w-[42px] items-center justify-center rounded-xl"
+                    style={{ background: "var(--accent-tint-purple)", border: "1px solid var(--accent-tint-purple-border)" }}
+                  >
+                    <ShieldCheck size={20} color="var(--primary)" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-[18px] font-bold text-fg">{c.title}</h3>
+                  <p className="mt-1.5 text-[16px] leading-[1.6] text-fg-muted">{c.desc}</p>
+                </div>
+              ))}
+            </div>
+            <ProseSection className="mx-auto mt-12 max-w-[720px]">
+              <h3>Why some links do not work</h3>
+              <p>
+                Most failures come down to five causes: the post is private or on a
+                private account, it was deleted, a Story passed its 24 hours, the
+                link is incomplete or was copied wrongly, or Instagram is briefly
+                limiting access. Private posts fail because they need a login to
+                view, deleted posts fail because the file no longer exists, and
+                expired links fail because Instagram signs media addresses for a
+                short time only. Age-restricted or region-limited posts can fail
+                too, since they also demand something before showing the content.
+                What usually helps: copy the full share link again
+                straight from Instagram, open it in a private or incognito browser
+                window to confirm anyone can see it, then paste it here again.
+              </p>
+              <h3>What we ask from you and what we do not</h3>
+              <p>
+                We never ask for an Instagram password, login, or two-factor code —
+                there is no account here to sign into, so there is nothing that
+                could ask for one. If any page ever asks you to sign in to Instagram
+                to use Downloadit, close it: that request did not come from us.
+                How your pasted links are handled is explained on
+                the <Link href="/privacy" className="font-semibold text-primary-strong hover:underline">Privacy Policy page</Link>.
+              </p>
+              <h3>Using downloaded content fairly</h3>
+              <p>
+                Download only your own content or content you have permission for,
+                and give credit when you reuse someone else&apos;s work. Crediting
+                is polite but it is not permission — reposting, remixing, or running
+                clips in ads needs the creator&apos;s agreement first. For removal
+                or copyright requests, use the{" "}
+                <Link href="/dmca" className="font-semibold text-primary-strong hover:underline">DMCA and copyright page</Link>.
+                The ground rules are also set out in the{" "}
+                <Link href="/disclaimer" className="font-semibold text-primary-strong hover:underline">Disclaimer</Link>,
+                and step-by-step help lives on the{" "}
+                <Link href="/help" className="font-semibold text-primary-strong hover:underline">Help page</Link>.
+              </p>
+            </ProseSection>
+          </div>
+        </section>
 
         {/* ── Why Downloadit: full editorial section. Deliberately NOT wrapped
             in ScrollReveal: this copy must be in the server-rendered HTML and
