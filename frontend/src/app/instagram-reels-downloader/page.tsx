@@ -186,7 +186,7 @@ export default function ReelsDownloaderPage() {
           </div>
 
           <ProseSection>
-          <section className="mt-12">
+          <section className="cv-auto mt-12">
             <h2>Reels downloading FAQ</h2>
             <div className="mt-4">
               {FAQS.map((item) => (

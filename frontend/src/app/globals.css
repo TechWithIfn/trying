@@ -141,8 +141,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   overflow-x: hidden;
+  /* Remove the 300ms tap delay on older mobile browsers (modern Chrome
+     already skips it with a proper viewport tag; harmless elsewhere). */
+  touch-action: manipulation;
 }
 
 /* Layered radial glows */
@@ -431,6 +435,30 @@ section[id] {
   .lift-card:hover .lift-arrow {
     transform: translateX(2px);
   }
+}
+
+/* Below-the-fold rendering skip: the browser lays out a cheap estimated
+   box until the section nears the viewport, then renders for real. Text
+   stays in the DOM and SSR HTML (SEO-safe), and anchor navigation still
+   works — the browser forces rendering when scrolling to a fragment.
+   Only for long content safely below the fold; never for hero/LCP. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* Decorative step numbers: rendered as a pseudo-element so the faint
+   numeral is not real text in the DOM (contrast audits ignore ::before
+   decoration on an aria-hidden element). Same look, zero a11y cost. */
+.step-num::before {
+  content: attr(data-stepnum);
+  display: block;
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: rgba(124, 77, 245, 0.10);
+  user-select: none;
 }
 
 /* Back-to-top floating button: fixed bottom-right, transform/opacity only

@@ -182,7 +182,7 @@ export default function AudioDownloaderPage() {
           </div>
 
           <ProseSection>
-          <section className="mt-12">
+          <section className="cv-auto mt-12">
             <h2>Audio downloading FAQ</h2>
             <div className="mt-4">
               {FAQS.map((item) => (

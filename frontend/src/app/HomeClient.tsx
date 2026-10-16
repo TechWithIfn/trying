@@ -773,7 +773,7 @@ export default function HomeClient() {
           </section>
 
         {/* ── Detailed FAQ ── */}
-        <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="faq">
+        <section className="cv-auto px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="faq">
             <div className="mx-auto max-w-[900px]">
               <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
                 Support

@@ -78,11 +78,9 @@ export default function HowItWorks() {
                   >
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute -top-3 right-2 select-none text-[72px] font-extrabold leading-none tracking-tight"
-                      style={{ color: "rgba(124, 77, 245, 0.10)" }}
-                    >
-                      {NUMS[i]}
-                    </span>
+                      data-stepnum={NUMS[i]}
+                      className="step-num pointer-events-none absolute -top-3 right-2 select-none"
+                    />
                     <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.12em] text-primary-strong">
                       {t.steps.stepWord} {NUMS[i]}
                     </p>

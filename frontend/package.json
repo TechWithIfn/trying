@@ -2,6 +2,14 @@
   "name": "downloadit-frontend",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    "chrome >= 100",
+    "edge >= 100",
+    "firefox >= 100",
+    "safari >= 15.4",
+    "ios_saf >= 15.4",
+    "samsung >= 20"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -18,8 +26,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+  "devDependencies": {    "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

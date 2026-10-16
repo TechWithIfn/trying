@@ -184,7 +184,7 @@ export default function VideoDownloaderPage() {
           </div>
 
           <ProseSection>
-          <section className="mt-12">
+          <section className="cv-auto mt-12">
             <h2>Video downloading FAQ</h2>
             <div className="mt-4">
               {FAQS.map((item) => (

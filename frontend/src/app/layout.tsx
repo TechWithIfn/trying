@@ -4,6 +4,7 @@ import Script from "next/script";
 import { LanguageProvider } from "@/i18n";
 import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/BackToTop";
+import AdsenseLoader from "@/components/AdsenseLoader";
 import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
@@ -111,15 +112,13 @@ export default function RootLayout({
         {/* Single light theme: tell browsers and form controls never to
             apply dark styling. No dark class or data-theme is ever added. */}
         <meta name="color-scheme" content="light" />
-        {/* Google AdSense (Auto Ads): lazyOnload keeps the ~250KB ad stack
-            off the critical path — it must never compete with hero paint,
-            fonts, or hydration. Ads render once the page is interactive. */}
-        <Script
-          id="google-adsense"
-          strategy="lazyOnload"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8543183124286362"
-          crossOrigin="anonymous"
-        />
+        {/* DNS prefetch for the deferred AdSense library (loaded by
+            AdsenseLoader after first interaction/idle — no preconnect, which
+            would open idle sockets and cost radio/battery on mobile). */}
+        <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
+        {/* Google AdSense is loaded by <AdsenseLoader /> after first paint
+            (first scroll/pointer/key or ~3s idle) — never blocking. There is
+            intentionally no adsbygoogle snippet here. */}
 
         {/* Website Structured Data. Plain <script> tags so the JSON-LD is
             server-rendered for crawlers — next/script only injects it after
@@ -183,6 +182,7 @@ export default function RootLayout({
           <ScrollToTop />
           {children}
           <BackToTop />
+          <AdsenseLoader />
         </LanguageProvider>
       </body>
     </html>

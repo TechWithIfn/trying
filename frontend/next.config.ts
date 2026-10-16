@@ -25,6 +25,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // No X-Powered-By fingerprint.
   poweredByHeader: false,
+  // Strip console.* in production (api.ts diagnostics use console.warn;
+  // errors still surface via logApiFailure beacons, not the console).
+  compiler: {
+    removeConsole: true,
+  },
   // Canonical domain consistency: the apex domain permanently redirects to
   // https://www.downloadit.pro (the SITE_URL every canonical/sitemap URL
   // uses), so www and non-www never serve duplicate content. Localhost and
@@ -51,6 +56,18 @@ const nextConfig: NextConfig = {
   // WebSocket — check those before changing this file.
   async headers() {
     return [
+      {
+        // Fingerprinted Next.js assets + public icons/images: immutable.
+        // (Next already sends immutable for /_next/static; this covers
+        // versioned /public files. HTML pages stay uncached-rendered.)
+        source: "/:all*(svg|ico|png|webmanifest)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [

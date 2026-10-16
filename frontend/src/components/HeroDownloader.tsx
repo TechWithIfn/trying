@@ -647,7 +647,16 @@ export default function HeroDownloader({
       className="hero-section relative overflow-hidden scroll-mt-24 pt-6 sm:pt-8 lg:pt-10 pb-12 sm:pb-20 lg:pb-24"
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
-        <div className="absolute left-1/2 top-0 h-[420px] w-full max-w-[1000px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/[0.03] blur-[160px] sm:h-[700px]" />
+        {/* Static radial wash instead of a filter-blurred layer: a 160px
+            backdrop blur over a 1000px area forces a huge raster on every
+            scroll frame on phones. Same look, zero per-frame cost. */}
+        <div
+          className="absolute left-1/2 top-0 h-[420px] w-full max-w-[1000px] -translate-x-1/2 -translate-y-1/3 rounded-full sm:h-[700px]"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 55% at 50% 40%, rgba(124,77,245,0.07) 0%, rgba(124,77,245,0.0) 70%)",
+          }}
+        />
       </div>
 
       <div className="mx-auto w-full max-w-[1240px] min-w-0 px-4 sm:px-6 lg:px-8 xl:px-12">
