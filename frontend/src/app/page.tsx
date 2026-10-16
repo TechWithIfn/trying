@@ -7,7 +7,7 @@ import {
   HOME_KEYWORDS,
   HOME_OG_IMAGE_ALT,
   SITE_URL,
-  SUPPORT_CONTACT_EMAIL,
+  SUPPORT_EMAIL,
 } from "@/config/site";
 
 export const metadata: Metadata = {
@@ -59,7 +59,7 @@ export default function Home() {
             contactPoint: {
               "@type": "ContactPoint",
               contactType: "customer support",
-              email: SUPPORT_CONTACT_EMAIL,
+              email: SUPPORT_EMAIL,
               availableLanguage: "English",
             },
           }),

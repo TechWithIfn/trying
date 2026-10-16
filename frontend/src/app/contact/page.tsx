@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { SITE_URL, SUPPORT_CONTACT_EMAIL } from "@/config/site";
+import ProseSection from "@/components/ProseSection";
+import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
 const CONTACT_TITLE = "Contact Downloadit – Support & Feedback";
 const CONTACT_DESCRIPTION =
@@ -31,8 +32,10 @@ export const metadata: Metadata = {
 function MailLink({ subject, children }: { subject: string; children: React.ReactNode }) {
   return (
     <a
-      href={`mailto:${SUPPORT_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`}
+      href={supportMailto(subject)}
+      aria-label="Email Downloadit support"
       className="inline-flex min-h-[44px] items-center break-all font-semibold text-fg transition-colors hover:text-primary"
+      style={{ overflowWrap: "anywhere" }}
     >
       {children}
     </a>
@@ -70,14 +73,20 @@ export default function ContactPage() {
           </h1>
           <p className="mt-2 text-[14px] text-fg-subtle">Last updated: October 2026</p>
           <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
+          <ProseSection>
             <p>
               Everything support-related runs over plain email — there is no
               ticket system, no live chat and no contact form to fill in. Write
-              to <MailLink subject="Downloadit query">{SUPPORT_CONTACT_EMAIL}</MailLink>{" "}
+              to <MailLink subject="Downloadit query">{SUPPORT_EMAIL}</MailLink>{" "}
               and your message gets read by the person who actually runs the
-              site. A little detail in the first email saves a round trip, so
-              say what you tried and what happened instead.
+              site. We reply within 1–2 business days. A little detail in the
+              first email saves a round trip, so include these three things:
             </p>
+            <ul className="list-disc space-y-1 pl-6">
+              <li>The exact link you tried.</li>
+              <li>What happened instead of a download (the message you saw).</li>
+              <li>Your device and browser.</li>
+            </ul>
             <h2 className="text-[20px] font-bold text-fg">Technical support</h2>
             <p>
               Something broken that should work — a public link that resolves
@@ -97,28 +106,28 @@ export default function ContactPage() {
               downloader can fetch it — that is the answer, no email needed.
               If it does open and Downloadit still fails, send the link with
               the subject “Broken download” to{" "}
-              <MailLink subject="Broken download">{SUPPORT_CONTACT_EMAIL}</MailLink>.
+              <MailLink subject="Broken download">{SUPPORT_EMAIL}</MailLink>.
             </p>
             <h2 className="text-[20px] font-bold text-fg">General questions</h2>
             <p>
               Anything that is not broken — how a feature behaves, whether a
               link type is supported, questions about the service itself.
               Write to{" "}
-              <MailLink subject="General question">{SUPPORT_CONTACT_EMAIL}</MailLink>{" "}
+              <MailLink subject="General question">{SUPPORT_EMAIL}</MailLink>{" "}
               with the subject “General question”. Short questions get short
               answers; that is a feature, not rudeness.
             </p>
             <h2 className="text-[20px] font-bold text-fg">Copyright concerns</h2>
             <p>
               If you believe content reachable through Downloadit infringes
-              your copyright, report it to{" "}
-              <MailLink subject="DMCA report">{SUPPORT_CONTACT_EMAIL}</MailLink>{" "}
-              with the subject “DMCA report”. Include what the copyrighted
-              work is, where the material in question sits, and how to reach
-              you — reports without those three pieces cannot be reviewed.
-              The full policy lives on the{" "}
-              <Link href="/dmca" className="font-semibold text-fg transition-colors hover:text-primary">DMCA page</Link>.
+              your copyright, please use the formal takedown process on the{" "}
+              <Link href="/dmca" className="font-semibold text-fg transition-colors hover:text-primary">DMCA page</Link>{" "}
+              instead of this inbox — it lists exactly what a complete notice
+              must contain, and complete notices are reviewed within 48–72
+              hours. Reports sent here without those pieces cannot be
+              reviewed and will be redirected to the DMCA process.
             </p>
+          </ProseSection>
           </div>
           <p className="mt-8 text-[16px] text-fg-muted">
             Prefer the downloader itself?{" "}

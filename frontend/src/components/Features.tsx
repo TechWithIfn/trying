@@ -63,12 +63,12 @@ export default function Features() {
             return (
               <ScrollReveal key={i} delay={Math.min(i, 5) * 60}>
                 <div
-                  className="group flex h-full flex-col rounded-[20px] bg-card p-6 shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[var(--shadow-card-hover)] hover:[border-color:var(--accent-tint-purple-border)]"
+                  className="lift-card flex h-full flex-col rounded-[20px] bg-card p-6 shadow-[var(--shadow-card)]"
                   style={{ border: "1px solid var(--border)" }}
                 >
                   <div className="mb-4 flex items-center justify-between">
                     <div
-                      className="flex h-[44px] w-[44px] items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105"
+                      className="lift-icon flex h-[44px] w-[44px] items-center justify-center rounded-xl"
                       style={{ background: s.bg, border: `1px solid ${s.border}` }}
                     >
                       <Icon size={20} color={s.iconColor} strokeWidth={2} />
@@ -84,7 +84,7 @@ export default function Features() {
                     className="mt-auto inline-flex min-h-[44px] items-center pt-3 text-[15px] font-semibold text-primary-strong transition-colors hover:text-primary"
                   >
                     Learn more
-                    <span aria-hidden="true" className="ml-1 transition-transform duration-200 group-hover:translate-x-0.5">→</span>
+                    <span aria-hidden="true" className="lift-arrow ml-1">→</span>
                   </Link>
                 </div>
               </ScrollReveal>

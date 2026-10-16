@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Mail } from "lucide-react";
+import { Download } from "lucide-react";
 import Link from "next/link";
-import { SUPPORT_EMAIL, SUPPORT_GMAIL_URL } from "@/config/site";
+import { SUPPORT_EMAIL, supportMailto } from "@/config/site";
 import { useLanguage } from "@/i18n";
 
 function LinkColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
@@ -61,6 +61,7 @@ export default function Footer() {
     { label: t.nav.features, href: "/#features" },
     { label: t.nav.faq, href: "/#faq" },
     { label: t.common.help, href: "/help" },
+    { label: "Blog", href: "/blog" },
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
   ];
@@ -99,12 +100,11 @@ export default function Footer() {
             <div className="mt-5">
               <p className="text-[14px] font-bold uppercase tracking-[0.1em] text-fg">{t.footer.email}</p>
               <a
-                href={SUPPORT_GMAIL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={supportMailto()}
+                aria-label="Email Downloadit support"
                 className="mt-1 inline-flex min-h-[44px] items-center gap-2 break-all text-[14px] font-medium text-fg-muted transition-colors hover:text-primary"
+                style={{ overflowWrap: "anywhere" }}
               >
-                <Mail className="h-4 w-4 shrink-0" strokeWidth={2} />
                 {SUPPORT_EMAIL}
               </a>
             </div>

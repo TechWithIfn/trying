@@ -4,6 +4,8 @@ import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
+import ProseSection from "@/components/ProseSection";
+import ReadMore from "@/components/ReadMore";
 
 export const metadata: Metadata = {
   title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
@@ -29,28 +31,28 @@ const PAGE_PATH = "/instagram-audio-downloader";
 
 const FAQS = [
   {
-    q: "Which links work for audio extraction?",
-    a: "Links to public reels and videos — the same links the video pages accept. The tool pulls the audio track out of the clip. Private reels and videos are excluded, same as everywhere else here.",
+    q: "Which links can I pull sound from?",
+    a: "Public reel and video links — the same posts the video pages accept. The tool opens the clip and lifts out its audio track as an MP3. Photo posts and stories have no such track to lift, and private clips are excluded either way.",
   },
   {
-    q: "How long does audio extraction take?",
-    a: "Longer than a straight video download, because the server processes the clip instead of just handing you the file. Expect the wait to grow with the video's length — a short reel is quick, a long video is not.",
+    q: "Why does audio take longer than saving a video?",
+    a: "A video download hands you Instagram's file directly. Audio has to be processed on the server first — the clip is fetched, the track is separated, and the MP3 is built for you. That work grows with the clip's length, so a short reel finishes quickly while a long talk keeps you waiting.",
   },
   {
-    q: "What quality is the MP3?",
-    a: "It mirrors the source video's own audio track. Extraction copies that track into an MP3 — it cannot improve a muffled or quiet original, so what the clip sounds like is what you get.",
+    q: "Can I keep just a chorus or a single quote instead of the whole thing?",
+    a: "The tool always returns the full clip's sound as one MP3, with no trimming step inside. Take the whole file and cut the part you need afterwards in any free audio app or phone editor — that keeps this page simple and predictable.",
   },
   {
-    q: "Can I extract only part of a clip?",
-    a: "No. You always get the full clip's audio as one MP3. There is no trimming or section selection in the tool — if you need a fragment, cut the MP3 afterwards in any audio app.",
+    q: "Will the MP3 sound better than the video did?",
+    a: "No — it mirrors the source exactly. Extraction moves the clip's own audio into an MP3 without improving it. A crisp recording gives a crisp MP3; a windy, distant or muffled original stays that way in the file.",
   },
   {
-    q: "Can I download private Instagram audio?",
-    a: "No. Only audio from videos you can watch without logging in is supported.",
+    q: "What does temporarily unavailable mean on the audio tab?",
+    a: "The server-side audio queue is full at that moment. It is a capacity notice, not a broken link — wait a while and retry the same post link. If you need something immediately, save the MP4 through the video downloader first so you at least hold the file.",
   },
   {
-    q: "Do I need to log in?",
-    a: "No account involved at any point — link in, MP3 out.",
+    q: "Where do MP3s play after I save them?",
+    a: "Almost everywhere. Phone music apps, messaging apps, car stereos, laptops, smart speakers — MP3 is the one audio format everything opens, with no special software needed on your side.",
   },
 ];
 
@@ -74,56 +76,79 @@ export default function AudioDownloaderPage() {
           </Link>
           <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Audio Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Sometimes the video is beside the point. A trending sound you want to listen to on a walk, a speech worth replaying, a clip whose picture you will never watch again — what you actually want is the sound. This page pulls the audio track out of a public reel or video and hands it to you as an MP3.
+            Sometimes the picture is beside the point. A voice explaining an idea you want to replay on a walk, a demo of your own song, a spoken quote worth quoting back accurately, a sleepy lullaby playing behind a reel. Instagram stores sound and picture together, with no button for the sound alone. This page separates the two: paste the link to a public reel or video and take home just the audio as an MP3 you can listen to anywhere.
           </p>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            Be aware of the one real difference from the other pages: video downloads hand you Instagram&apos;s file directly, while audio has to be processed on the server first. That takes longer, and at busy moments there is a queue — the page tells you so instead of failing silently.
+            Listening is the intent that sets this page apart. Video pages are about watching; this one is about carrying the sound in your pocket — in earphones, in the car, in a playlist of reference clips. If you caught yourself thinking I wish I could just hear that again, this is the tool for that sentence.
           </p>
 
-          <div className="mt-12 grid gap-6 rounded-[24px] p-6 sm:p-8" style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-            <h2 className="text-[20px] font-bold text-fg">How to extract audio</h2>
+          <ProseSection>
+          <ReadMore label="audio guide">
+          <h2>When saving the sound beats saving the video</h2>
+          <p>
+            Musicians and voice artists keep their own demos and takes — comparing versions, sending a quick draft to a collaborator, checking a mix on different speakers. Students lean on spoken material the same way: a pronunciation example, a speech to transcribe, replayed with the screen off on a commute.
+          </p>
+          <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
+            Creators and marketers keep original sounds they own for editing reference: the voiceover from their own reel, the jingle from their own ad, a testimonial they recorded and have permission to reuse. An MP3 drops straight into a timeline where a video file would first need stripping.
+          </p>
+
+          <div className="mt-12">
+            <h2>How to extract audio, step by step</h2>
+            <h3 className="text-[16px] font-bold text-fg">On Android</h3>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-              <li><strong className="text-fg">Copy a reel or video link</strong> — any public reel or video whose sound you want, copied the usual way via Share → Copy link.</li>
-              <li><strong className="text-fg">Paste it above in Audio mode</strong> — the Audio tab is already selected. Tap Get Media and leave the tab open while the server works; longer videos take proportionally longer.</li>
-              <li><strong className="text-fg">Download the MP3</strong> — once processing finishes, save the file. It plays in any music app, messaging app or desktop player.</li>
+              <li>Open the public reel or video whose sound you want and copy its link with Share and Copy link.</li>
+              <li>Open this page in your mobile browser. The Audio tab is already selected.</li>
+              <li>Paste the link, tap Get Media, and leave the tab open while the server works. Short reels take a little while; long videos take proportionally longer.</li>
+              <li>When the MP3 is ready, tap Download. It lands in Downloads and opens in any music app.</li>
+            </ol>
+            <h3 className="text-[16px] font-bold text-fg">On iPhone</h3>
+            <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
+              <li>Copy the reel or video link from the Instagram app the usual way.</li>
+              <li>Paste it into the downloader above in Safari, with the Audio tab selected, and tap Get Media.</li>
+              <li>Keep Safari open on this tab. Closing it or letting the phone sleep mid-job abandons that attempt.</li>
+              <li>Tap Download once processing finishes. The MP3 sits in Files under Downloads — move it into your music app or share it onward from there.</li>
+            </ol>
+            <h3 className="text-[16px] font-bold text-fg">On desktop</h3>
+            <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
+              <li>Copy the address of the public reel or video post from your browser.</li>
+              <li>Paste it into the box at the top of this page and click Get Media with Audio selected.</li>
+              <li>Wait for processing to complete — this is the one page where patience is part of the flow.</li>
+              <li>Click Download. The MP3 goes to your downloads folder and plays in any desktop player or editor.</li>
             </ol>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Format and quality</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">MP3 holding the source clip&apos;s own audio track — full length, no trimming. Quality mirrors the original: a crisp reel gives a crisp MP3, a muffled clip gives a muffled one.</p>
+            <div>
+              <h3 className="text-[16px] font-bold text-fg">Format and quality for audio</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Every result is one full-length MP3 holding the clip&apos;s own audio track — no cuts, no enhancement. A clean recording gives a clean MP3; what the clip sounds like is what you keep.</p>
             </div>
-            <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Plays absolutely anywhere</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">MP3 is the one format everything opens — phone music apps, voice-note sharing, car stereos, desktop players. No special app needed on your side.</p>
+            <div>
+              <h3 className="text-[16px] font-bold text-fg">Why audio has a queue</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Unlike straight video downloads, extraction is real server work per clip, so busy periods build a queue. The page says so openly instead of failing quietly — retry later, or grab the MP4 from the video page meanwhile.</p>
             </div>
           </div>
 
           <h2 className="mt-12 text-[24px] font-bold text-fg">Audio this page cannot fetch</h2>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            Private reels and videos are excluded, exactly like the video pages. Extraction also only works from reel and video links — it pulls the track out of a clip, so there must be a clip to pull from. And one honest caveat: because processing happens server-side, the audio queue can fill up. If it has, the page says so outright with a &quot;temporarily unavailable&quot; notice. Wait a while and retry — or save the MP4 with the <Link href="/instagram-video-downloader" className="font-bold text-primary-strong hover:underline">Instagram Video Downloader</Link> in the meantime so at least you have the file.
-          </p>
-          <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            A reminder that matters more for audio than video: music belongs to someone. Only keep tracks you have a right to use — see the <Link href="/dmca" className="text-primary hover:underline">DMCA page</Link> if you are unsure.
+            Private reels and videos are excluded exactly like the video pages — only clips a logged-out visitor can watch qualify. Extraction also needs a clip to pull from, so photo posts and text-only stories have nothing to give. And at peak times the queue itself is the limit: the honest answer is to wait and retry, not to hammer the same link.
           </p>
 
           <h2 className="mt-10 text-[20px] font-bold text-fg">Audio troubleshooting</h2>
-          <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
-              <p><strong className="text-fg">“Temporarily unavailable.”</strong> The backend audio queue is busy, not broken. Wait a bit and retry the same link — and if you need something now, grab the MP4 from the video downloader first.</p>
-              <p><strong className="text-fg">Processing takes very long.</strong> Normal for long videos — the wait scales with clip length. Keep the tab open; closing it abandons that attempt and you start over.</p>
-              <p><strong className="text-fg">The MP3 is silent.</strong> Extraction copies the track, it cannot restore missing audio. If the source clip plays silently on Instagram, the MP3 will be silent too.</p>
-              <p><strong className="text-fg">I only wanted part of the clip.</strong> The tool returns the whole track with no trimming step. Take the full MP3 and cut the fragment in any free audio app afterwards.</p>
+          <div className="mt-4">
+            <div>
+              <p><strong className="text-fg">Processing seems stuck.</strong> Give it time scaled to the clip — a minute-long reel is quick, a ten-minute video is not. Keep the tab in the foreground with a steady connection rather than starting five attempts at once.</p>
+              <p><strong className="text-fg">The MP3 came out silent.</strong> Extraction copies the track; it cannot invent missing sound. If the source clip plays silently on Instagram, the MP3 will be silent too — check the original first.</p>
+              <p><strong className="text-fg">I only wanted a few seconds.</strong> Take the full MP3 and trim it afterwards. Phone editors and free desktop apps cut MP3s in seconds, and keeping the full file first means you never lose the surrounding context.</p>
+              <p><strong className="text-fg">The same link fails repeatedly.</strong> Confirm the post is still public and still exists, then paste a freshly copied link. Deleted and privatised clips fail here by design.</p>
             </div>
           </div>
 
-          <div className="mt-10 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
-              <p><strong className="text-fg">Where the MP3 lands.</strong> You get one full-length MP3 per clip, no trimming, and it plays in any music app, messaging app or desktop player. Keep the tab open while extraction runs so the job is not interrupted.</p>
-              <p><strong className="text-fg">What happens to your link.</strong> Audio is processed on the server, so your link travels a step further than a straight video download. It is still used only for your request and expires afterwards — music you save lives on your device.</p>
-            </div>
-          </div>
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Music belongs to someone — handle it with care</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            This warning matters more for audio than anywhere else, because songs and voice recordings carry the strictest rights. Keep your own recordings freely, save other audio for private listening, and never re-upload, remix or sample someone else&apos;s music or voice without written permission. A trending sound is not a free sound. Rights holders can request a review via the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link>. Only download content you own or have permission to reuse.
+          </p>
+          </ReadMore>
+          </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -141,17 +166,34 @@ export default function AudioDownloaderPage() {
             ))}
           </div>
 
+          <h2 className="mt-10 text-[18px] font-bold text-fg">Related guides</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              { href: "/blog/extract-audio-own-reels-editing", label: "How to Extract Audio for Editing" },
+              { href: "/blog/downloaded-video-no-sound", label: "Why Your Downloaded Video Has No Sound" },
+              { href: "/blog/is-it-legal-download-instagram-videos", label: "Is It Legal to Download Videos?" },
+              { href: "/blog/students-saved-instagram-study", label: "How Students Use Saved Content for Study" },
+            ].map((l) => (
+              <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
+                <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
+                <span className="mt-1 block text-[14px] text-fg-muted">Downloadit Blog guide</span>
+              </Link>
+            ))}
+          </div>
+
+          <ProseSection>
           <section className="mt-12">
-            <h2 className="text-[20px] font-bold text-fg">Audio downloading FAQ</h2>
-            <div className="mt-4 space-y-3">
+            <h2>Audio downloading FAQ</h2>
+            <div className="mt-4">
               {FAQS.map((item) => (
-                <details key={item.q} className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                  <summary className="cursor-pointer text-[16px] font-semibold text-fg">{item.q}</summary>
-                  <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">{item.a}</p>
-                </details>
+                <div key={item.q}>
+                  <h3>{item.q}</h3>
+                  <p>{item.a}</p>
+                </div>
               ))}
             </div>
           </section>
+          </ProseSection>
 
           <p className="mt-10 text-[12px] text-fg-subtle">
             See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.

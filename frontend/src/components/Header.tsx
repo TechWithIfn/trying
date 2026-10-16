@@ -3,20 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, HelpCircle, Sun, Moon, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Lightbulb, CircleHelp, Shield, FileText, Mail, ChevronDown, Info, Scale, ScrollText } from "lucide-react";
+import { Globe, HelpCircle, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Lightbulb, CircleHelp, Shield, FileText, ChevronDown, Info, Scale, ScrollText, Newspaper } from "lucide-react";
 import { useLanguage, LANGUAGES } from "@/i18n";
 import type { DownloaderTab } from "@/components/HeroDownloader";
 import ToolCategoryDropdown from "@/components/ToolCategoryDropdown";
-
-function getInitialTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  try {
-    const stored = localStorage.getItem("downloadit-theme") as "light" | "dark" | null;
-    if (stored === "light" || stored === "dark") return stored;
-  } catch {}
-  // No saved preference: ALWAYS Light Mode. System/OS theme is ignored.
-  return "light";
-}
 
 interface HeaderProps {
   activeDownloaderTab?: DownloaderTab | null;
@@ -28,35 +18,12 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [langOpen, setLangOpen] = useState(false);
-  const mountedRef = useRef(false);
   const langRef = useRef<HTMLDivElement>(null);
 
   const current = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[0];
   const onHelp = pathname === "/help";
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Initialize theme and mounted flag.
-  // Deferred via queueMicrotask so the setState is not synchronous in the
-  // effect body (lint-clean, no cascading render). Pre-paint color stability
-  // on refresh is already guaranteed by the blocking theme script in
-  // layout.tsx; the toggle itself has a fixed width so its icon settling one
-  // tick later causes zero layout shift.
-  useEffect(() => {
-    // Use queueMicrotask to defer the setState to avoid synchronous effect warning
-    queueMicrotask(() => {
-      setTheme(getInitialTheme());
-      mountedRef.current = true;
-    });
-  }, []);
-
-  // Sync theme to DOM and localStorage
-  useEffect(() => {
-    if (!mountedRef.current) return;
-    document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("downloadit-theme", theme); } catch {}
-  }, [theme]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -96,6 +63,20 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
     setMobileOpen(false);
   }, []);
 
+  // Route-change cleanup (root cause of "page stays covered after tapping a
+  // link"): the mobile drawer locks body scroll while open. Every in-menu
+  // link closes it manually, but back/forward navigation, hash changes, or a
+  // navigation triggered from anywhere else would otherwise leave
+  // `overflow: hidden` (and a full-screen overlay) stuck on the new page.
+  // Closing on pathname change guarantees the lock is always released.
+  useEffect(() => {
+    // Deferred (repo convention) to avoid a synchronous setState in effect.
+    queueMicrotask(() => {
+      setMobileOpen(false);
+      setLangOpen(false);
+    });
+  }, [pathname]);
+
   useEffect(() => {
     if (!mobileOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -106,8 +87,6 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
   }, [mobileOpen, closeMobileMenu]);
 
   const handleNavClick = closeMobileMenu;
-  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
-  const isDark = theme === "dark";
 
   const iconBtn =
     "site-icon-btn flex h-11 min-w-[44px] items-center justify-center gap-1.5 rounded-xl px-2 text-[16px] font-medium text-fg-muted transition-colors hover:bg-primary-light hover:text-primary sm:h-auto sm:w-auto sm:hover:bg-transparent";
@@ -142,6 +121,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
                 <Link href="/#how-it-works" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">How It Works</Link>
                 <Link href="/#faq" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">FAQ</Link>
                 <Link href="/about" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">About</Link>
+                <Link href="/blog" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">Blog</Link>
                 <Link href="/contact" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">Contact</Link>
               </nav>
             </div>
@@ -221,22 +201,6 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             </Link>
 
             <button
-              type="button"
-              onClick={toggleTheme}
-              className="theme-toggle"
-              aria-label={isDark ? t.header.themeToLight : t.header.themeToDark}
-            >
-              <div className="theme-toggle__thumb">
-                {isDark ? <Moon className="h-3.5 w-3.5 text-white" strokeWidth={2.2} /> : <Sun className="h-3.5 w-3.5 text-white" strokeWidth={2.2} />}
-              </div>
-              {isDark ? (
-                <Moon className="absolute right-3 h-3.5 w-3.5" style={{ color: "var(--fg-subtle)" }} strokeWidth={1.8} />
-              ) : (
-                <Sun className="absolute right-3 h-3.5 w-3.5" style={{ color: "var(--fg-subtle)" }} strokeWidth={1.8} />
-              )}
-            </button>
-
-            <button
               ref={menuButtonRef}
               type="button"
               className="site-menu-btn flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-fg-muted transition-colors hover:bg-primary-light hover:text-primary lg:hidden"
@@ -266,7 +230,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             <span className="block text-[16px] font-bold text-fg">Downloadit</span>
             <span className="block text-[12px] font-medium text-fg-subtle">{t.common.mobileNav}</span>
           </div>
-          <button type="button" autoFocus={mobileOpen} className="flex h-10 w-10 items-center justify-center rounded-xl text-fg-muted transition-colors hover:bg-primary-light hover:text-primary" onClick={() => { closeMobileMenu(); menuButtonRef.current?.focus(); }} aria-label={t.header.closeMenu}>
+          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-xl text-fg-muted transition-colors hover:bg-primary-light hover:text-primary" onClick={() => { closeMobileMenu(); menuButtonRef.current?.focus({ preventScroll: true }); }} aria-label={t.header.closeMenu}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -306,12 +270,15 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             <span>FAQ</span>
           </Link>
           <Link href="/contact" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
-            <span className="mobile-nav-icon bg-rose-500/10 text-primary"><Mail className="h-[18px] w-[18px]" /></span>
             <span>Contact</span>
           </Link>
           <Link href="/help" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span className="mobile-nav-icon bg-sky-500/10 text-primary"><HelpCircle className="h-[18px] w-[18px]" /></span>
             <span>Help</span>
+          </Link>
+          <Link href="/blog" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
+            <span className="mobile-nav-icon bg-violet-500/10 text-primary"><Newspaper className="h-[18px] w-[18px]" /></span>
+            <span>Blog</span>
           </Link>
           <div className="my-2 border-t border-border-light" />
           <p className="flex items-center gap-2 px-3 pb-1 pt-1 text-[12px] font-bold uppercase tracking-[0.1em] text-fg-subtle">
@@ -335,18 +302,6 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
               );
             })}
           </div>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-pressed={isDark}
-            aria-label={isDark ? t.header.themeToLight : t.header.themeToDark}
-            className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary"
-          >
-            <span className="mobile-nav-icon bg-amber-500/10 text-primary">
-              {isDark ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
-            </span>
-            <span className="flex-1">{isDark ? t.header.themeToLight : t.header.themeToDark}</span>
-          </button>
           <Link href="/about" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span className="mobile-nav-icon bg-teal-500/10 text-primary"><Info className="h-[18px] w-[18px]" /></span>
             <span>About</span>

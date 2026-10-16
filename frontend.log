@@ -1,4 +1,8 @@
 
+> downloadit@0.1.0 dev:frontend
+> cd frontend && npm run dev
+
+
 > downloadit-frontend@0.1.0 dev
 > next dev
 
@@ -6,39 +10,368 @@
 - Local:         http://localhost:3000
 - Network:       http://192.168.29.35:3000
 - Environments: .env
-✓ Ready in 736ms
-✓ Running next.config.ts took 68ms
+✓ Ready in 555ms
+✓ Running next.config.ts took 1824ms
 
- GET / 200 in 1022ms (next.js: 328ms, application-code: 695ms)
- GET / 200 in 289ms (next.js: 17ms, application-code: 271ms)
- GET /manifest.webmanifest 200 in 185ms (next.js: 138ms, application-code: 47ms)
- GET / 200 in 369ms (next.js: 15ms, application-code: 354ms)
-✓ Compiled in 795ms
- GET / 200 in 95ms (next.js: 26ms, application-code: 70ms)
-✓ Compiled in 102ms
- GET / 200 in 58ms (next.js: 12ms, application-code: 46ms)
-✓ Compiled in 111ms
- GET / 200 in 104ms (next.js: 29ms, application-code: 75ms)
-✓ Compiled in 100ms
- GET / 200 in 63ms (next.js: 15ms, application-code: 48ms)
-✓ Compiled in 193ms
- GET / 200 in 66ms (next.js: 13ms, application-code: 53ms)
-✓ Compiled in 263ms
-✓ Compiled in 386ms
-✓ Compiled in 154ms
- GET / 200 in 93ms (next.js: 31ms, application-code: 62ms)
-✓ Compiled in 79ms
- GET / 200 in 62ms (next.js: 14ms, application-code: 48ms)
-✓ Compiled in 90ms
- GET / 200 in 59ms (next.js: 11ms, application-code: 48ms)
-✓ Compiled in 128ms
- GET / 200 in 83ms (next.js: 16ms, application-code: 67ms)
-✓ Compiled in 76ms
- GET / 200 in 61ms (next.js: 11ms, application-code: 49ms)
-✓ Compiled in 370ms
-✓ Compiled in 359ms
- GET / 200 in 265ms (next.js: 5ms, application-code: 261ms)
- GET /manifest.webmanifest 200 in 22ms (next.js: 4ms, application-code: 19ms)
- GET / 200 in 207ms (next.js: 3ms, application-code: 204ms)
+ GET / 200 in 1014ms (next.js: 381ms, application-code: 633ms)
+ GET / 200 in 235ms (next.js: 9ms, application-code: 226ms)
+ GET /manifest.webmanifest 200 in 184ms (next.js: 139ms, application-code: 45ms)
+ GET / 200 in 56ms (next.js: 8ms, application-code: 48ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 4ms, application-code: 9ms)
+ GET / 200 in 47ms (next.js: 6ms, application-code: 41ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 5ms, application-code: 7ms)
+✓ Compiled in 166ms
+ GET / 200 in 47ms (next.js: 5ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 51ms (next.js: 8ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 4ms, application-code: 10ms)
+ GET / 200 in 40ms (next.js: 7ms, application-code: 33ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET / 200 in 48ms (next.js: 7ms, application-code: 41ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET / 200 in 45ms (next.js: 10ms, application-code: 35ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 2ms, application-code: 6ms)
+ GET / 200 in 50ms (next.js: 7ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 3ms, application-code: 9ms)
+ GET / 200 in 56ms (next.js: 6ms, application-code: 50ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 6ms)
+ GET / 200 in 65ms (next.js: 9ms, application-code: 56ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 38ms (next.js: 6ms, application-code: 32ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 37ms (next.js: 5ms, application-code: 32ms)
  GET /manifest.webmanifest 200 in 7ms (next.js: 3ms, application-code: 5ms)
- GET / 200 in 207ms (next.js: 7ms, application-code: 199ms)
+ GET / 200 in 50ms (next.js: 5ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 8ms)
+ GET / 200 in 41ms (next.js: 4ms, application-code: 37ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 46ms (next.js: 11ms, application-code: 35ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 6ms)
+ GET / 200 in 52ms (next.js: 5ms, application-code: 48ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 40ms (next.js: 7ms, application-code: 33ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 7ms)
+ GET / 200 in 46ms (next.js: 7ms, application-code: 40ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET / 200 in 48ms (next.js: 8ms, application-code: 40ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 5ms, application-code: 5ms)
+ GET / 200 in 51ms (next.js: 5ms, application-code: 46ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 3ms, application-code: 7ms)
+ GET / 200 in 44ms (next.js: 8ms, application-code: 36ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 7ms)
+ GET / 200 in 259ms (next.js: 9ms, application-code: 250ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 5ms, application-code: 6ms)
+ GET /instagram-reels-downloader 200 in 162ms (next.js: 63ms, application-code: 99ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 5ms, application-code: 7ms)
+ GET / 200 in 34ms (next.js: 6ms, application-code: 28ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 7ms, application-code: 4ms)
+✓ Compiled in 213ms
+ GET / 200 in 53ms (next.js: 12ms, application-code: 41ms)
+✓ Compiled in 101ms
+ GET / 500 in 178ms (next.js: 16ms, application-code: 162ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 4ms, application-code: 9ms)
+ GET / 200 in 219ms (next.js: 13ms, application-code: 206ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 3ms, application-code: 9ms)
+ GET / 200 in 229ms (next.js: 20ms, application-code: 210ms)
+ GET / 200 in 206ms (next.js: 6ms, application-code: 200ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 6ms, application-code: 6ms)
+ GET / 200 in 288ms (next.js: 5ms, application-code: 283ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 5ms, application-code: 9ms)
+ GET /contact 200 in 144ms (next.js: 66ms, application-code: 78ms)
+ GET /manifest.webmanifest 200 in 7ms (next.js: 3ms, application-code: 5ms)
+ GET /about 200 in 129ms (next.js: 72ms, application-code: 57ms)
+ GET /manifest.webmanifest 200 in 17ms (next.js: 7ms, application-code: 10ms)
+ GET / 200 in 46ms (next.js: 11ms, application-code: 35ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 5ms, application-code: 8ms)
+ GET / 200 in 189ms (next.js: 4ms, application-code: 185ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 5ms, application-code: 8ms)
+✓ Compiled in 207ms
+ GET / 200 in 60ms (next.js: 16ms, application-code: 44ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 5ms, application-code: 9ms)
+✓ Compiled in 151ms
+ GET / 200 in 53ms (next.js: 14ms, application-code: 39ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 140ms
+ GET / 200 in 47ms (next.js: 13ms, application-code: 35ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 5ms, application-code: 8ms)
+✓ Compiled in 91ms
+ GET / 200 in 51ms (next.js: 15ms, application-code: 36ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+✓ Compiled in 110ms
+ GET / 200 in 53ms (next.js: 16ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 3ms, application-code: 7ms)
+✓ Compiled in 204ms
+ GET / 200 in 297ms (next.js: 105ms, application-code: 192ms)
+ GET / 200 in 125ms (next.js: 5ms, application-code: 120ms)
+ GET / 200 in 120ms (next.js: 7ms, application-code: 112ms)
+ GET / 200 in 113ms (next.js: 7ms, application-code: 106ms)
+ GET / 200 in 109ms (next.js: 6ms, application-code: 103ms)
+ GET / 200 in 114ms (next.js: 6ms, application-code: 109ms)
+ GET / 200 in 133ms (next.js: 6ms, application-code: 127ms)
+ GET / 200 in 145ms (next.js: 6ms, application-code: 139ms)
+ GET / 200 in 153ms (next.js: 7ms, application-code: 146ms)
+ GET / 200 in 142ms (next.js: 8ms, application-code: 134ms)
+ GET / 200 in 133ms (next.js: 7ms, application-code: 126ms)
+ GET / 200 in 128ms (next.js: 8ms, application-code: 121ms)
+ GET / 200 in 140ms (next.js: 6ms, application-code: 134ms)
+ GET / 200 in 153ms (next.js: 7ms, application-code: 146ms)
+ GET / 200 in 156ms (next.js: 8ms, application-code: 148ms)
+ GET / 200 in 152ms (next.js: 7ms, application-code: 145ms)
+ GET / 200 in 139ms (next.js: 7ms, application-code: 132ms)
+ GET / 200 in 132ms (next.js: 6ms, application-code: 127ms)
+ GET / 200 in 136ms (next.js: 6ms, application-code: 131ms)
+ GET / 200 in 160ms (next.js: 5ms, application-code: 155ms)
+ GET / 200 in 157ms (next.js: 6ms, application-code: 152ms)
+ GET / 200 in 143ms (next.js: 9ms, application-code: 134ms)
+ GET / 200 in 123ms (next.js: 7ms, application-code: 116ms)
+ GET / 200 in 126ms (next.js: 5ms, application-code: 121ms)
+ GET / 200 in 144ms (next.js: 3ms, application-code: 141ms)
+ GET / 200 in 135ms (next.js: 5ms, application-code: 130ms)
+ GET / 200 in 133ms (next.js: 7ms, application-code: 126ms)
+ GET / 200 in 121ms (next.js: 6ms, application-code: 115ms)
+ GET / 200 in 140ms (next.js: 6ms, application-code: 134ms)
+ GET / 200 in 154ms (next.js: 5ms, application-code: 150ms)
+ GET / 200 in 159ms (next.js: 5ms, application-code: 154ms)
+ GET / 200 in 139ms (next.js: 8ms, application-code: 131ms)
+ GET / 200 in 146ms (next.js: 7ms, application-code: 139ms)
+ GET / 200 in 163ms (next.js: 5ms, application-code: 158ms)
+ GET / 200 in 177ms (next.js: 7ms, application-code: 170ms)
+ GET / 200 in 174ms (next.js: 8ms, application-code: 165ms)
+ GET / 200 in 112ms (next.js: 8ms, application-code: 104ms)
+ GET / 200 in 59ms (next.js: 8ms, application-code: 51ms)
+ GET /manifest.webmanifest 200 in 73ms (next.js: 54ms, application-code: 19ms)
+ GET / 200 in 272ms (next.js: 112ms, application-code: 160ms)
+ GET / 200 in 114ms (next.js: 4ms, application-code: 110ms)
+ GET / 200 in 115ms (next.js: 3ms, application-code: 111ms)
+ GET / 200 in 116ms (next.js: 6ms, application-code: 111ms)
+ GET / 200 in 112ms (next.js: 7ms, application-code: 104ms)
+ GET / 200 in 116ms (next.js: 5ms, application-code: 111ms)
+ GET / 200 in 127ms (next.js: 6ms, application-code: 122ms)
+ GET / 200 in 139ms (next.js: 6ms, application-code: 133ms)
+ GET / 200 in 134ms (next.js: 4ms, application-code: 129ms)
+ GET / 200 in 125ms (next.js: 6ms, application-code: 119ms)
+ GET / 200 in 137ms (next.js: 5ms, application-code: 132ms)
+ GET / 200 in 153ms (next.js: 6ms, application-code: 147ms)
+ GET / 200 in 152ms (next.js: 5ms, application-code: 147ms)
+ GET / 200 in 148ms (next.js: 9ms, application-code: 139ms)
+ GET / 200 in 129ms (next.js: 6ms, application-code: 123ms)
+ GET / 200 in 127ms (next.js: 5ms, application-code: 122ms)
+ GET / 200 in 111ms (next.js: 5ms, application-code: 107ms)
+ GET / 200 in 118ms (next.js: 5ms, application-code: 112ms)
+ GET / 200 in 125ms (next.js: 5ms, application-code: 120ms)
+ GET / 200 in 129ms (next.js: 5ms, application-code: 124ms)
+ GET / 200 in 152ms (next.js: 5ms, application-code: 147ms)
+ GET / 200 in 155ms (next.js: 5ms, application-code: 150ms)
+ GET / 200 in 158ms (next.js: 8ms, application-code: 151ms)
+ GET / 200 in 154ms (next.js: 8ms, application-code: 146ms)
+ GET / 200 in 151ms (next.js: 6ms, application-code: 145ms)
+ GET / 200 in 163ms (next.js: 5ms, application-code: 158ms)
+ GET / 200 in 165ms (next.js: 7ms, application-code: 158ms)
+ GET / 200 in 169ms (next.js: 5ms, application-code: 163ms)
+ GET / 200 in 160ms (next.js: 6ms, application-code: 154ms)
+ GET / 200 in 169ms (next.js: 6ms, application-code: 163ms)
+ GET / 200 in 119ms (next.js: 6ms, application-code: 113ms)
+ GET / 200 in 128ms (next.js: 8ms, application-code: 120ms)
+ GET / 200 in 136ms (next.js: 5ms, application-code: 131ms)
+ GET / 200 in 142ms (next.js: 7ms, application-code: 135ms)
+ GET / 200 in 160ms (next.js: 5ms, application-code: 155ms)
+ GET / 200 in 148ms (next.js: 6ms, application-code: 142ms)
+ GET / 200 in 161ms (next.js: 6ms, application-code: 156ms)
+ GET / 200 in 161ms (next.js: 6ms, application-code: 155ms)
+ GET / 200 in 123ms (next.js: 7ms, application-code: 117ms)
+ GET / 200 in 69ms (next.js: 9ms, application-code: 60ms)
+ GET /manifest.webmanifest 200 in 79ms (next.js: 60ms, application-code: 19ms)
+✓ Compiled in 135ms
+ GET / 200 in 54ms (next.js: 15ms, application-code: 39ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 7ms)
+✓ Compiled in 128ms
+ GET / 200 in 59ms (next.js: 17ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 44ms (next.js: 11ms, application-code: 33ms)
+✓ Compiled in 712ms
+ GET /manifest.webmanifest 200 in 15ms (next.js: 4ms, application-code: 11ms)
+ GET / 200 in 49ms (next.js: 7ms, application-code: 42ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+ GET /blog 200 in 1187ms (next.js: 824ms, application-code: 363ms)
+ GET /blog/save-own-instagram-posts 200 in 1239ms (next.js: 490ms, generate-params: 507ms, application-code: 242ms)
+ GET /blog 200 in 126ms (next.js: 15ms, application-code: 111ms)
+ GET /manifest.webmanifest 200 in 18ms (next.js: 8ms, application-code: 10ms)
+ GET /blog/backup-instagram-reels 200 in 147ms (next.js: 13ms, generate-params: 13ms, application-code: 121ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 5ms)
+ GET / 200 in 55ms (next.js: 21ms, application-code: 35ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 4ms, application-code: 9ms)
+ GET /blog 200 in 92ms (next.js: 3ms, application-code: 89ms)
+ GET /manifest.webmanifest 200 in 15ms (next.js: 7ms, application-code: 8ms)
+ GET / 200 in 39ms (next.js: 6ms, application-code: 33ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 7ms)
+✓ Compiled in 185ms
+ GET / 200 in 58ms (next.js: 12ms, application-code: 46ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 6ms)
+✓ Compiled in 341ms
+✓ Compiled in 218ms
+✓ Compiled in 243ms
+✓ Compiled in 270ms
+✓ Compiled in 253ms
+✓ Compiled in 415ms
+✓ Compiled in 239ms
+✓ Compiled in 371ms
+ GET / 500 in 342ms (next.js: 13ms, application-code: 328ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 6ms, application-code: 7ms)
+ GET / 500 in 154ms (next.js: 13ms, application-code: 140ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 8ms, application-code: 6ms)
+ GET / 500 in 143ms (next.js: 15ms, application-code: 128ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 6ms)
+ GET / 500 in 173ms (next.js: 12ms, application-code: 161ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+ GET / 500 in 137ms (next.js: 14ms, application-code: 124ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 206ms (next.js: 12ms, application-code: 194ms)
+ GET /manifest.webmanifest 200 in 15ms (next.js: 6ms, application-code: 10ms)
+✓ Compiled in 573ms
+ GET / 500 in 284ms (next.js: 14ms, application-code: 270ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+ GET / 200 in 194ms (next.js: 12ms, application-code: 182ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 59ms (next.js: 15ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 5ms, application-code: 5ms)
+ GET / 200 in 52ms (next.js: 14ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+✓ Compiled in 159ms
+ GET / 200 in 249ms (next.js: 17ms, application-code: 232ms)
+ GET / 200 in 186ms (next.js: 5ms, application-code: 181ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 5ms, application-code: 9ms)
+✓ Compiled in 120ms
+ GET / 200 in 67ms (next.js: 14ms, application-code: 53ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 175ms
+ GET / 200 in 64ms (next.js: 14ms, application-code: 50ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 7ms)
+ GET / 200 in 43ms (next.js: 5ms, application-code: 37ms)
+✓ Compiled in 172ms
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 43ms (next.js: 5ms, application-code: 38ms)
+✓ Compiled in 244ms
+ GET /manifest.webmanifest 200 in 8ms (next.js: 5ms, application-code: 4ms)
+ GET / 200 in 52ms (next.js: 4ms, application-code: 48ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+ GET / 200 in 41ms (next.js: 5ms, application-code: 36ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 47ms (next.js: 7ms, application-code: 40ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 6ms)
+ GET / 200 in 52ms (next.js: 7ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 39ms (next.js: 4ms, application-code: 35ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 4ms, application-code: 5ms)
+ GET / 200 in 46ms (next.js: 6ms, application-code: 39ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 5ms, application-code: 7ms)
+ GET / 200 in 50ms (next.js: 6ms, application-code: 44ms)
+ GET /manifest.webmanifest 200 in 7ms (next.js: 4ms, application-code: 4ms)
+ GET / 200 in 55ms (next.js: 4ms, application-code: 51ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 114ms
+ GET / 200 in 51ms (next.js: 14ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 5ms, application-code: 5ms)
+ GET / 200 in 47ms (next.js: 4ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 5ms, application-code: 4ms)
+✓ Compiled in 375ms
+✓ Compiled in 216ms
+✓ Compiled in 196ms
+ GET / 200 in 62ms (next.js: 20ms, application-code: 41ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 7ms, application-code: 5ms)
+ GET / 200 in 60ms (next.js: 13ms, application-code: 47ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 6ms, application-code: 6ms)
+✓ Compiled in 199ms
+ GET / 200 in 56ms (next.js: 15ms, application-code: 41ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 6ms)
+✓ Compiled in 141ms
+ GET / 200 in 47ms (next.js: 12ms, application-code: 36ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 5ms, application-code: 5ms)
+✓ Compiled in 317ms
+✓ Compiled in 231ms
+✓ Compiled in 135ms
+ GET / 200 in 58ms (next.js: 13ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 104ms
+ GET / 200 in 61ms (next.js: 11ms, application-code: 50ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 6ms)
+✓ Compiled in 107ms
+ GET / 200 in 45ms (next.js: 10ms, application-code: 34ms)
+ GET /manifest.webmanifest 200 in 12ms (next.js: 4ms, application-code: 8ms)
+✓ Compiled in 107ms
+ GET / 200 in 50ms (next.js: 12ms, application-code: 37ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 4ms)
+✓ Compiled in 165ms
+ GET / 200 in 60ms (next.js: 14ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 5ms, application-code: 8ms)
+✓ Compiled in 102ms
+ GET / 200 in 54ms (next.js: 16ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+✓ Compiled in 188ms
+✓ Compiled in 117ms
+ GET / 200 in 49ms (next.js: 15ms, application-code: 34ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 44ms (next.js: 12ms, application-code: 33ms)
+✓ Compiled in 283ms
+ GET /manifest.webmanifest 200 in 13ms (next.js: 5ms, application-code: 8ms)
+✓ Compiled in 109ms
+ GET / 200 in 83ms (next.js: 17ms, application-code: 66ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 4ms, application-code: 4ms)
+✓ Compiled in 189ms
+ GET / 200 in 52ms (next.js: 12ms, application-code: 40ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 175ms
+ GET / 200 in 45ms (next.js: 15ms, application-code: 31ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 108ms
+ GET / 500 in 240ms (next.js: 17ms, application-code: 223ms)
+ GET /manifest.webmanifest 200 in 15ms (next.js: 5ms, application-code: 10ms)
+ GET / 500 in 173ms (next.js: 13ms, application-code: 159ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 7ms)
+✓ Compiled in 184ms
+ GET / 200 in 604ms (next.js: 158ms, application-code: 446ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 5ms, application-code: 6ms)
+ GET / 200 in 212ms (next.js: 11ms, application-code: 201ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+ GET /instagram-story-downloader 200 in 133ms (next.js: 54ms, application-code: 79ms)
+ GET /manifest.webmanifest 200 in 14ms (next.js: 6ms, application-code: 8ms)
+ GET /instagram-story-downloader 200 in 69ms (next.js: 4ms, application-code: 65ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 6ms, application-code: 7ms)
+ GET / 200 in 47ms (next.js: 14ms, application-code: 33ms)
+ GET /manifest.webmanifest 200 in 17ms (next.js: 9ms, application-code: 8ms)
+ GET / 200 in 43ms (next.js: 5ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 6ms)
+ GET / 200 in 49ms (next.js: 5ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 5ms, application-code: 6ms)
+ GET / 200 in 49ms (next.js: 6ms, application-code: 43ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 5ms)
+ GET / 200 in 44ms (next.js: 5ms, application-code: 40ms)
+ GET /manifest.webmanifest 200 in 7ms (next.js: 3ms, application-code: 4ms)
+ GET / 200 in 52ms (next.js: 8ms, application-code: 44ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 6ms, application-code: 7ms)
+ GET / 200 in 79ms (next.js: 5ms, application-code: 75ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 4ms, application-code: 5ms)
+ GET / 200 in 52ms (next.js: 6ms, application-code: 46ms)
+ GET /manifest.webmanifest 200 in 11ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 39ms (next.js: 6ms, application-code: 33ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 3ms, application-code: 5ms)
+✓ Compiled in 134ms
+ GET / 200 in 51ms (next.js: 12ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 3ms, application-code: 6ms)
+✓ Compiled in 145ms
+ GET / 200 in 210ms (next.js: 14ms, application-code: 197ms)
+ GET / 200 in 162ms (next.js: 5ms, application-code: 157ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 5ms)
+✓ Compiled in 504ms
+ GET / 200 in 207ms (next.js: 159ms, application-code: 47ms)
+ GET / 200 in 225ms (next.js: 12ms, application-code: 213ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 4ms, application-code: 6ms)
+ GET / 200 in 37ms (next.js: 8ms, application-code: 30ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 6ms, application-code: 7ms)
+ GET / 200 in 51ms (next.js: 4ms, application-code: 47ms)
+ GET /manifest.webmanifest 200 in 8ms (next.js: 4ms, application-code: 5ms)
+ GET / 200 in 43ms (next.js: 4ms, application-code: 38ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 3ms, application-code: 6ms)
+ GET / 200 in 54ms (next.js: 6ms, application-code: 48ms)
+ GET /manifest.webmanifest 200 in 9ms (next.js: 5ms, application-code: 4ms)
+ GET / 200 in 47ms (next.js: 6ms, application-code: 41ms)
+ GET /manifest.webmanifest 200 in 10ms (next.js: 5ms, application-code: 5ms)

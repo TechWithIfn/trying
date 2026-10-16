@@ -21,8 +21,6 @@ export const en: Strings = {
     downloadFailed: "Download failed. Please try again.",
   },
   header: {
-    themeToLight: "Switch to light mode",
-    themeToDark: "Switch to dark mode",
     openMenu: "Open menu",
     closeMenu: "Close menu",
   },

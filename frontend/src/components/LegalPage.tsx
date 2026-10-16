@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { SUPPORT_GMAIL_URL, SUPPORT_EMAIL, SITE_URL } from "@/config/site";
+import ProseSection from "@/components/ProseSection";
+import { SUPPORT_EMAIL, supportMailto, SITE_URL } from "@/config/site";
 
 export default function LegalPage({
   title,
@@ -55,7 +56,7 @@ export default function LegalPage({
       </h1>
       <p className="mt-2 text-[14px] text-fg-subtle">Last updated: {updated}</p>
       <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
-        {children}
+        <ProseSection>{children}</ProseSection>
       </div>
       <p className="mt-8 text-[14px] text-fg-subtle">
         Related:{" "}
@@ -78,10 +79,10 @@ export default function LegalPage({
       <p className="mt-8 text-[16px] text-fg-muted">
         Questions about this page? Contact us at{" "}
         <a
-          href={SUPPORT_GMAIL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={supportMailto()}
+          aria-label="Email Downloadit support"
           className="inline-flex min-h-[44px] items-center break-all font-semibold text-fg transition-colors hover:text-primary"
+          style={{ overflowWrap: "anywhere" }}
         >
           {SUPPORT_EMAIL}
         </a>

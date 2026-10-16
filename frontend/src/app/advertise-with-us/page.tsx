@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { SITE_URL, SUPPORT_EMAIL, SUPPORT_GMAIL_URL } from "@/config/site";
+import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
 const ADVERTISE_TITLE = "Advertise With Us | Downloadit";
 const ADVERTISE_DESCRIPTION =
@@ -83,10 +83,10 @@ export default function AdvertiseWithUsPage() {
               To ask about availability, tell us briefly what you would like to
               promote and where your audience overlaps with ours. Write to{" "}
               <a
-                href={SUPPORT_GMAIL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={supportMailto("Advertising enquiry")}
+                aria-label="Email Downloadit support"
                 className="inline-flex min-h-[44px] items-center break-all font-semibold text-fg transition-colors hover:text-primary"
+                style={{ overflowWrap: "anywhere" }}
               >
                 {SUPPORT_EMAIL}
               </a>{" "}

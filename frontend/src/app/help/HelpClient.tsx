@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
-  ChevronDown,
   ShieldCheck,
   Mail,
   Play,
@@ -17,9 +16,10 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import ScrollReveal from "@/components/ScrollReveal";
+import ProseSection from "@/components/ProseSection";
+import ReadMore from "@/components/ReadMore";
 import { useLanguage } from "@/i18n";
-import { SUPPORT_EMAIL, SUPPORT_GMAIL_URL } from "@/config/site";
+import { SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
 const TYPE_ICONS = [Play, Film, ImageIcon, Clock, Star, Music];
 
@@ -40,58 +40,16 @@ function Accordion({
   items: { q: string; a: ReactNode }[];
   idPrefix: string;
 }) {
-  const [openIndex, setOpenIndex] = useState(0);
-  const toggle = useCallback((i: number) => {
-    setOpenIndex((prev) => (prev === i ? -1 : i));
-  }, []);
-
+  // Open Q&A prose: answers are always visible (no toggles), so nothing
+  // can stick hidden. idPrefix keys items stably per section.
   return (
-    <div className="flex flex-col gap-3">
-      {items.map((item, i) => {
-        const isOpen = openIndex === i;
-        return (
-          <div
-            key={i}
-            className="rounded-2xl transition-all duration-200"
-            style={{
-              background: isOpen ? "var(--accent-tint-purple)" : "var(--card)",
-              border: isOpen
-                ? "1px solid var(--accent-tint-purple-border)"
-                : "1px solid var(--border)",
-              boxShadow: isOpen ? "none" : "var(--shadow-card)",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => toggle(i)}
-              aria-expanded={isOpen}
-              aria-controls={`${idPrefix}-answer-${i}`}
-              className="flex w-full items-center justify-between gap-4 py-5 px-6 text-left transition-colors"
-            >
-              <span className="text-[16px] font-semibold text-fg pr-2">{item.q}</span>
-              <ChevronDown
-                className="h-[18px] w-[18px] shrink-0 transition-transform duration-250"
-                style={{
-                  color: "var(--fg-subtle)",
-                  transform: isOpen ? "rotate(180deg)" : "rotate(0)",
-                }}
-              />
-            </button>
-            <div
-              id={`${idPrefix}-answer-${i}`}
-              role="region"
-              className="overflow-hidden transition-all duration-300"
-              style={{
-                maxHeight: isOpen ? 600 : 0,
-                opacity: isOpen ? 1 : 0,
-                padding: isOpen ? "0 24px 20px" : "0 24px",
-              }}
-            >
-              <div className="text-[14px] leading-[1.65] text-fg-muted">{item.a}</div>
-            </div>
-          </div>
-        );
-      })}
+    <div>
+      {items.map((item, i) => (
+        <div key={`${idPrefix}-${i}`}>
+          <h3>{item.q}</h3>
+          <p>{item.a}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -126,9 +84,10 @@ export default function HelpClient() {
         </section>
 
         <div className="mx-auto max-w-[800px] px-4 pb-20 sm:px-6">
+          <ProseSection>
+          <ReadMore label="help guide">
           {/* ── 1. Getting started ── */}
-          <ScrollReveal>
-            <section className="mt-10 rounded-[24px] p-7 sm:p-9" style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+            <section className="mt-10">
               <SectionTitle>{h.s1title}</SectionTitle>
               <ol className="mt-6 flex flex-col gap-4">
                 {h.steps.map((step, i) => (
@@ -144,11 +103,9 @@ export default function HelpClient() {
                 ))}
               </ol>
             </section>
-          </ScrollReveal>
 
           {/* ── 2. Supported content ── */}
-          <ScrollReveal>
-            <section className="mt-8 rounded-[24px] p-7 sm:p-9" style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+            <section className="mt-8">
               <SectionTitle>{h.s2title}</SectionTitle>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {typeNames.map((name, i) => {
@@ -172,11 +129,9 @@ export default function HelpClient() {
               </div>
               <p className="mt-5 text-[14px] leading-[1.7] text-fg-muted">{h.s2note}</p>
             </section>
-          </ScrollReveal>
 
           {/* ── 2b. Which link shapes work ── */}
-          <ScrollReveal>
-            <section className="mt-8 rounded-[24px] p-7 sm:p-9" style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+            <section className="mt-8">
               <SectionTitle>Which links work</SectionTitle>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Paste the instagram.com link itself, exactly as Instagram&apos;s Share → Copy link gives it to you. These shapes are accepted:
@@ -194,11 +149,9 @@ export default function HelpClient() {
                 Audio is not a link shape of its own — the sound is extracted from reel and video links like the ones above, through the <Link href="/instagram-audio-downloader" className={TOOL_LINK}>Audio downloader</Link>.
               </p>
             </section>
-          </ScrollReveal>
 
           {/* ── 3. How it works ── */}
-          <ScrollReveal>
-            <section className="mt-8 rounded-[24px] p-7 sm:p-9" style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+            <section className="mt-8">
               <SectionTitle>{h.s3title}</SectionTitle>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">{h.s3desc}</p>
               <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -220,11 +173,9 @@ export default function HelpClient() {
                 ))}
               </div>
             </section>
-          </ScrollReveal>
 
           {/* ── 4. Audio ── */}
-          <ScrollReveal>
-            <section className="mt-8 rounded-[24px] p-7 sm:p-9" style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+            <section className="mt-8">
               <SectionTitle>{h.s4title}</SectionTitle>
               <ol className="mt-6 flex flex-col gap-4">
                 {h.s4steps.map((step, i) => (
@@ -240,10 +191,8 @@ export default function HelpClient() {
                 ))}
               </ol>
             </section>
-          </ScrollReveal>
 
           {/* ── 4b. Reels problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Reels problems</SectionTitle>
@@ -267,10 +216,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 4c. Video problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Video problems</SectionTitle>
@@ -294,10 +241,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 4d. Carousel problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Carousel problems</SectionTitle>
@@ -321,10 +266,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 4e. Story problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Story problems</SectionTitle>
@@ -348,10 +291,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 4f. Audio problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Audio problems</SectionTitle>
@@ -375,20 +316,16 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 5. Troubleshooting ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>{h.s5title}</SectionTitle>
               </div>
               <Accordion items={h.problems} idPrefix="help-trouble" />
             </section>
-          </ScrollReveal>
 
           {/* ── 5b. Preview problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Preview problems</SectionTitle>
@@ -412,10 +349,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 5c. Download problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Download problems</SectionTitle>
@@ -439,10 +374,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 5d. Mobile problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Mobile problems</SectionTitle>
@@ -466,10 +399,8 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 5e. Desktop problems ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Desktop problems</SectionTitle>
@@ -493,11 +424,9 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
           {/* ── 6. Privacy ── */}
-          <ScrollReveal>
-            <section className="mt-8 rounded-[24px] p-7 sm:p-9" style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}>
+            <section className="mt-8">
               <SectionTitle>{h.s6title}</SectionTitle>
               <ul className="mt-6 flex flex-col gap-3.5">
                 {h.privacy.map((item, i) => (
@@ -508,10 +437,8 @@ export default function HelpClient() {
                 ))}
               </ul>
             </section>
-          </ScrollReveal>
 
           {/* ── 6b. Privacy questions ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Privacy questions</SectionTitle>
@@ -539,20 +466,19 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
+          </ReadMore>
+          </ProseSection>
           {/* ── 7. FAQ ── */}
-          <ScrollReveal>
+          <ProseSection>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>{h.s7title}</SectionTitle>
               </div>
               <Accordion items={h.faq} idPrefix="help-faq" />
             </section>
-          </ScrollReveal>
 
           {/* ── 7b. Copyright / DMCA questions ── */}
-          <ScrollReveal>
             <section className="mt-8">
               <div className="mb-5 px-1">
                 <SectionTitle>Copyright questions</SectionTitle>
@@ -580,10 +506,9 @@ export default function HelpClient() {
                 },
               ]} />
             </section>
-          </ScrollReveal>
 
+          </ProseSection>
           {/* ── 8. Email support ── */}
-          <ScrollReveal>
             <section
               className="mt-8 rounded-[24px] p-8 text-center sm:p-10"
               style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}
@@ -592,22 +517,21 @@ export default function HelpClient() {
               <p className="mx-auto mt-3 max-w-[420px] text-[16px] leading-[1.7] text-fg-muted">
                 {h.supportDesc}
               </p>
-              <a href={SUPPORT_GMAIL_URL} target="_blank" rel="noopener noreferrer" className="gradient-btn mt-6 min-h-[48px] px-8 text-[16px]">
+              <a href={supportMailto()} aria-label="Email Downloadit support" className="gradient-btn mt-6 min-h-[48px] px-8 text-[16px]">
                 <Mail className="h-5 w-5" />
                 {h.supportBtn}
               </a>
               <p className="mt-4 text-[14px] text-fg-muted">
                 <a
-                  href={SUPPORT_GMAIL_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={supportMailto()}
+                  aria-label="Email Downloadit support"
                   className="inline-flex min-h-[44px] items-center justify-center break-all font-medium transition-colors hover:text-primary"
+                  style={{ overflowWrap: "anywhere" }}
                 >
                   {SUPPORT_EMAIL}
                 </a>
               </p>
             </section>
-          </ScrollReveal>
         </div>
       </main>
       <Footer />

@@ -16,37 +16,17 @@ import { en } from "./en";
 export const LANGUAGES: LanguageMeta[] = [
   { code: "en", label: "English", short: "EN" },
   { code: "hi", label: "हिन्दी", short: "HI" },
-  { code: "mr", label: "मराठी", short: "MR" },
-  { code: "bn", label: "বাংলা", short: "BN" },
-  { code: "gu", label: "ગુજરાતી", short: "GU" },
-  { code: "pa", label: "ਪੰਜਾਬੀ", short: "PA" },
-  { code: "ta", label: "தமிழ்", short: "TA" },
-  { code: "te", label: "తెలుగు", short: "TE" },
-  { code: "kn", label: "ಕನ್ನಡ", short: "KN" },
-  { code: "ml", label: "മലയാളം", short: "ML" },
-  { code: "or", label: "ଓଡ଼ିଆ", short: "OR" },
-  { code: "as", label: "অসমীয়া", short: "AS" },
 ];
 
 const STORAGE_KEY = "downloadit_language";
 const DEFAULT_LANG: LanguageCode = "en";
 
-// English is bundled (first paint + SSR use it). Every other catalog is a
-// separate lazy chunk loaded on demand — shipping all 12 locales statically
-// added ~300KB of strings to every visitor's initial JavaScript.
+// English is bundled (first paint + SSR use it). Hindi is a separate lazy
+// chunk loaded on demand. Other locales were removed from the switcher
+// until their translations are finished (EN + HI live only).
 type CatalogModule = { [K in string]: Strings };
 const catalogLoaders: Record<Exclude<LanguageCode, "en">, () => Promise<Strings>> = {
   hi: () => import("./hi").then((m: CatalogModule) => m.hi),
-  mr: () => import("./mr").then((m: CatalogModule) => m.mr),
-  bn: () => import("./bn").then((m: CatalogModule) => m.bn),
-  gu: () => import("./gu").then((m: CatalogModule) => m.gu),
-  pa: () => import("./pa").then((m: CatalogModule) => m.pa),
-  ta: () => import("./ta").then((m: CatalogModule) => m.ta),
-  te: () => import("./te").then((m: CatalogModule) => m.te),
-  kn: () => import("./kn").then((m: CatalogModule) => m.kn),
-  ml: () => import("./ml").then((m: CatalogModule) => m.ml),
-  or: () => import("./or").then((m: CatalogModule) => m.or),
-  as: () => import("./as").then((m: CatalogModule) => m.as),
 };
 
 // Loaded non-English catalogs (module-level cache: one network fetch per
