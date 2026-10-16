@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 :root {
+  /* Single theme: light. There is no dark mode and no theme switcher —
+     these variables are the only palette the site uses. */
+  color-scheme: light;
   --bg: #f5f4fa;
   --bg-elevated: #ffffff;
   --fg: #14141c;
@@ -91,61 +94,8 @@
   --font-accent: var(--font-lora);
 }
 
-/* Dark theme via data-theme attribute */
-[data-theme="dark"] {
-  --bg: #0e0c1b;
-  --bg-elevated: rgba(255, 255, 255, 0.05);
-  --fg: #f4f3fa;
-  --fg-muted: #a9a8bc;
-  /* Dark surface equivalent: #8f8da3 passes 4.5:1 on the dark bg (5.99)
-     and dark cards (5.61). */
-  --fg-subtle: #8f8da3;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-light: rgba(255, 255, 255, 0.06);
-  --card: rgba(255, 255, 255, 0.05);
-  --card-hover: rgba(255, 255, 255, 0.08);
-  --primary: #a17dff;
-  --primary-hover: #b89cff;
-  --primary-strong: #b89cff;
-  --primary-light: rgba(161, 125, 255, 0.15);
-  --primary-faint: rgba(161, 125, 255, 0.08);
-  --accent: #f479c0;
-  --accent-hover: #f9a0d4;
-  --accent-light: rgba(244, 121, 192, 0.15);
-  --brand-orange: #ffaa7a;
-  --accent-tint-purple: rgba(161, 125, 255, 0.12);
-  --accent-tint-purple-border: rgba(161, 125, 255, 0.25);
-  --accent-tint-orange: rgba(255, 170, 122, 0.14);
-  --accent-tint-orange-border: rgba(255, 170, 122, 0.25);
-  --success: #34d399;
-  --success-light: #0d2818;
-  --danger: #f87171;
-  --danger-light: #2d1215;
-  --dark: #0f172a;
-  --dark-elevated: #1e293b;
-  --dark-muted: #94a3b8;
-  --focus-ring: rgba(161, 125, 255, 0.4);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.25);
-  --shadow-card-hover: 0 12px 36px rgba(0, 0, 0, 0.30);
-  --shadow-brand: 0 10px 30px rgba(124, 77, 245, 0.18);
-}
-
-[data-theme="dark"] body::before {
-  background: radial-gradient(circle, rgba(244, 114, 182, 0.05) 0%, transparent 70%);
-}
-
-[data-theme="dark"] body::after {
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.04) 0%, transparent 70%);
-}
-
-/* NOTE: no prefers-color-scheme fallback here on purpose.
-   Light Mode is the unconditional default; Dark Mode activates only from
-   an explicit saved user choice (data-theme="dark"). */
+/* NOTE: no dark mode and no prefers-color-scheme handling here on purpose.
+   Light is the only theme; there is no switcher and no data-theme handling. */
 
 
 *,
@@ -158,7 +108,11 @@ html {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  scroll-behavior: smooth;
+  /* No global scroll-behavior: smooth. It hijacks Next.js route-change
+     scrolling (the scroll-to-top animates slowly and can be interrupted
+     mid-page, leaving new pages opened partway down) and fights every
+     programmatic scroll. Smooth scrolling lives only where explicitly
+     wanted: .tabs-scroll and individual scrollIntoView/scrollTo calls. */
   scroll-padding-top: 80px;
 }
 
@@ -312,39 +266,7 @@ main li a[href]:hover {
   transform: none;
 }
 
-/* Theme toggle */
-.theme-toggle {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 68px;
-  height: 36px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  padding: 3px;
-  transition: background 0.2s ease;
-}
-
-.theme-toggle__thumb {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 28px;
-  height: 28px;
-  border-radius: 9999px;
-  background: var(--brand-gradient);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(124, 77, 245, 0.25);
-}
-
-[data-theme="dark"] .theme-toggle__thumb {
-  left: 35px;
-}
+/* Theme toggle removed: the site is dark-only. (Styles deleted.) */
 
 @keyframes fade-in-up {
   from {
@@ -471,6 +393,102 @@ main li a[href]:hover {
 .delay-300 { animation-delay: 300ms; }
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* Anchor targets (/#how-it-works, /#faq, #features): the sticky 72px header
+   would otherwise cover the heading after a hash navigation — including
+   hash links followed from other pages and after back navigation. One rule
+   covers every section; individual scroll-mt utilities remain as overrides. */
+section[id] {
+  scroll-margin-top: calc(88px + env(safe-area-inset-top, 0px));
+}
+
+/* Lift-on-hover cards, hover-capable devices only. Root cause of the stuck
+   raised card on mobile: touch taps synthesize :hover and it sticks until
+   the next tap elsewhere, leaving one card visibly offset. Gating the lift
+   behind (hover: hover) and (pointer: fine) means touch devices never keep
+   a hover state; :active gives a brief pressed effect that always resets.
+   Grids using this class must pair it with items-stretch + h-full children
+   so all cards stay equal height with no layout shift. */
+.lift-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.lift-card:active {
+  transform: translateY(0) scale(0.99);
+}
+.lift-icon,
+.lift-arrow {
+  transition: transform 0.2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lift-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--accent-tint-purple-border);
+  }
+  .lift-card:hover .lift-icon {
+    transform: scale(1.05);
+  }
+  .lift-card:hover .lift-arrow {
+    transform: translateX(2px);
+  }
+}
+
+/* Back-to-top floating button: fixed bottom-right, transform/opacity only
+   (never layout), so it causes no shift or horizontal scroll. z-index 40
+   sits above page content but below the sticky header, dropdowns and the
+   mobile menu overlay (z-50). No cookie/consent banner exists on the site,
+   so no banner offset is needed. */
+.back-to-top {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-brand);
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+  pointer-events: none;
+}
+.back-to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.back-to-top:active {
+  transform: scale(0.92);
+}
+@media (hover: hover) and (pointer: fine) {
+  .back-to-top.is-visible:hover {
+    transform: scale(1.06);
+    background: var(--primary-hover);
+  }
+}
+@media (min-width: 640px) {
+  .back-to-top {
+    width: 48px;
+    height: 48px;
+    right: 20px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .back-to-top {
+    transition: none;
+  }
+}
 
 /* Scroll reveal */
 .fade-section {
@@ -676,24 +694,6 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
-[data-theme="dark"] .mobile-drawer {
-  background: #151321;
-  border-left-color: rgba(255, 255, 255, 0.12);
-}
-
-[data-theme="dark"] .mobile-drawer .text-fg {
-  color: #f4f3fa;
-}
-
-[data-theme="dark"] .mobile-drawer .text-fg-subtle {
-  color: #aaa7bd;
-}
-
-[data-theme="dark"] .mobile-drawer .border-border,
-[data-theme="dark"] .mobile-drawer .border-border-light {
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
 @media (max-width: 767.98px) {
   .result-card {
     width: calc(100% - 32px);
@@ -807,19 +807,6 @@ svg {
     width: 1.1rem !important;
   }
 
-  /* Compact theme toggle on phones (desktop keeps 68px) */
-  .theme-toggle {
-    width: 52px !important;
-    height: 30px !important;
-  }
-  .theme-toggle__thumb {
-    width: 23px !important;
-    height: 23px !important;
-  }
-  [data-theme="dark"] .theme-toggle__thumb {
-    left: 25px !important;
-  }
-
   /* Hero spacing: comfortable vertical rhythm below sticky header */
   .hero-section {
     padding-top: 1.25rem !important;
@@ -918,12 +905,6 @@ svg {
   .site-menu-btn {
     height: 36px !important;
     width: 36px !important;
-  }
-  .theme-toggle {
-    width: 48px !important;
-  }
-  [data-theme="dark"] .theme-toggle__thumb {
-    left: 21px !important;
   }
   .site-logo-text {
     font-size: 1rem !important;
@@ -1116,5 +1097,189 @@ svg {
 
   .result-video-wrap .media-frame {
     width: min(100%, 380px);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Prose: the single shared typography for all long-form reading text
+   (tool-page articles, homepage guide sections, blog posts, help, about,
+   contact, legal bodies). Open article style — no boxes, cards, borders
+   or shadows here. Element selectors beat page utility classes by
+   specificity, so wrapped content looks identical everywhere.
+   ───────────────────────────────────────────── */
+.prose-section {
+  max-width: 760px;
+  margin-inline: auto;
+  text-align: left;
+  color: var(--fg);
+}
+
+.prose-section h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--fg);
+  margin: 2.5rem 0 0;
+}
+
+.prose-section h3 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--fg);
+  margin: 2.5rem 0 0;
+}
+
+.prose-section h4 {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--fg);
+  margin: 2rem 0 0;
+}
+
+.prose-section p {
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--fg-muted);
+  margin: 1em 0 0;
+}
+
+.prose-section ul,
+.prose-section ol {
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--fg-muted);
+  margin: 1em 0 0;
+  padding-left: 1.5rem;
+}
+
+.prose-section ul {
+  list-style: disc;
+}
+
+.prose-section ol {
+  list-style: decimal;
+}
+
+.prose-section li + li {
+  margin-top: 0.5em;
+}
+
+.prose-section a {
+  color: var(--primary-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.prose-section a:hover {
+  text-decoration: underline;
+}
+
+.prose-section strong {
+  color: var(--fg);
+}
+
+.prose-section blockquote {
+  border-left: 3px solid var(--accent-tint-purple-border);
+  padding-left: 1em;
+  margin: 1.25em 0 0;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+@media (min-width: 640px) {
+  .prose-section h2 {
+    font-size: 28px;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   ReadMore: SEO-safe folding. The full text is always in the DOM and in
+   the SSR HTML; folding is purely visual via grid-rows. Without JS the
+   `html.js` hook is absent, so everything renders fully open and the
+   toggle hides itself. Never uses opacity:0 or display:none on content.
+   ───────────────────────────────────────────── */
+.readmore {
+  scroll-margin-top: 88px;
+}
+
+.readmore-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.45s ease;
+}
+
+.readmore-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+html.js .readmore[data-collapsed="true"] .readmore-body {
+  grid-template-rows: 0fr;
+}
+
+.readmore-fade {
+  position: relative;
+  height: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+html.js .readmore[data-collapsed="true"] .readmore-fade {
+  height: 72px;
+  margin-top: -72px;
+  opacity: 1;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+}
+
+.readmore-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 12px auto 0;
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent-tint-purple-border);
+  background: transparent;
+  color: var(--primary-strong);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+html:not(.js) .readmore-toggle {
+  display: none;
+}
+
+.readmore-toggle:hover {
+  background: var(--primary-light);
+}
+
+.readmore-toggle:active {
+  transform: scale(0.97);
+}
+
+.readmore-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.readmore-toggle .readmore-chevron {
+  transition: transform 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .readmore-body,
+  .readmore-fade,
+  .readmore-toggle,
+  .readmore-toggle .readmore-chevron {
+    transition: none;
   }
 }

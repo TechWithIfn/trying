@@ -579,9 +579,3 @@
 ✓ Compiled in 166ms
  GET / 200 in 53ms (next.js: 15ms, application-code: 38ms)
  GET /manifest.webmanifest 200 in 10ms (next.js: 5ms, application-code: 5ms)
-✓ Compiled in 1797ms
- GET / 200 in 548ms (next.js: 389ms, application-code: 159ms)
- GET / 200 in 110ms (next.js: 26ms, application-code: 84ms)
- GET / 200 in 1879ms (next.js: 1204ms, application-code: 675ms)
- GET / 200 in 562ms (next.js: 9ms, application-code: 554ms)
- GET /manifest.webmanifest 200 in 80ms (next.js: 62ms, application-code: 18ms)

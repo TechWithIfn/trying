@@ -65,7 +65,7 @@ export default function ToolCategoryDropdown() {
 
   const close = useCallback((refocusToggle = false) => {
     setOpen(false);
-    if (refocusToggle) toggleRef.current?.focus();
+    if (refocusToggle) toggleRef.current?.focus({ preventScroll: true });
   }, []);
 
   // Close on outside click / touch
@@ -109,16 +109,16 @@ export default function ToolCategoryDropdown() {
       const idx = active ? items.indexOf(active) : -1;
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        items[(idx + 1 + items.length) % items.length]?.focus();
+        items[(idx + 1 + items.length) % items.length]?.focus({ preventScroll: true });
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        items[(idx - 1 + items.length) % items.length]?.focus();
+        items[(idx - 1 + items.length) % items.length]?.focus({ preventScroll: true });
       } else if (e.key === "Home") {
         e.preventDefault();
-        items[0]?.focus();
+        items[0]?.focus({ preventScroll: true });
       } else if (e.key === "End") {
         e.preventDefault();
-        items[items.length - 1]?.focus();
+        items[items.length - 1]?.focus({ preventScroll: true });
       } else if (e.key === "Tab") {
         close();
       }
@@ -139,7 +139,7 @@ export default function ToolCategoryDropdown() {
       if (e.key === "ArrowDown" && !open) {
         setOpen(true);
         requestAnimationFrame(() => {
-          menuRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus();
+          menuRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus({ preventScroll: true });
         });
       }
     }

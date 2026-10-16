@@ -1,10 +1,7 @@
-// Central i18n types. Every language file must satisfy `Strings`,
-// so all languages share exactly the same translation keys and
-// English is always a complete fallback.
-
-export type LanguageCode =
-  | "en" | "hi" | "mr" | "bn" | "gu" | "pa"
-  | "ta" | "te" | "kn" | "ml" | "or" | "as";
+// Central i18n types. Only EN + HI are live; other locales were removed
+// from the switcher until their translations are finished. English is
+// always a complete fallback.
+export type LanguageCode = "en" | "hi";
 
 export interface LanguageMeta {
   code: LanguageCode;
@@ -45,8 +42,6 @@ export interface Strings {
     downloadFailed: string;
   };
   header: {
-    themeToLight: string;
-    themeToDark: string;
     openMenu: string;
     closeMenu: string;
   };

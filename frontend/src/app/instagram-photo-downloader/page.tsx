@@ -4,13 +4,15 @@ import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
+import ProseSection from "@/components/ProseSection";
+import ReadMore from "@/components/ReadMore";
 
 export const metadata: Metadata = {
-  title: { absolute: "Instagram Photo & Carousel Downloader – Save Photos & Carousels | Downloadit" },
+  title: { absolute: "Instagram Photo Downloader – Save Carousels | Downloadit" },
   description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
   alternates: { canonical: "/instagram-photo-downloader" },
   openGraph: {
-    title: { absolute: "Instagram Photo & Carousel Downloader – Save Photos & Carousels | Downloadit" },
+    title: { absolute: "Instagram Photo Downloader – Save Carousels | Downloadit" },
     description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
     url: `${SITE_URL}/instagram-photo-downloader`,
     type: "website",
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: { absolute: "Instagram Photo & Carousel Downloader – Save Photos & Carousels | Downloadit" },
+    title: { absolute: "Instagram Photo Downloader – Save Carousels | Downloadit" },
     description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
     images: ["/og-downloadit.png"],
   },
@@ -29,28 +31,28 @@ const PAGE_PATH = "/instagram-photo-downloader";
 
 const FAQS = [
   {
-    q: "Can I download every slide from a carousel post?",
-    a: "Yes. Paste the carousel link and flip through the slides with Next and Previous — the counter shows where you are. Each slide downloads as its own file, so save the ones you want one by one.",
+    q: "How is downloading different from taking a screenshot?",
+    a: "A screenshot captures your screen at screen resolution, with interface edges and compression. Downloading grabs Instagram's stored image file itself, so it stays sharp when you zoom, crop or print it. If you plan to reuse an image you own, the downloaded file is the one to work from.",
   },
   {
-    q: "What quality are the saved images?",
-    a: "The original file Instagram serves for display — JPG, PNG or WebP at full resolution. Compare the saved file, not the small in-page preview, if one looks soft.",
+    q: "Do I get the whole carousel or just the cover?",
+    a: "The whole set. After you paste the link, the preview lets you step through every slide with Next and Previous, and the counter shows where you are. Each slide saves as its own file, so keep the ones you need one by one.",
   },
   {
-    q: "Can I download someone's profile picture?",
-    a: "No. This page handles carousel posts only. Profile pictures are a different thing and are not supported.",
+    q: "Why did only one image save from a ten-slide post?",
+    a: "That is how carousels are built here — one file per slide, not a bundle. Move to the next slide in the preview and tap Download again. Repeat for each image you want to keep.",
   },
   {
-    q: "What about images posted as stories?",
-    a: "Story images belong to the story pipeline, which handles their 24-hour expiry. Use the Instagram Story Downloader for those.",
+    q: "Can I save a profile picture with this page?",
+    a: "No. This page handles photo and carousel posts only. Profile pictures are served through a different path and are not supported, so paste the link to a specific post instead.",
   },
   {
-    q: "Do I need to log in?",
-    a: "No. A public post link downloads as-is; there is no sign-in step anywhere in the flow.",
+    q: "The photo looks soft on the page. Will the file be soft too?",
+    a: "Judge the downloaded file, not the small preview. The preview is scaled down to fit the page, while the file itself is the full-resolution image Instagram serves. Open the saved file to see its real sharpness.",
   },
   {
-    q: "Which image formats can I get?",
-    a: "Whatever Instagram serves for that image: JPG in most cases, sometimes PNG or WebP. The format is preserved, not converted.",
+    q: "Can I download photos from a private account I follow?",
+    a: "No. Following the account does not change the check. Only posts that are visible to a logged-out visitor can be fetched — follower-only and removed posts return a clear message instead of a file.",
   },
 ];
 
@@ -74,53 +76,81 @@ export default function CarouselDownloaderPage() {
           </Link>
           <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Photo &amp; Carousel Downloader</h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            People screenshot Instagram posts because there is no save button — then wonder why the picture looks soft when they zoom in. A screenshot captures your screen; this page captures the file. Paste the link to a public post and you get Instagram&apos;s original image, not a copy of a copy.
+            A carousel is Instagram&apos;s swipeable photo post — up to ten stills in one place, the kind photographers use for a series, shops use for product angles, and teachers use for step-by-step diagrams. Single photos work here too. The frustration is familiar: you find an image you need, but Instagram offers no way to keep the actual file, so people screenshot it and end up with a dull copy of a copy. This page takes the opposite path. Paste the link to a public post and you receive Instagram&apos;s stored image, slide by slide, at the sharpness it was uploaded in.
           </p>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            Carousels work too, and they are the main reason this page exists. A ten-slide post would take ten screenshots; here you flip through the slides in the preview and download each image separately at full resolution.
+            Stills deserve their own page because they are used differently from video. A photo gets zoomed, cropped, pinned to a board, compared side by side with another. A ten-slide carousel is really ten separate files that happen to share one caption. Everything on this page is shaped around that: flipping through slides, saving individual frames, and keeping the resolution intact for close looking.
           </p>
 
-          <div className="mt-12 grid gap-6 rounded-[24px] p-6 sm:p-8" style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "var(--shadow-card)" }}>
-            <h2 className="text-[20px] font-bold text-fg">How to download photos and carousels</h2>
+          <ProseSection>
+          <ReadMore label="photo guide">
+          <h2>What saved photos are actually good for</h2>
+          <p>
+            Designers and makers keep images they own or are allowed to use as reference boards — colour palettes, packaging angles, lettering styles. The full file survives zooming and cropping far better than a screenshot, so you can inspect a corner or sample a colour cleanly.
+          </p>
+          <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
+            Students save diagrams and charts from public educational accounts so the writing stays readable when magnified. Sellers archive their own product photography the same way — every angle of a listing, kept on a drive and ready to reuse. Travellers and families hold onto their own posted memories at full quality, without chat-app compression grinding them down.
+          </p>
+
+          <div className="mt-12">
+            <h2>How to download photos and carousels, step by step</h2>
+            <h3 className="text-[16px] font-bold text-fg">On Android</h3>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-              <li><strong className="text-fg">Copy the post link</strong> — open the carousel post itself (not the profile grid), then three dots → Copy Link on desktop or Share → Copy link on mobile.</li>
-              <li><strong className="text-fg">Paste it above</strong> — the Carousels tab is already selected. Tap Get Media and the images appear in the preview.</li>
-              <li><strong className="text-fg">Work through the carousel</strong> — the counter tells you which slide you are on. Use Next and Previous to move, and tap Download on each image you want. Every slide is a separate file.</li>
+              <li>Open the photo or carousel post itself in the Instagram app — tap into it from the grid so the single post is on screen.</li>
+              <li>Tap Share, then Copy link.</li>
+              <li>Open this page in your mobile browser and paste the link into the box.</li>
+              <li>Tap Get Media. The first slide appears with a counter showing your position.</li>
+              <li>Use Next and Previous to walk through the slides, tapping Download on each image you want. Each slide saves as its own file in Downloads or Gallery.</li>
+            </ol>
+            <h3 className="text-[16px] font-bold text-fg">On iPhone</h3>
+            <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
+              <li>Open the single post in the Instagram app and copy its link with Share and Copy link.</li>
+              <li>Paste the link into the downloader above in Safari and tap Get Media.</li>
+              <li>Step through the carousel in the preview to find the slides you need.</li>
+              <li>Tap Download on each one. Safari places images in Files under Downloads.</li>
+              <li>From Files you can view them, move them into Photos, or send them straight to another app.</li>
+            </ol>
+            <h3 className="text-[16px] font-bold text-fg">On desktop</h3>
+            <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
+              <li>Open the post in your browser. The three-dots menu and Copy Link gives the same address as the address bar.</li>
+              <li>Paste it into the box at the top of this page and click Get Media.</li>
+              <li>Browse the slides with Next and Previous and download each frame you want to keep.</li>
+              <li>Files land in your downloads folder, ready to open, rename, or drop into a design tool.</li>
             </ol>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Formats and quality</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">JPG in most cases, sometimes PNG or WebP — exactly what Instagram serves. Files are kept as-is, never recompressed into a smaller copy.</p>
+            <div>
+              <h3 className="text-[16px] font-bold text-fg">Formats and quality for stills</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Images save in whatever format Instagram stores for that post — JPG usually, sometimes PNG or WebP — kept exactly as served at full display resolution, never recompressed.</p>
             </div>
-            <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-              <h3 className="text-[16px] font-bold text-fg">Straight to the gallery</h3>
-              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Carousel images are small files that save in a tap and land directly in your gallery or downloads folder — phone, tablet or desktop, all from the browser.</p>
+            <div>
+              <h3 className="text-[16px] font-bold text-fg">One slide, one file</h3>
+              <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">A carousel is a row of separate images, not a bundle. The preview counter shows which slide you are viewing, and each Download tap saves exactly that frame.</p>
             </div>
           </div>
 
           <h2 className="mt-12 text-[24px] font-bold text-fg">What this page cannot fetch</h2>
           <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-            Private and deleted posts are out, same as everywhere else on this site. Two image-specific boundaries: profile pictures are not supported — only carousel posts — and images posted as stories belong to the <Link href="/instagram-story-downloader" className="font-bold text-primary-strong hover:underline">Instagram Story Downloader</Link>, because stories carry a 24-hour expiry this pipeline does not track.
+            Private, removed and login-walled posts are out, as everywhere on this site. Two stills-specific edges: profile pictures are not supported — only photo and carousel posts — and images posted as stories belong to the <Link href="/instagram-story-downloader" className="font-bold text-primary-strong hover:underline">Instagram Story Downloader</Link>, because stories carry a 24-hour expiry this pipeline does not track.
           </p>
 
           <h2 className="mt-10 text-[20px] font-bold text-fg">Photo and carousel troubleshooting</h2>
-          <div className="mt-4 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
-              <p><strong className="text-fg">Only the first slide saved.</strong> That is expected — each carousel slide is its own file. Advance with Next and tap Download on every image you want to keep.</p>
-              <p><strong className="text-fg">The saved image looks blurry.</strong> Judge the downloaded file, not the small preview on the page. The file is the original resolution; the preview is just a preview.</p>
-              <p><strong className="text-fg">I cannot find a link to copy.</strong> You are probably on the profile grid. Tap into the post so the single post or carousel opens, then copy the link from there.</p>
-              <p><strong className="text-fg">The download starts but the file will not open.</strong> The media URL expired mid-download. Paste the post link again and save promptly.</p>
+          <div className="mt-4">
+            <div>
+              <p><strong className="text-fg">I cannot find a link to copy.</strong> You are standing on the profile grid. Tap the post so it opens on its own screen, then copy the link from there.</p>
+              <p><strong className="text-fg">The image looks blurry on the page.</strong> That is the scaled-down preview. Open the downloaded file itself — it is the full-resolution original and will look noticeably sharper.</p>
+              <p><strong className="text-fg">The download starts but the file will not open.</strong> The signed media address expired mid-save. Paste the post link again and download promptly this time.</p>
+              <p><strong className="text-fg">I wanted every slide at once.</strong> There is no single bundle download — save each frame with its own Download tap while stepping through with Next and Previous.</p>
             </div>
           </div>
 
-          <div className="mt-10 rounded-2xl p-5 sm:p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-            <div className="flex flex-col gap-4 text-[14px] leading-[1.7] text-fg-muted">
-              <p><strong className="text-fg">Where the images land.</strong> Photos are small files that drop into your gallery or downloads folder in one tap. Every carousel slide is its own file, so save each one you want.</p>
-              <p><strong className="text-fg">What happens to your link.</strong> Your pasted link is used only to resolve the file for your request, then it expires. The images live on your device and nowhere else — the site keeps no copy of anything you download.</p>
-            </div>
-          </div>
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Respect the photographer</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            Photos carry visible authorship — someone composed, lit and edited that frame. Save your own work freely, keep other people&apos;s images for private reference, and ask written permission before reposting or using anyone&apos;s photo in your feed, shop or ads. Never strip watermarks or crop out credit. Rights holders can raise concerns via the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link>. Only download content you own or have permission to reuse.
+          </p>
+          </ReadMore>
+          </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -138,17 +168,34 @@ export default function CarouselDownloaderPage() {
             ))}
           </div>
 
+          <h2 className="mt-10 text-[18px] font-bold text-fg">Related guides</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {[
+              { href: "/blog/save-own-instagram-posts", label: "How to Save Your Own Posts Without Screenshots" },
+              { href: "/blog/save-instagram-carousel-slides", label: "How to Save Carousel Posts Slide by Slide" },
+              { href: "/blog/permission-reuse-instagram-content", label: "How to Get Permission to Reuse Content" },
+              { href: "/blog/instagram-video-resolution-formats", label: "Resolution and Formats, Explained" },
+            ].map((l) => (
+              <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
+                <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
+                <span className="mt-1 block text-[14px] text-fg-muted">Downloadit Blog guide</span>
+              </Link>
+            ))}
+          </div>
+
+          <ProseSection>
           <section className="mt-12">
-            <h2 className="text-[20px] font-bold text-fg">Photo and carousel FAQ</h2>
-            <div className="mt-4 space-y-3">
+            <h2>Photo and carousel FAQ</h2>
+            <div className="mt-4">
               {FAQS.map((item) => (
-                <details key={item.q} className="group rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
-                  <summary className="cursor-pointer text-[16px] font-semibold text-fg">{item.q}</summary>
-                  <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">{item.a}</p>
-                </details>
+                <div key={item.q}>
+                  <h3>{item.q}</h3>
+                  <p>{item.a}</p>
+                </div>
               ))}
             </div>
           </section>
+          </ProseSection>
 
           <p className="mt-10 text-[12px] text-fg-subtle">
             See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.

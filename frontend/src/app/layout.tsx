@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Poppins, Lora } from "next/font/google";
 import Script from "next/script";
 import { LanguageProvider } from "@/i18n";
+import ScrollToTop from "@/components/ScrollToTop";
+import BackToTop from "@/components/BackToTop";
 import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
@@ -90,16 +92,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: [
-    {
-      media: "(prefers-color-scheme: light)",
-      color: "#f5f4fa",
-    },
-    {
-      media: "(prefers-color-scheme: dark)",
-      color: "#0e0c1b",
-    },
-  ],
+  // Single light theme — one theme-color, no media variants.
+  themeColor: "#f5f4fa",
 };
 
 export default function RootLayout({
@@ -114,6 +108,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Single light theme: tell browsers and form controls never to
+            apply dark styling. No dark class or data-theme is ever added. */}
+        <meta name="color-scheme" content="light" />
         {/* Google AdSense (Auto Ads): lazyOnload keeps the ~250KB ad stack
             off the critical path — it must never compete with hero paint,
             fonts, or hydration. Ads render once the page is interactive. */}
@@ -166,31 +163,14 @@ export default function RootLayout({
           }}
         />
 
-        {/* Theme Initialization */}
+        {/* Scripting flag: marks scripting as active so CSS can keep content
+            visible (ScrollReveal's opacity:0 state) when JS is unavailable.
+            (Theme switching was removed — the site is dark-only.) */}
         <Script
-          id="downloadit-theme-init"
+          id="downloadit-js-flag"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `
-              (function(){
-                try {
-                  // Marks scripting as active so CSS can keep content visible
-                  // (ScrollReveal's opacity:0 state) when JS is unavailable.
-                  document.documentElement.classList.add('js');
-
-                  // Dark Mode ONLY on explicit saved user choice.
-                  // No saved preference (or anything else) => Light Mode.
-                  // System/OS theme is deliberately ignored.
-                  var t = localStorage.getItem('downloadit-theme');
-
-                  if (t === 'dark') {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                  } else {
-                    document.documentElement.setAttribute('data-theme', 'light');
-                  }
-                } catch(e) {}
-              })();
-            `,
+            __html: `(function(){try{document.documentElement.classList.add('js');}catch(e){}})();`,
           }}
         />
       </head>
@@ -199,7 +179,11 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          <ScrollToTop />
+          {children}
+          <BackToTop />
+        </LanguageProvider>
       </body>
     </html>
   );

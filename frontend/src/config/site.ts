@@ -14,9 +14,9 @@ export const HOME_KEYWORDS = [
   "instagram downloader",
 ];
 export const SUPPORT_EMAIL = "supportdownloadit.pro@gmail.com";
-// Public contact address shown on the /contact page (mailto links only —
-// there is no contact form on this site, and none is faked).
-export const SUPPORT_CONTACT_EMAIL = "support@downloadit.pro";
-export const SUPPORT_MAILTO: string = `mailto:${SUPPORT_EMAIL}`;
-export const SUPPORT_GMAIL_URL =
-  "https://mail.google.com/mail/?view=cm&fs=1&to=supportdownloadit.pro@gmail.com&su=Downloadit%20Support%20Query";
+// Default subject for general support mail. Always build mailto links with
+// supportMailto() below — never hardcode a mailto: or Gmail compose URL.
+export const SUPPORT_MAILTO_SUBJECT = "Downloadit Support Query";
+export function supportMailto(subject: string = SUPPORT_MAILTO_SUBJECT): string {
+  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}`;
+}

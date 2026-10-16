@@ -5,7 +5,7 @@ import { SITE_URL } from "@/config/site";
 
 const ABOUT_TITLE = "About Downloadit – Free Instagram Downloader";
 const ABOUT_DESCRIPTION =
-  "Downloadit is a free, no-login tool for saving public Instagram Reels, videos, carousels, Stories and audio. Learn what it does, how it works, its limits, and who runs it.";
+  "Downloadit is a free, no-login tool for saving public Instagram media. Learn what it does, its limits, and who runs it.";
 
 export const metadata: Metadata = {
   title: { absolute: ABOUT_TITLE },
@@ -43,12 +43,31 @@ export default function AboutPage() {
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#webapplication` },
   });
+  // TODO(owner): replace "[NAME]" below with your real name (same value as
+  // the "Who runs Downloadit" section), then delete this comment.
+  const ownerJson = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: "[NAME]",
+    url: `${SITE_URL}/about`,
+    jobTitle: "Creator and maintainer of Downloadit",
+    worksFor: {
+      "@type": "Organization",
+      name: "Downloadit",
+      url: SITE_URL,
+    },
+  });
   return (
     <>
       <script
         id="aboutpage-structured-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: aboutJson }}
+      />
+      <script
+        id="owner-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: ownerJson }}
       />
     <LegalPage title="About Downloadit" updated="October 2026" crumbPath="/about">
       <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
@@ -67,17 +86,59 @@ export default function AboutPage() {
         file, done. No popups in the way, no password asked, nothing to sign
         up for.
       </p>
-      <h2 className="text-[20px] font-bold text-fg">How it works</h2>
+      <h2 className="text-[20px] font-bold text-fg">Who runs Downloadit</h2>
+      {/* TODO(owner): replace the bracketed placeholders below with real
+          details, then delete this comment. Photo: drop your avatar file at
+          public/owner-avatar.png and uncomment the Image block beneath. */}
+      {/* TODO(owner): avatar — uncomment after adding public/owner-avatar.png
+      <Image
+        src="/owner-avatar.png"
+        alt="[NAME], creator of Downloadit"
+        width={96}
+        height={96}
+        className="rounded-full"
+      />
+      */}
       <p>
-        Under the hood the flow is simple. Your link is sent to the backend,
-        which resolves the publicly available media behind it and hands back a
-        preview plus temporary download references. You check the preview in
-        your browser and save what you want. Media links are short-lived by
-        nature, so every resolve starts from the live link instead of a
-        stored copy. Audio works the same way except for one extra
-        step: the sound is extracted on the server first, which is why audio
-        takes longer and can occasionally be busy.
+        I&apos;m [NAME], based in [CITY, STATE]. My background is [BACKGROUND].
+        I built Downloadit because [REASON].
       </p>
+      <p>
+        There is no team, no company, and no investors behind this site — just
+        me, maintaining it in my own time. I read every support email myself,
+        fix what breaks, and say no to anything that would compromise the
+        privacy rules below. If something breaks or you have a concern, you
+        are talking directly to the person who wrote the code.
+      </p>
+      <h2 className="text-[20px] font-bold text-fg">How it works, in simple words</h2>
+      <p>
+        Think of it like this: every public Instagram post is a page anyone
+        can open, with photos and videos sitting on it. When you paste a link,
+        Downloadit opens that same public page — exactly as a logged-out
+        stranger would see it — finds the media files on it, and shows them
+        back to you as a preview. You check the preview and save the file you
+        want. Nothing is copied in advance and nothing is stored on any
+        server in between.
+      </p>
+      <p>
+        Media links are short-lived by nature, so every request starts fresh
+        from the live link instead of a stored copy. Audio works the same way
+        except for one extra step: the sound is extracted on the server
+        first, which is why audio takes longer and can occasionally be busy.
+      </p>
+      <h2 className="text-[20px] font-bold text-fg">What it does and does not do</h2>
+      <p>What Downloadit does:</p>
+      <ul className="list-disc space-y-1 pl-6">
+        <li>Saves photos, videos, reels, stories, and audio from links that are already public.</li>
+        <li>Shows you a preview of the exact file before anything is downloaded.</li>
+        <li>Works in the browser with no account, no app, and no login.</li>
+      </ul>
+      <p>What it deliberately does not do:</p>
+      <ul className="list-disc space-y-1 pl-6">
+        <li>Open private accounts, Close Friends stories, or anything that needs a login.</li>
+        <li>Ask for your Instagram password — not once, not ever.</li>
+        <li>Keep copies of your links or files, or track who downloads what.</li>
+      </ul>
       <h2 className="text-[20px] font-bold text-fg">What you can download</h2>
       <p>
         The tool covers the media types people actually ask for:{" "}
@@ -107,7 +168,9 @@ export default function AboutPage() {
         nothing to tie your activity to — no download history in your browser,
         no profile, no tracking of who saved what. Pasted links exist
         transiently to complete your request and then expire. Your files live
-        on your device and nowhere else.
+        on your device and nowhere else. I run no analytics that identifies
+        visitors, and I would rather shut a feature off than add tracking to
+        keep it running.
       </p>
       <h2 className="text-[20px] font-bold text-fg">Honest limitations</h2>
       <p>
@@ -132,11 +195,13 @@ export default function AboutPage() {
       </p>
       <h2 className="text-[20px] font-bold text-fg">Contact</h2>
       <p>
-        Questions, broken links, or reports? Write to the support email
-        linked at the bottom of this page. Include the link you tried, what
-        happened instead of a download, and what device and browser you use —
-        that is usually enough to tell whether the problem is the link, the
-        content&apos;s visibility, or something on our side.
+        Questions, broken links, or reports? The fastest route is the{" "}
+        <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">Contact page</Link>,
+        which explains what to include so most issues are solved in one
+        reply. If you believe content reachable through this site infringes
+        your copyright, use the formal process on the{" "}
+        <Link href="/dmca" className="font-semibold text-fg transition-colors hover:text-primary">DMCA page</Link>{" "}
+        instead — complete notices there are reviewed within 48–72 hours.
       </p>
     </LegalPage>
     </>

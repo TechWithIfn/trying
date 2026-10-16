@@ -92,31 +92,7 @@ const HERO_CATEGORIES = [
   },
 ];
 
-/**
- * Single auto-scroll entry point for the downloader flow. Targets the shared
- * result anchor (progress, output and error all render inside it), so one
- * helper covers every scroll. Scrolls to the anchor's page offset minus the
- * sticky-header clearance (72px header + breathing room). Computing the
- * position explicitly — instead of `scrollIntoView` — keeps the target
- * stable across the layout shift when the progress card mounts, which is why
- * `scrollIntoView` could silently miss on mobile. Honors reduced-motion.
- * Never called from progress callbacks — only submit and success paths below
- * may call it.
- */
-function scrollToSection(ref: { current: HTMLElement | null }) {
-  const el = ref.current;
-  if (!el || typeof window === "undefined") return;
-  const reduceMotion =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const HEADER_OFFSET = 88;
-  const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET);
-  if (reduceMotion) {
-    window.scrollTo(0, top);
-    return;
-  }
-  window.scrollTo({ top, behavior: "smooth" });
-}
+import { useAutoScrollFlow, type FlowStatus } from "@/hooks/useAutoScrollFlow";
 
 function resolveTabFromResultType(type: string): DownloaderTab | null {
   switch (type) {
@@ -322,6 +298,12 @@ export default function HeroDownloader({
     streamRef.current = null;
   }, []);
 
+  // Shared auto-scroll flow (progress → result → error), keyed per request.
+  // Declared before handleSubmit, which blurs the keyboard on submit.
+  // Tool pages reuse this component, so the same flow runs everywhere.
+  const { anchorRef: resultAnchorRef, notifyTransition, blurForKeyboard } =
+    useAutoScrollFlow();
+
   const invalidateRequest = useCallback(() => {
     // Supersede any in-flight stream so a late event can never paint a
     // stale result over the current request. Clearing the in-flight marker
@@ -404,6 +386,10 @@ export default function HeroDownloader({
     (e: React.FormEvent) => {
       e.preventDefault();
       storyFlowLog("click");
+      // Dismiss the on-screen keyboard first: with it open the visual
+      // viewport is shrunk and the auto-scroll below lands wrong on both
+      // iOS Safari and Android Chrome.
+      blurForKeyboard();
       const trimmed = url.trim();
       if (!trimmed) {
         setError(t.errors.empty);
@@ -617,51 +603,41 @@ export default function HeroDownloader({
       });
       streamRef.current = handle;
     },
-    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange, storyFlowLog]
+    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange, storyFlowLog, blurForKeyboard]
   );
 
   const isAudioMode = activeTab === "audio" || (audioExtractionRequested && state === "SUCCESS");
 
   const tabsRef = useRef<HTMLDivElement>(null);
-  const resultAnchorRef = useRef<HTMLDivElement>(null);
   const prevStateRef = useRef<UIState>("IDLE");
-  // Auto-scroll guards: each fires at most once per request, keyed by the
-  // request sequence (which strictly increases per submit, so a new URL or
-  // retry automatically re-arms both). Refs — not state — so SSE progress
-  // events and re-renders can never trigger extra scrolls.
-  const preparingScrollSeqRef = useRef(0);
-  const successScrollSeqRef = useRef(0);
 
-  // Keep the active tab fully visible inside the horizontal scroller.
+  // Keep the active tab fully visible inside the horizontal scroller —
+  // but never on mount. This effect fires on first render with the
+  // preselected tab, and on mobile (where the tab bar can start below the
+  // fold) block:"nearest" would scroll the fresh page down on load. Only
+  // user- or resolve-driven tab switches recentre the bar.
+  const tabsMountedRef = useRef(false);
   useEffect(() => {
+    if (!tabsMountedRef.current) {
+      tabsMountedRef.current = true;
+      return;
+    }
     const el = tabsRef.current?.querySelector<HTMLElement>("[data-active='true']");
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [activeTab]);
 
-  // Auto-scrolls (#1 on PREPARING, #2 on SUCCESS) — each at most once per
-  // request, all viewports. Both fire on a state *transition* after the new
-  // card has mounted (rAF), so the layout is stable when the page moves; a
-  // synchronous scroll right after setState races the commit and can silently
-  // miss on mobile. Feedback lands in the same anchor: the freshly mounted
-  // progress card (#1, on the click) and then the result preview (#2, when
-  // processing completes). ERROR never scrolls: the user already sits at the
-  // anchor from #1. At most two programmatic scrolls exist per request, so
-  // manual scrolling is never fought.
+  // Auto-scrolls on every request transition — loading (progress card),
+  // success (result preview) and error (message + retry) — each at most
+  // once per request via the shared hook. The error scroll is deliberate:
+  // validation failures and keyboard-open layout shifts can leave the
+  // message below the fold on mobile.
   useEffect(() => {
     if (prevStateRef.current === state) return;
-    if (state === "PREPARING") {
-      if (preparingScrollSeqRef.current !== requestSeqRef.current) {
-        preparingScrollSeqRef.current = requestSeqRef.current;
-        requestAnimationFrame(() => scrollToSection(resultAnchorRef));
-      }
-    } else if (state === "SUCCESS") {
-      if (successScrollSeqRef.current !== requestSeqRef.current) {
-        successScrollSeqRef.current = requestSeqRef.current;
-        requestAnimationFrame(() => scrollToSection(resultAnchorRef));
-      }
-    }
+    const flowStatus: FlowStatus | null =
+      state === "PREPARING" ? "loading" : state === "SUCCESS" ? "success" : state === "ERROR" ? "error" : null;
+    if (flowStatus) notifyTransition(flowStatus, requestSeqRef.current);
     prevStateRef.current = state;
-  }, [state]);
+  }, [state, notifyTransition]);
 
   const TitleTag = titleAs as "h1" | "p";
 
@@ -935,7 +911,9 @@ export default function HeroDownloader({
 
           {/* Right Visual Column (Phone + 4 Floating Cards: Reels, Photos, Stories, Audio - NO highlights) */}
           {/* Purely decorative marketing mockup: hidden from assistive tech so
-              screen readers skip the fake post, counts, and timestamps. */}
+              screen readers skip the illustrated post and timestamps. No
+              engagement counts or statistics are shown — the mockup depicts
+              interface only, never fabricated numbers. */}
           <div className="hidden lg:flex lg:col-span-5 min-w-0 items-center justify-center relative py-6" aria-hidden="true">
             <div className="relative w-full max-w-[320px] xl:max-w-[340px] flex items-center justify-center">
               {/* Phone Mockup Frame */}
@@ -993,7 +971,7 @@ export default function HeroDownloader({
 
                     <div className="flex items-center justify-between text-[12px] text-white">
                       <span className="truncate flex items-center gap-1">
-                        <Music size={11} /> Original Audio · Viral Hits
+                        <Music size={11} /> Preview
                       </span>
                       <Volume2 size={13} />
                     </div>
@@ -1002,8 +980,8 @@ export default function HeroDownloader({
                   {/* Mock Post Actions */}
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-3 text-white text-[12px]">
-                      <span className="flex items-center gap-1"><Heart size={14} className="text-accent fill-accent" /> 84.2k</span>
-                      <span className="flex items-center gap-1"><MessageCircle size={14} /> 1.4k</span>
+                      <Heart size={14} className="text-accent fill-accent" />
+                      <MessageCircle size={14} />
                       <Send size={14} />
                     </div>
                     <Bookmark size={14} className="text-white" />
@@ -1026,7 +1004,7 @@ export default function HeroDownloader({
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[14px] font-bold text-fg">Reels</span>
-                    <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-pink-500/10">1080p</span>
+                    <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-pink-500/10">MP4</span>
                   </div>
                   <span className="block text-[12px] font-medium text-fg-subtle">Download Reels</span>
                 </div>
@@ -1099,7 +1077,7 @@ export default function HeroDownloader({
         </div>
 
         {/* Result / Error Area */}
-        <div ref={resultAnchorRef} aria-live="polite" aria-atomic="true" className="scroll-mt-20">
+        <div ref={resultAnchorRef} aria-live="polite" aria-atomic="true" className="scroll-mt-[calc(80px+env(safe-area-inset-top,0px))]">
           {state === "PREPARING" && (
             <CircularProgress value={progress} label={progressStage || t.hero.analyzing} />
           )}

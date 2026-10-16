@@ -39,9 +39,9 @@ export default function PrivacyPage() {
         transiently to complete your request and expire automatically.
       </p>
       <p>
-        Your browser keeps two small preferences on your device — the theme (light or dark)
-        and the language you picked — so the site remembers them between visits. These never
-        leave your device and are not used to identify you.
+        Your browser keeps one small preference on your device — the language
+        you picked — so the site remembers it between visits. It never leaves
+        your device and is not used to identify you.
       </p>
       <p>
         Advertising on this site is served through Google AdSense. Google and its partners
