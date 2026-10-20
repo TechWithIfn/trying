@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2 } from "lucide-react";
+import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2, Pin, ImagePlay } from "lucide-react";
 
 export type DropdownToolItem = {
   href: string;
@@ -49,6 +49,20 @@ export const DROPDOWN_TOOLS: DropdownToolItem[] = [
     iconBg: "rgba(16, 185, 129, 0.12)",
     iconColor: "var(--primary)",
   },
+  {
+    href: "/pinterest-video-downloader",
+    label: "Pinterest Video Downloader",
+    icon: Pin,
+    iconBg: "rgba(230, 0, 35, 0.10)",
+    iconColor: "var(--primary)",
+  },
+  {
+    href: "/pinterest-image-downloader",
+    label: "Pinterest Image and Carousel Downloader",
+    icon: ImagePlay,
+    iconBg: "rgba(230, 0, 35, 0.10)",
+    iconColor: "var(--primary)",
+  },
 ];
 
 export default function ToolCategoryDropdown() {
@@ -61,7 +75,11 @@ export default function ToolCategoryDropdown() {
   // stable across SSR/hydration without framework-mangled characters.
   const menuId = "downloadit-tool-menu";
 
-  const isReelsActive = pathname === "/instagram-reels-downloader" || pathname === "/";
+  const isToolActive =
+    pathname === "/" ||
+    pathname === "/instagram-reels-downloader" ||
+    pathname === "/pinterest-video-downloader" ||
+    pathname === "/pinterest-image-downloader";
 
   const close = useCallback((refocusToggle = false) => {
     setOpen(false);
@@ -159,7 +177,7 @@ export default function ToolCategoryDropdown() {
         aria-controls={menuId}
         aria-label="Instagram downloaders menu"
         className={`inline-flex items-center gap-1 rounded-full border py-1.5 pl-3 pr-2 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-          isReelsActive || open
+          isToolActive || open
             ? "bg-primary-light text-primary-strong border-primary/25 shadow-xs"
             : "border-transparent text-fg-muted hover:bg-primary-light hover:text-primary"
         }`}
@@ -173,9 +191,11 @@ export default function ToolCategoryDropdown() {
         />
       </button>
 
-      {/* Clean premium glassmorphism dropdown directly below.
-          Always mounted so open/close animates smoothly (opacity + transform
-          only — never layout geometry, never a layout shift). */}
+      {/* Clean, compact white dropdown directly below the trigger. Geometry
+          (width/max-height/scroll) lives in the scoped `.tool-category-menu`
+          class so it stays aligned to the trigger yet never overflows the
+          viewport. Always mounted so open/close animates smoothly (opacity +
+          transform only — never layout geometry, never a layout shift). */}
       <div
         ref={menuRef}
         id={menuId}
@@ -183,7 +203,7 @@ export default function ToolCategoryDropdown() {
         aria-label="Instagram downloaders"
         aria-hidden={!open}
         onKeyDown={onMenuKeyDown}
-        className={`absolute left-0 top-full z-50 w-[270px] overflow-hidden rounded-2xl p-1.5 backdrop-blur-xl transition-all duration-200 ease-out ${
+        className={`tool-category-menu absolute left-0 top-full z-50 rounded-2xl p-1 transition-all duration-200 ease-out ${
           open
             ? "visible mt-2 translate-y-0 scale-100 opacity-100"
             : "invisible mt-2 -translate-y-1 scale-[0.98] opacity-0 pointer-events-none"
@@ -194,7 +214,7 @@ export default function ToolCategoryDropdown() {
           boxShadow: "0 14px 40px rgba(60, 40, 120, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)",
         }}
       >
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {DROPDOWN_TOOLS.map((tool) => {
               const Icon = tool.icon;
               const isSelected = pathname === tool.href;
@@ -205,19 +225,19 @@ export default function ToolCategoryDropdown() {
                   role="menuitem"
                   tabIndex={open ? 0 : -1}
                   onClick={() => close()}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] font-medium transition-all duration-150 ${
+                  className={`flex min-h-[44px] items-start gap-2.5 rounded-xl px-2.5 py-2.5 text-[14px] font-medium leading-6 transition-all duration-150 ${
                     isSelected
                       ? "bg-primary-light text-primary-strong font-semibold"
                       : "text-fg hover:bg-primary-light hover:text-primary"
                   }`}
                 >
                   <span
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
                     style={{ background: tool.iconBg, color: tool.iconColor }}
                   >
-                    <Icon size={15} strokeWidth={2.2} />
+                    <Icon size={14} strokeWidth={2.2} />
                   </span>
-                  <span className="truncate">{tool.label}</span>
+                  <span className="min-w-0 flex-1 break-words">{tool.label}</span>
                 </Link>
               );
             })}

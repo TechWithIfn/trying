@@ -43,6 +43,7 @@ const ROUTE_MAX_DEFAULTS = {
   download: 60,
   stream: 180,
   audio: 20,
+  pinterest: 20,
 } as const;
 
 export function routeRateLimitConfig(
@@ -53,7 +54,9 @@ export function routeRateLimitConfig(
       ? "RATE_LIMIT_DOWNLOAD_MAX_REQUESTS"
       : kind === "stream"
         ? "RATE_LIMIT_STREAM_MAX_REQUESTS"
-        : "RATE_LIMIT_AUDIO_MAX_REQUESTS";
+        : kind === "audio"
+          ? "RATE_LIMIT_AUDIO_MAX_REQUESTS"
+          : "RATE_LIMIT_PINTEREST_MAX_REQUESTS";
   return {
     windowMs: readPositiveInt("RATE_LIMIT_WINDOW_MS", 60_000),
     maxRequests: readPositiveInt(envKey, ROUTE_MAX_DEFAULTS[kind]),

@@ -171,6 +171,31 @@ async function main() {
   check("server error never triggers POST fallback", transportCalls2, 0);
   check("server-error stream closed", es2.closed, true);
 
+  // ---- Pinterest Auto Detect request contract ----
+  api.startPinterestResolveStream("https://www.pinterest.com/pin/123/", "any", {
+    onProgress: () => {},
+    onComplete: () => {},
+    onError: () => {},
+  });
+  const pinEs = FakeEventSource.instances[FakeEventSource.instances.length - 1];
+  check("pinterest stream sends kind=any", new URL(pinEs.url).searchParams.get("kind"), "any");
+  pinEs.close();
+
+  let pinterestBody = null;
+  let pinterestUrl = null;
+  globalThis.fetch = async (url, init) => {
+    pinterestUrl = String(url);
+    pinterestBody = JSON.parse(init.body);
+    return new Response(
+      JSON.stringify({ success: false, error: { code: "PINTEREST_PIN_NOT_FOUND", message: "missing" } }),
+      { status: 404, headers: { "content-type": "application/json" } }
+    );
+  };
+  await api.resolvePinterestUrl("https://www.pinterest.com/pin/123/", "any");
+  check("pinterest POST sends kind=any", pinterestBody.kind, "any");
+  check("pinterest POST targets its own route", pinterestUrl.includes("/api/pinterest/resolve"), true);
+  check("pinterest POST carries the url", pinterestBody.url, "https://www.pinterest.com/pin/123/");
+
   // ---- E. POST resolve: exactly one fetch attempt ----
   let fetchCalls = 0;
   globalThis.fetch = async () => {
@@ -274,6 +299,190 @@ async function main() {
   const built = new URL(api.getStreamUrl(cdn, page));
   check("url param round-trips the CDN URL", built.searchParams.get("url"), cdn);
   check("source param is the page URL", built.searchParams.get("source"), page);
+
+  // ---- P. Download filenames + ZIP URL (all platforms) ----
+  // Play/pause/ended state is the single source of truth that drives the
+  // on-video overlay (playing → compact download icon only). Drawn from the
+  // real element's flags; `ended` counts as not playing.
+  check("playing when not paused/ended", api.isVideoPlaying(false, false), true);
+  check("not playing while paused", api.isVideoPlaying(true, false), false);
+  check("not playing after ended", api.isVideoPlaying(false, true), false);
+  check("not playing when paused and ended", api.isVideoPlaying(true, true), false);
+
+  // Requested pattern: `Downloadit {original title}.{extension}`.
+  check(
+    "filename uses original title and lowercased ext",
+    api.buildDownloadFilename({ title: "Sunset Over the Sea", extension: ".JPG" }),
+    "Downloadit Sunset Over the Sea.jpg"
+  );
+  check(
+    "filename strips Windows/Android/iOS-illegal characters",
+    api.buildDownloadFilename({ title: 'a/b:c*?"<>|', extension: "mp4" }),
+    "Downloadit a b c.mp4"
+  );
+  check(
+    "filename falls back to media-type label when title is missing",
+    api.buildDownloadFilename({ title: null, extension: "mp4", fallback: "Pinterest Video" }),
+    "Downloadit Pinterest Video.mp4"
+  );
+  check(
+    "blank title uses fallback, never the username",
+    api.buildDownloadFilename({ title: "   ", extension: "mp4", fallback: "Pinterest Image" }),
+    "Downloadit Pinterest Image.mp4"
+  );
+  check(
+    "zip archive filename",
+    api.buildDownloadFilename({ title: "Trip", extension: "zip", fallback: "Pinterest Images" }),
+    "Downloadit Trip.zip"
+  );
+  check(
+    "title is capped at 100 Unicode code points",
+    Array.from(
+      api
+        .buildDownloadFilename({ title: "x".repeat(200), extension: "jpg" })
+        .replace(/^Downloadit /, "")
+        .replace(/\.jpg$/, "")
+    ).length,
+    100
+  );
+  const zipBuilt = new URL(
+    api.getZipDownloadUrl(
+      ["https://i.pinimg.com/a.jpg", "https://i.pinimg.com/b.jpg"],
+      "Downloadit Trip.zip",
+      "https://www.pinterest.com/pin/123/"
+    )
+  );
+  check("zip url carries every image", zipBuilt.searchParams.getAll("url").length, 2);
+  check("zip url carries the filename", zipBuilt.searchParams.get("filename"), "Downloadit Trip.zip");
+  check("zip url carries the source page", zipBuilt.searchParams.get("source"), "https://www.pinterest.com/pin/123/");
+
+  // ---- Q. Cross-platform result-card behavior (shared, pure helpers) ----
+  // On-video overlay for EVERY platform: only a real, playable video gets it;
+  // Preview is visible before playback; the instant the element reports playing
+  // Preview hides and Download collapses to the compact circular icon; paused /
+  // stopped / ended restores both. `ended` is folded into `playing:false`.
+  const ov = (isVideo, hasPlayableSrc, playing) =>
+    api.videoOverlayState({ isVideo, hasPlayableSrc, playing });
+  check("no overlay without a playable video", ov(true, false, false).showOverlay, false);
+  check("no overlay for an image result", ov(false, true, false).showOverlay, false);
+  check(
+    "overlay before playback: preview shown, download not compact",
+    `${ov(true, true, false).showPreview}/${ov(true, true, false).compactDownload}`,
+    "true/false"
+  );
+  check(
+    "overlay while playing: preview hidden, download compact",
+    `${ov(true, true, true).showPreview}/${ov(true, true, true).compactDownload}`,
+    "false/true"
+  );
+  check("ended (playing=false) restores preview", ov(true, true, false).showPreview, true);
+
+  // Multi-image plan: a genuine "Download all images" only exists for 2+ real
+  // images. Single-image and mixed posts never invent one or duplicate a file.
+  check("single image: no multi-image action", api.imageDownloadPlan([{ type: "image" }]).canDownloadAll, false);
+  check(
+    "two images: multi-image action offered",
+    api.imageDownloadPlan([{ type: "image" }, { type: "image" }]).canDownloadAll,
+    true
+  );
+  check(
+    "mixed image+video: no false multi-image action",
+    api.imageDownloadPlan([{ type: "image" }, { type: "video" }]).canDownloadAll,
+    false
+  );
+  check(
+    "image count ignores videos",
+    api.imageDownloadPlan([{ type: "image" }, { type: "video" }, { type: "image" }]).imageCount,
+    2
+  );
+  check("empty items: no multi-image action", api.imageDownloadPlan([]).canDownloadAll, false);
+  check("null items are safe", api.imageDownloadPlan(null).canDownloadAll, false);
+
+  // Cross-platform filename fallbacks — the media-type label, never a username.
+  check(
+    "instagram video fallback",
+    api.buildDownloadFilename({ title: null, extension: "mp4", fallback: "Instagram Video" }),
+    "Downloadit Instagram Video.mp4"
+  );
+  check(
+    "instagram image fallback",
+    api.buildDownloadFilename({ title: "", extension: "jpg", fallback: "Instagram Image" }),
+    "Downloadit Instagram Image.jpg"
+  );
+  check(
+    "instagram carousel zip fallback",
+    api.buildDownloadFilename({ title: "   ", extension: "zip", fallback: "Instagram Images" }),
+    "Downloadit Instagram Images.zip"
+  );
+  check(
+    "a real title always wins over the username",
+    api.buildDownloadFilename({ title: "My Trip", extension: "mp4", fallback: "Instagram Video" }),
+    "Downloadit My Trip.mp4"
+  );
+  check(
+    "short Unicode title kept intact",
+    api.buildDownloadFilename({ title: "क्रोकेट 🍲", extension: "jpg" }),
+    "Downloadit क्रोकेट 🍲.jpg"
+  );
+  // Max 100 Unicode code points, never splitting a surrogate pair / emoji.
+  const emojiName = api.buildDownloadFilename({ title: "😀".repeat(150), extension: "jpg" });
+  check(
+    "emoji-only title truncated to 100 code points",
+    Array.from(emojiName.replace(/^Downloadit /, "").replace(/\.jpg$/, "")).length,
+    100
+  );
+  check("truncated title has no replacement char", emojiName.includes("\uFFFD"), false);
+
+  // ---- R. Preview-first surface (shared, pure helpers) ----
+  // Default state: a compact poster with Preview + Download; the real <video>
+  // is mounted only after the user opens the preview; non-video / unplayable
+  // items never get a video surface at all.
+  const plan = (isVideo, hasPlayableVideo, previewOpen) =>
+    api.mediaPreviewPlan({ isVideo, hasPlayableVideo, previewOpen });
+  check(
+    "video default shows the thumbnail, not the player",
+    `${plan(true, true, false).showThumbnailFirst}/${plan(true, true, false).mountVideo}`,
+    "true/false"
+  );
+  check(
+    "opening the preview mounts the video",
+    `${plan(true, true, true).showThumbnailFirst}/${plan(true, true, true).mountVideo}`,
+    "false/true"
+  );
+  check("video without a playable source gets no surface", plan(true, false, false).canPreviewVideo, false);
+  check("an image is never previewed as video", plan(false, true, false).canPreviewVideo, false);
+  check("opening a non-video is inert", plan(false, false, true).mountVideo, false);
+
+  // Poster/thumbnail is only mounted when it is a real http(s) image, and it is
+  // streamed through our own backend (never the raw CDN URL).
+  check(
+    "valid thumbnail becomes a proxied poster",
+    api.proxiedPosterUrl("https://scontent.cdninstagram.com/v/t51/thumb.jpg", "https://www.instagram.com/p/x/")?.startsWith(
+      "http"
+    ),
+    true
+  );
+  check("poster is proxied, not the raw CDN url", api.proxiedPosterUrl("https://cdn.example.com/a.jpg")?.includes("/api/stream?url="), true);
+  check("an .mp4 is never used as a poster", api.proxiedPosterUrl("https://cdn.example.com/clip.mp4"), null);
+  check("a data: poster is rejected", api.proxiedPosterUrl("data:image/png;base64,AAAA"), null);
+  check("a blob: poster is rejected", api.proxiedPosterUrl("blob:https://x/y"), null);
+  check("an empty poster is rejected", api.proxiedPosterUrl(""), null);
+  check("a missing poster is rejected", api.proxiedPosterUrl(null), null);
+  check("isValidImagePoster accepts a signed image url", api.isValidImagePoster("https://i.pinimg.com/564x/ab/cd.jpg"), true);
+  check("isValidImagePoster rejects a video url", api.isValidImagePoster("https://v.example.com/a.mp4?x=1"), false);
+
+  // ---- S. Video surface click action (shared, pure helper) ----
+  // The poster is a real play surface: clicking it (or its center Play control)
+  // opens the preview and starts playback — the same action as Preview. Once the
+  // real <video> is mounted the surface is inert, so the native controls own
+  // play/pause and a click never double-toggles. Images / unplayable items are
+  // always inert.
+  const surf = (isVideo, hasPlayableVideo, previewOpen) =>
+    api.mediaSurfaceAction({ isVideo, hasPlayableVideo, previewOpen });
+  check("poster surface opens the preview", surf(true, true, false), "open-preview");
+  check("mounted video surface is inert", surf(true, true, true), "none");
+  check("unplayable video surface is inert", surf(true, false, false), "none");
+  check("image surface is inert", surf(false, true, false), "none");
 
   fs.rmSync(outDir, { recursive: true, force: true });
 

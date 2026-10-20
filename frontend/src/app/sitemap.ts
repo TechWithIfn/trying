@@ -10,6 +10,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/instagram-photo-downloader", priority: 0.8, changeFreq: "monthly" },
     { path: "/instagram-story-downloader", priority: 0.8, changeFreq: "monthly" },
     { path: "/instagram-audio-downloader", priority: 0.8, changeFreq: "monthly" },
+    { path: "/pinterest-video-downloader", priority: 0.8, changeFreq: "monthly" },
+    { path: "/pinterest-image-downloader", priority: 0.8, changeFreq: "monthly" },
     { path: "/blog", priority: 0.7, changeFreq: "weekly" },
     ...getPostSlugs().map((slug) => ({
       path: `/blog/${slug}`,

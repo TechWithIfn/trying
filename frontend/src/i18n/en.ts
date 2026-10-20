@@ -29,6 +29,12 @@ export const en: Strings = {
     howItWorks: "How It Works",
     faq: "FAQ",
   },
+  pinterest: {
+    groupLabel: "Media type",
+    auto: "Auto Detect",
+    video: "Video",
+    carousel: "Carousel",
+  },
   hero: {
     badge: "Fast · Free · No login required",
     titleA: "Instagram Downloader",
@@ -212,6 +218,7 @@ export const en: Strings = {
     previewUnavailable: "Preview unavailable",
     newBtn: "New",
     playVideo: "Play video",
+    playbackError: "Playback couldn't start. Tap play again.",
     pauseVideo: "Pause video",
     playAudio: "Play audio",
     pauseAudio: "Pause audio",
@@ -220,6 +227,9 @@ export const en: Strings = {
     audioErrorFallback: "Failed to extract audio",
     downloadVideoLabel: "Download video as MP4",
     downloadAudioLabel: "Download audio as MP3",
+    downloadSingleImage: "Download this image",
+    downloadAllImages: "Download all images",
+    downloadMenuLabel: "Download options",
   },
   errors: {
     empty: "Please enter a link to an Instagram post, reel or story.",

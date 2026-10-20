@@ -12,14 +12,25 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   AlertCircle,
   Image as ImageIcon,
   X,
 } from "lucide-react";
 import {
   resolveInstagramUrl,
+  resolvePinterestUrl,
   getStreamUrl,
   getDownloadUrl,
+  getZipDownloadUrl,
+  buildDownloadFilename,
+  isVideoPlaying,
+  videoOverlayState,
+  imageDownloadPlan,
+  mediaPreviewPlan,
+  mediaSurfaceAction,
+  proxiedPosterUrl,
+  isPlayableVideoUrl,
   getApiBase,
   logApiFailure,
   refreshMediaItemUrl,
@@ -87,11 +98,6 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-function sanitizeHandle(username: string | null | undefined): string {
-  if (!username) return "downloadit";
-  return username.replace(/[^a-zA-Z0-9._-]/g, "").replace(/^\.+|\.+$/g, "").slice(0, 60) || "downloadit";
-}
-
 function aspectRatioStyle(width?: number | null, height?: number | null, fallback = "9/16"): CSSProperties {
   if (width && height && width > 0 && height > 0) {
     return { aspectRatio: `${width} / ${height}` };
@@ -99,7 +105,24 @@ function aspectRatioStyle(width?: number | null, height?: number | null, fallbac
   return { aspectRatio: fallback };
 }
 
-function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurationChange, onResolution, onRequestFreshMedia }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; audioSrc?: string | null; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void; onRequestFreshMedia?: (failedSrc: string) => Promise<boolean> }) {
+/**
+ * Parse an `aspect-ratio` string ("1920 / 1080", "9 / 16", "1 / 1") into the
+ * number CSS needs for the media height cap (`max-width = max-height × ratio`).
+ * Falls back to portrait 9/16 for anything unparseable.
+ */
+function ratioToNumber(s: string | undefined): number {
+  if (!s) return 9 / 16;
+  const m = s.match(/^\s*([\d.]+)\s*\/\s*([\d.]+)\s*$/);
+  if (m) {
+    const a = parseFloat(m[1]);
+    const b = parseFloat(m[2]);
+    if (a > 0 && b > 0) return a / b;
+  }
+  const n = parseFloat(s);
+  return n > 0 ? n : 9 / 16;
+}
+
+function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, autoPlay, onDurationChange, onResolution, onRequestFreshMedia, onPlayingChange, onPlaybackError }: { src: string; poster?: string; mediaType?: string; width?: number | null; height?: number | null; audioSrc?: string | null; autoPlay?: boolean; onDurationChange?: (duration: number) => void; onResolution?: (w: number, h: number) => void; onRequestFreshMedia?: (failedSrc: string) => Promise<boolean>; onPlayingChange?: (playing: boolean) => void; onPlaybackError?: () => void }) {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -135,10 +158,17 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
   const onDurationChangeRef = useRef(onDurationChange);
   const onResolutionRef = useRef(onResolution);
   const onRequestFreshMediaRef = useRef(onRequestFreshMedia);
+  const onPlayingChangeRef = useRef(onPlayingChange);
+  const onPlaybackErrorRef = useRef(onPlaybackError);
+  // Last playing state mirrored to the parent: firing the callback on every
+  // timeupdate would re-render the card ~4×/s for no visual change.
+  const lastPlayingRef = useRef(false);
   useEffect(() => {
     onDurationChangeRef.current = onDurationChange;
     onResolutionRef.current = onResolution;
     onRequestFreshMediaRef.current = onRequestFreshMedia;
+    onPlayingChangeRef.current = onPlayingChange;
+    onPlaybackErrorRef.current = onPlaybackError;
   });
 
   // Reflect element state onto the wrapper as data-* attributes. This is a
@@ -156,6 +186,13 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
     host.dataset.currentTime = v.currentTime.toFixed(2);
     host.dataset.duration = Number.isFinite(v.duration) ? v.duration.toFixed(2) : "0";
     host.dataset.controls = "native";
+    // Reflect real play/pause/ended to the parent (drives the on-video
+    // overlay) — only on an actual change, never on every timeupdate tick.
+    const playing = isVideoPlaying(v.paused, v.ended);
+    if (playing !== lastPlayingRef.current) {
+      lastPlayingRef.current = playing;
+      onPlayingChangeRef.current?.(playing);
+    }
   }, []);
 
   useEffect(() => {
@@ -296,6 +333,25 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
     // signal on its own, so it never triggers the fallback or error state.
     syncState();
 
+    // The element only mounts after the user explicitly opened the preview, so
+    // starting here is still "after a user action" and within the click's user
+    // activation, which is what lets the browser permit audible playback. A
+    // policy refusal (or any other rejected play() promise) is surfaced to the
+    // parent as a real, useful error — never swallowed into a fake state.
+    if (autoPlay) {
+      try {
+        const p = v.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            if (mountedRef.current) onPlaybackErrorRef.current?.();
+          });
+        }
+      } catch {
+        // element may be mid-mount; the native controls remain usable
+        if (mountedRef.current) onPlaybackErrorRef.current?.();
+      }
+    }
+
     // Cleanup: remove every listener and stop playback so the Reel can never
     // keep playing (or hold its decoder) after the Result card goes away.
     // The `src` attribute is deliberately NOT removed: React does not re-apply
@@ -322,7 +378,7 @@ function VideoPlayer({ src, poster, mediaType, width, height, audioSrc, onDurati
         /* element may already be detached */
       }
     };
-  }, [currentSrc, mediaType, syncState]);
+  }, [currentSrc, mediaType, syncState, autoPlay]);
 
   // Instagram publishes a Reel as SPLIT TRACKS: a video-only MP4 plus a
   // separate audio-only MP4 for the same clip. The backend pairs them, and the
@@ -616,6 +672,13 @@ interface MediaResultProps {
   result: ResolveData;
   mode: "video" | "audio";
   onReset: () => void;
+  /**
+   * Which platform produced the result. Drives only the honest media-type
+   * fallback in the download filename (`Instagram Video` vs `Pinterest Video`);
+   * the card layout, overlay controls and download flow are identical for every
+   * video/image result on every platform.
+   */
+  variant?: "default" | "pinterest";
 }
 
 function formatBytes(size: number | null | undefined): string {
@@ -634,34 +697,10 @@ function formatResolution(w: number | null | undefined, h: number | null | undef
 }
 
 /**
- * True only for a directly playable remote video URL: a non-empty http(s)
- * string. Rejects javascript:/data:/blob: and other non-http(s) schemes so
- * an unsafe or empty value can never be mounted into a <video> element
- * (which would instantly error and show "Preview unavailable").
+ * `isPlayableVideoUrl` / `isValidImagePoster` / `proxiedPosterUrl` now live in
+ * `@/services/api` so the preview-source, poster and preview-first decisions are
+ * shared and unit-tested in one place.
  */
-function isPlayableVideoUrl(u: unknown): u is string {
-  if (typeof u !== "string") return false;
-  const v = u.trim();
-  if (!v) return false;
-  try {
-    const parsed = new URL(v);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/**
- * A poster is only passed to <video> when it is a plausible remote image:
- * non-empty http(s) URL, never blob:/data:/javascript:. Query-signed CDN
- * URLs carry no file extension, so no extension is required.
- */
-function isValidImagePoster(u: unknown): u is string {
-  if (!isPlayableVideoUrl(u)) return false;
-  const v = u.trim().toLowerCase();
-  if (v.endsWith(".mp4") || v.includes(".mp4?") || v.includes(".mp4#")) return false;
-  return true;
-}
 
 function formatMetaDuration(d: number | null | undefined, fallback: number | null): string {
   const v = typeof d === "number" && isFinite(d) && d > 0 ? d : (typeof fallback === "number" && isFinite(fallback) && fallback > 0 ? fallback : null);
@@ -693,9 +732,29 @@ function labelForMedia(m: { type: string; format?: string | null }): string {
   return m.type === "image" ? "JPG" : "—";
 }
 
-export function MediaResult({ result, mode, onReset }: MediaResultProps) {
+export function MediaResult({ result, mode, onReset, variant = "default" }: MediaResultProps) {
   const { t } = useLanguage();
+  const isPinterest = variant === "pinterest";
   const [downloading, setDownloading] = useState<"idle" | "preparing" | "error">("idle");
+  // ZIP state for the multi-image "Download all" action, kept separate from the
+  // single-item download so the two spinners never collide.
+  const [zipState, setZipState] = useState<"idle" | "preparing" | "error">("idle");
+  // Real playing state lifted from the <video> element (drives the overlay).
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  // Preview-first: the real <video> is mounted only after the user opens the
+  // preview. Until then a compact poster is shown (the video is never fetched
+  // just to render the thumbnail). Closing returns to the poster and releases
+  // the decoder through the player's own unmount cleanup.
+  const [videoPreviewOpen, setVideoPreviewOpen] = useState(false);
+  // True when the resolved thumbnail image failed to load, so the branded
+  // fallback tile is shown instead of a broken image.
+  const [posterFailed, setPosterFailed] = useState(false);
+  // Real playback failure from the <video> element's own play() promise (e.g. a
+  // browser autoplay-policy refusal). Surfaced as an honest message; cleared the
+  // moment real playback starts. Never a simulated state.
+  const [, setPlaybackError] = useState<string | null>(null);
+  // Image/carousel download menu (single vs all).
+  const [imgMenuOpen, setImgMenuOpen] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(true);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -755,6 +814,15 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
   const safeIndex = items.length === 0 ? 0 : Math.min(currentIndex, items.length - 1);
   const currentMedia = items[safeIndex] ?? null;
   const isAudio = mode === "audio";
+  // Media-first layout for EVERY video and image result (Instagram Reels,
+  // videos, photos, carousels, Stories; Pinterest videos and images/carousels):
+  // one compact column with the media as the focus and its Preview/Download
+  // controls on or directly beside the media. Only the audio result — which has
+  // its own waveform player and no video surface — keeps the two-column card.
+  const isMediaFirst = !isAudio;
+  // Platform label for the honest filename fallback (`Instagram Video`,
+  // `Pinterest Image`, ...). Pinterest is the only non-Instagram downloader.
+  const platformLabel = isPinterest ? "Pinterest" : "Instagram";
 
   // URLs a recovery resolve was already attempted for (stripped of our own
   // cache-buster). One entry per failed media URL, shared by the video and
@@ -773,17 +841,27 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
       const base = stripStreamRetryParam(failedProxySrc);
       if (!base || recoveryAttemptedRef.current.has(base)) return false;
       recoveryAttemptedRef.current.add(base);
-      const requestUrl = `${getApiBase()}/api/resolve`;
+      // The fresh resolve MUST go through the SAME platform resolver that
+      // produced the original media. A Pinterest pin can never be re-resolved
+      // by the Instagram resolver (and vice versa), so hardcoding one endpoint
+      // made every Pinterest refresh fail and turned a transient stream error
+      // into a permanent "Preview unavailable" with no recovery.
+      const requestType = isPinterest ? "pinterest-resolve" : "resolve-post";
+      const requestUrl = isPinterest
+        ? `${getApiBase()}/api/pinterest/resolve`
+        : `${getApiBase()}/api/resolve`;
       let data;
       try {
-        data = await resolveInstagramUrl(result.sourceUrl, undefined, { refresh: true });
+        data = isPinterest
+          ? await resolvePinterestUrl(result.sourceUrl, "any")
+          : await resolveInstagramUrl(result.sourceUrl, undefined, { refresh: true });
       } catch (err) {
-        logApiFailure({ requestType: "resolve-post", requestUrl, status: null, error: err });
+        logApiFailure({ requestType, requestUrl, status: null, error: err });
         return false;
       }
       if (!data.success) {
         logApiFailure({
-          requestType: "resolve-post",
+          requestType,
           requestUrl,
           status: null,
           error: new Error(`media-refresh-${data.error.code}`),
@@ -802,7 +880,7 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
       setFreshItems(next);
       return true;
     },
-    [result.sourceUrl, items, safeIndex]
+    [result.sourceUrl, items, safeIndex, isPinterest]
   );
 
   // Frontend safety: NEVER display profile/avatar as Story media
@@ -840,6 +918,11 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
     imgRetriedRef.current = false;
     setRealDuration(null);
     setRealResolution(null);
+    setVideoPlaying(false);
+    setVideoPreviewOpen(false);
+    setPosterFailed(false);
+    setPlaybackError(null);
+    setImgMenuOpen(false);
   }, []);
 
   // Carousel navigation must never wait on the stream proxy — a hung preload
@@ -938,11 +1021,16 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
     if (!currentMedia || downloading === "preparing") return;
     setDownloading("preparing");
     try {
-      const safeHandle = sanitizeHandle(result.author?.username);
       const ext = extForMedia(currentMedia);
-      const filename = items.length > 1
-        ? `${safeHandle}-${safeIndex + 1}.${ext}`
-        : `${safeHandle}-${currentMedia.type === "video" ? "video" : "carousel"}.${ext}`;
+      // ONE filename pattern for every platform and media type:
+      // `Downloadit - {original title}.{ext}`, with an honest media-type
+      // fallback (`Instagram Video`, `Pinterest Image`, ...) — never the
+      // uploader's username.
+      const filename = buildDownloadFilename({
+        title: result.title,
+        extension: ext,
+        fallback: `${platformLabel} ${currentMedia.type === "video" ? "Video" : "Image"}`,
+      });
       const downloadUrl = getDownloadUrl(currentMedia.url, filename, result.sourceUrl);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -958,18 +1046,76 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
     window.setTimeout(() => {
       setDownloading((s) => (s === "preparing" ? "idle" : s));
     }, 4000);
-  }, [currentMedia, result.author, result.sourceUrl, downloading, items.length, safeIndex]);
+  }, [currentMedia, result.sourceUrl, result.title, downloading, platformLabel]);
+
+  /**
+   * Multi-image download: one backend ZIP of every real image the backend
+   * returned. Only reachable for a genuine multi-image set (the control that
+   * calls it is hidden otherwise); the guard below keeps a stray call from
+   * packaging a single image.
+   */
+  const handleDownloadAll = useCallback(() => {
+    if (zipState === "preparing") return;
+    const targets = items.filter((m) => m.type === "image");
+    if (targets.length < 2) {
+      handleDownloadVideo();
+      return;
+    }
+    setZipState("preparing");
+    try {
+      const filename = buildDownloadFilename({
+        title: result.title,
+        extension: "zip",
+        fallback: `${platformLabel} Images`,
+      });
+      const url = getZipDownloadUrl(targets.map((m) => m.url), filename, result.sourceUrl);
+      const a = document.createElement("a");
+      a.href = url;
+      a.rel = "noopener";
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      setZipState("error");
+      return;
+    }
+    window.setTimeout(() => {
+      setZipState((s) => (s === "preparing" ? "idle" : s));
+    }, 4000);
+  }, [items, result.title, result.sourceUrl, zipState, handleDownloadVideo, platformLabel]);
+
+  // Dismiss the image download menu on an outside click or Escape.
+  useEffect(() => {
+    if (!imgMenuOpen) return;
+    const close = () => setImgMenuOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImgMenuOpen(false);
+    };
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [imgMenuOpen]);
 
   const handleDownloadAudio = useCallback(() => {
     if (!audioUrl) return;
-    const safeHandle = sanitizeHandle(result.author?.username);
+    // Same pattern as every other media type (`Downloadit - {title}.mp3`); the
+    // audio blob is same-origin, so the `download` attribute is honored.
+    const filename = buildDownloadFilename({
+      title: result.title,
+      extension: "mp3",
+      fallback: `${platformLabel} Audio`,
+    });
     const a = document.createElement("a");
     a.href = audioUrl;
-    a.download = `${safeHandle}-audio.mp3`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  }, [audioUrl, result.author?.username]);
+  }, [audioUrl, result.title, platformLabel]);
 
   // Media stream URL through our proxy (source allows stale-URL recovery)
   const streamSrc = currentMedia ? getStreamUrl(currentMedia.url, result.sourceUrl) : "";
@@ -993,8 +1139,44 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
     isVideoItem && typeof pairedAudioRaw === "string" && isPlayableVideoUrl(pairedAudioRaw)
       ? getStreamUrl(pairedAudioRaw, result.sourceUrl)
       : null;
-  const rawPoster = currentMedia?.thumbnail ?? undefined;
-  const validPoster = isValidImagePoster(rawPoster) ? rawPoster : undefined;
+  // Poster/thumbnail source for the preview-first video surface: the item's own
+  // thumbnail, then the result-level thumbnail. Streamed through our own
+  // backend like the full preview; a missing/invalid thumbnail yields a branded
+  // fallback tile — never a broken image or a huge empty player. Only the poster
+  // image is fetched; the video itself is never downloaded to render it.
+  const rawPoster = currentMedia?.thumbnail ?? result.thumbnail ?? undefined;
+  const videoThumbSrc = proxiedPosterUrl(rawPoster, result.sourceUrl);
+
+  // Every video result (all platforms) gets its controls as an on-media overlay;
+  // every image/carousel gets its download control(s) directly under the
+  // picture. A video whose preview could not be mounted keeps an under-media
+  // download so the action is never unreachable.
+  const isImageItem = Boolean(currentMedia && currentMedia.type === "image");
+  const videoOverlay = videoOverlayState({
+    isVideo: isVideoItem && !isAudio,
+    hasPlayableSrc: Boolean(proxyVideoSrc),
+    playing: videoPlaying,
+  });
+  // Preview-first: show a compact poster with Preview + Download and mount the
+  // real <video> only after the user opens the preview.
+  const mediaPlan = mediaPreviewPlan({
+    isVideo: isVideoItem && !isAudio,
+    hasPlayableVideo: Boolean(proxyVideoSrc),
+    previewOpen: videoPreviewOpen,
+  });
+  // The poster's own click action (whole surface + center Play). Inert once the
+  // real <video> is mounted, where the native controls own play/pause.
+  const surfaceAction = mediaSurfaceAction({
+    isVideo: isVideoItem && !isAudio,
+    hasPlayableVideo: Boolean(proxyVideoSrc),
+    previewOpen: videoPreviewOpen,
+  });
+  const posterIsClickable = surfaceAction === "open-preview";
+  const showMediaDownloadControls =
+    Boolean(currentMedia) && !isAudio && (!isVideoItem || !proxyVideoSrc);
+  // A genuine multi-image set is the only thing that offers "Download all
+  // images"; the plan is derived from the real backend items.
+  const imagePlan = imageDownloadPlan(items);
 
   // Frame the photo with its real aspect ratio (bitmap → provider → 1:1).
   // Matching the image prevents tall empty bars and keeps the subject centered.
@@ -1010,6 +1192,35 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
       ? "1 / 1"
       : undefined;
   })();
+
+  // Video/thumbnail frame ratio (provider dimensions, portrait fallback).
+  const videoAspectStr = (() => {
+    const w = currentMedia?.width;
+    const h = currentMedia?.height;
+    if (w && h && w > 0 && h > 0) return `${w} / ${h}`;
+    return "9 / 16";
+  })();
+  // Numeric ratio handed to CSS as `--media-ar`, so the media frame can be
+  // height-capped on every screen: the frame caps its width at
+  // `max-media-height × ratio`. Portrait media stays narrow and centered,
+  // landscape stays within the container, and the original ratio is never
+  // distorted (object-fit: contain does the letterboxing).
+  const mediaAspectNum = isVideoItem ? ratioToNumber(videoAspectStr) : ratioToNumber(imgAspect ?? "1 / 1");
+
+  // Once a photo/carousel image reports its real pixel size, cap both the image
+  // frame AND its shrink-wrapped `.media-stage` to that size (intersected with
+  // the CSS max-height-based cap). Two wins: a small source is never enlarged
+  // (stays sharp) and never sits in a blank letterbox, while the overlay arrows
+  // — positioned against the stage — land exactly on the image's own edges for
+  // portrait, landscape and square images alike.
+  const imageCapMaxWidth =
+    isImageItem && imgNatural
+      ? `min(100%, ${imgNatural.w}px, calc(var(--media-post-max-h, 560px) * var(--media-ar, 1)))`
+      : undefined;
+  const imageCapMaxHeight =
+    isImageItem && imgNatural
+      ? `min(var(--media-post-max-h, 560px), ${imgNatural.h}px)`
+      : undefined;
 
   // Reset the loaded flag per media item during render (React "adjust state
   // on change" pattern — synchronous, so the fresh slide never inherits the
@@ -1110,19 +1321,39 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
     [showCarouselNav, items.length, goNext, goPrev]
   );
   const handlePreview = useCallback(() => {
+    // Preview-first: the poster is showing and the user asked to open the real
+    // player. Mounting the <video> here is the explicit user action; the element
+    // then auto-plays from the same click. A rejected play() is reported back by
+    // VideoPlayer's own onPlaybackError. Scroll it into view once mounted.
+    if (mediaPlan.canPreviewVideo && !videoPreviewOpen) {
+      setPlaybackError(null);
+      setVideoPreviewOpen(true);
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          previewRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
+      return;
+    }
     const v = previewRef.current?.querySelector<HTMLVideoElement>("video");
     if (v) {
       // This runs inside the Preview button's real click, i.e. a user gesture,
       // which is what lets the browser start playback WITH audio. The element
       // is never muted and its volume is never forced to 0, so a successful
-      // play() here is audible. If the browser still refuses (its own policy),
-      // the rejection is swallowed and the element's real paused state stays
-      // visible in the native controls — no audio state is ever faked.
+      // play() here is audible. A rejected promise (browser policy, decode
+      // failure) is surfaced as a real message instead of being swallowed.
       v.muted = false;
       if (v.volume === 0) v.volume = 1;
       if (v.ended) v.currentTime = 0;
-      if (v.paused) v.play().catch(() => {});
-      else v.pause();
+      if (!v.paused && !v.ended) {
+        v.pause();
+      } else {
+        setPlaybackError(null);
+        const p = v.play();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => setPlaybackError(t.result.playbackError));
+        }
+      }
       v.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -1132,6 +1363,15 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
       else a.pause();
     }
     previewRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [mediaPlan.canPreviewVideo, videoPreviewOpen, t.result.playbackError]);
+
+  // Return to the compact poster: unmounts the player, whose own cleanup pauses
+  // playback and removes every listener (releasing the decoder), and resets the
+  // overlay back to the Preview state.
+  const closeVideoPreview = useCallback(() => {
+    setVideoPreviewOpen(false);
+    setVideoPlaying(false);
+    setPlaybackError(null);
   }, []);
 
   // Strict validation: for Story, never show profile/avatar as success
@@ -1162,10 +1402,127 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
     );
   }
 
+  /**
+   * Image/carousel download control(s) shown directly under the media (every
+   * platform). A single image — or a video whose preview failed to mount — gets
+   * one button; a genuine multi-image carousel gets a menu offering the current
+   * slide or the whole set as one ZIP. The "all" action only exists when the
+   * backend really returned more than one image.
+   */
+  const mediaDownloadControls = (
+    <div className="relative mt-3 w-full">
+      {isImageItem && imagePlan.canDownloadAll ? (
+        <>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setImgMenuOpen((v) => !v);
+            }}
+            disabled={zipState === "preparing"}
+            aria-haspopup="menu"
+            aria-expanded={imgMenuOpen}
+            aria-label={t.result.downloadMenuLabel}
+            className="media-cta media-cta-download min-h-[48px] w-full text-[14px] disabled:opacity-60"
+          >
+            {zipState === "preparing" ? (
+              <>
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                  <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+                </svg>
+                {t.result.downloading}
+              </>
+            ) : (
+              <>
+                <DownloadIcon className="h-4 w-4" />
+                {t.result.download}
+                <ChevronDown className="h-4 w-4" />
+              </>
+            )}
+          </button>
+          {imgMenuOpen && (
+            <div
+              role="menu"
+              className="absolute inset-x-0 bottom-[calc(100%+6px)] z-30 overflow-hidden rounded-2xl p-1 text-left"
+              style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "0 16px 40px rgba(60,40,120,0.22)" }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setImgMenuOpen(false);
+                  handleDownloadVideo();
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                {t.result.downloadSingleImage}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setImgMenuOpen(false);
+                  handleDownloadAll();
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                {t.result.downloadAllImages}
+                <span
+                  className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold"
+                  style={{ background: "var(--primary-light)", color: "var(--primary-strong)" }}
+                >
+                  {imagePlan.imageCount}
+                </span>
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={handleDownloadVideo}
+          disabled={downloading === "preparing"}
+          aria-label={isVideoItem ? t.result.downloadVideoLabel : t.result.downloadSingleImage}
+          className="media-cta media-cta-download min-h-[48px] w-full text-[14px] disabled:opacity-60"
+        >
+          {downloading === "preparing" ? (
+            <>
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+              </svg>
+              {t.result.downloading}
+            </>
+          ) : downloading === "error" ? (
+            <>
+              <DownloadIcon className="h-4 w-4" />
+              {t.result.tryAgain}
+            </>
+          ) : (
+            <>
+              <DownloadIcon className="h-4 w-4" />
+              {t.result.download}
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="result-card animate-fade-in-up mx-auto mt-6 w-[calc(100%-32px)] max-w-[900px] sm:mt-10 sm:w-full sm:px-5">
+    <div
+      className={`result-card animate-fade-in-up mx-auto ${
+        isMediaFirst
+          ? `result-card--media${isImageItem ? " result-card--photo" : ""} mt-4 sm:mt-6`
+          : "mt-6 w-[calc(100%-32px)] max-w-[900px] sm:mt-10 sm:w-full sm:px-5"
+      }`}
+      style={isMediaFirst ? ({ ["--media-ar"]: mediaAspectNum } as CSSProperties) : undefined}
+    >
       <div
-        className="overflow-hidden rounded-[24px] p-3 sm:p-4 md:p-5"
+        className="result-surface overflow-hidden rounded-[24px] p-3 sm:p-4 md:p-5"
         style={{ background: "var(--card)", boxShadow: "0 20px 60px rgba(60,40,120,0.12)", border: "1px solid var(--border)" }}
       >
         {/* Card header: badge + handle + New */}
@@ -1214,12 +1571,20 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
           );
         })()}
 
-        {/* ── Two-column body: LEFT preview / RIGHT info ── */}
-        <div className="result-grid grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,1fr)] lg:gap-6">
+        {/* ── Body: video and image results (all platforms) use the single
+            media-first column with their controls on/beside the media and no
+            metadata tiles; only the audio result keeps the two-column card
+            (waveform preview / actions + real audio metadata). ── */}
+        <div className={`result-grid grid grid-cols-1 gap-4 ${isMediaFirst ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(300px,1fr)] lg:gap-6"}`}>
           {/* LEFT: large preview */}
-          <div ref={previewRef} className="result-video-wrap min-w-0">
+          <div
+            ref={previewRef}
+            className={`result-video-wrap min-w-0 ${isMediaFirst ? "mx-auto w-full max-w-[560px]" : ""}`}
+            style={isMediaFirst ? ({ ["--media-ar"]: mediaAspectNum } as CSSProperties) : undefined}
+          >
             <div
-              className="relative"
+              className={`media-stage relative ${isImageItem ? "media-stage--post" : ""}`}
+              style={imageCapMaxWidth ? ({ maxWidth: imageCapMaxWidth } as CSSProperties) : undefined}
               onTouchStart={showCarouselNav ? onPreviewTouchStart : undefined}
               onTouchEnd={showCarouselNav ? onPreviewTouchEnd : undefined}
             >
@@ -1247,26 +1612,102 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
               </>
             ) : !currentMedia ? null : isVideoItem ? (
               proxyVideoSrc ? (
-                // NOTE: keying by the proxied source intentionally remounts
-                // per source. That resets playing/time/mute/error state for the
-                // new video AND unmounts the old <video> element, which stops
-                // its decode — so the previous video can never keep playing (or
-                // play simultaneously) after a slide switch, a new search, or
-                // leaving the preview. A stale/expired signed URL therefore
-                // can never linger and wrongly report "Preview unavailable"
-                // for a valid video.
-                <VideoPlayer
-                  key={proxyVideoSrc}
-                  src={proxyVideoSrc}
-                  poster={validPoster}
-                  mediaType={currentMedia.type}
-                  width={currentMedia.width}
-                  height={currentMedia.height}
-                  audioSrc={pairedAudioSrc}
-                  onDurationChange={(d) => setRealDuration(d)}
-                  onResolution={(w, h) => setRealResolution({ w, h })}
-                  onRequestFreshMedia={recoverStaleMedia}
-                />
+                mediaPlan.mountVideo ? (
+                  // NOTE: keying by the proxied source intentionally remounts
+                  // per source. That resets playing/time/mute/error state for the
+                  // new video AND unmounts the old <video> element, which stops
+                  // its decode — so the previous video can never keep playing (or
+                  // play simultaneously) after closing the preview, a slide
+                  // switch, a new search, or leaving the card. A stale/expired
+                  // signed URL therefore can never linger and wrongly report
+                  // "Preview unavailable" for a valid video.
+                  <VideoPlayer
+                    key={proxyVideoSrc}
+                    src={proxyVideoSrc}
+                    // Poster MUST stream through our own backend like the video
+                    // itself. The raw CDN thumbnail is a different origin that
+                    // the page's Content-Security-Policy does not (and should
+                    // not) allow, so mounting it here produced a blocked-poster
+                    // request on every Pinterest video. The proxied URL is
+                    // same-origin/allowed and renders the same frame. When the
+                    // thumbnail is unusable there is simply no poster (the
+                    // branded poster tile/fallback handles that case).
+                    poster={videoThumbSrc ?? undefined}
+                    mediaType={currentMedia.type}
+                    width={currentMedia.width}
+                    height={currentMedia.height}
+                    audioSrc={pairedAudioSrc}
+                    autoPlay
+                    onDurationChange={(d) => setRealDuration(d)}
+                    onResolution={(w, h) => setRealResolution({ w, h })}
+                    onRequestFreshMedia={recoverStaleMedia}
+                    onPlayingChange={(playing) => {
+                      setVideoPlaying(playing);
+                      // Real playback started, so any earlier play() rejection
+                      // (e.g. a transient autoplay-policy refusal) is resolved.
+                      if (playing) setPlaybackError(null);
+                    }}
+                    onPlaybackError={() => setPlaybackError(t.result.playbackError)}
+                  />
+                ) : (
+                  // Preview-first default: a compact poster (never the full
+                  // video). Clicking the poster — or its center Play control —
+                  // opens the preview and starts playback, exactly like the
+                  // Preview button. The poster image streams through our own
+                  // backend; a missing/broken poster falls back to a branded
+                  // tile of the SAME capped size, never a huge empty player.
+                  <div
+                    className="media-frame media-mount relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-[20px]"
+                    style={{
+                      background: "linear-gradient(145deg, #1a1028 0%, #0f0c1b 100%)",
+                      aspectRatio: videoAspectStr,
+                      cursor: posterIsClickable ? "pointer" : undefined,
+                    }}
+                    onClick={posterIsClickable ? handlePreview : undefined}
+                  >
+                    {videoThumbSrc && !posterFailed && (
+                      // eslint-disable-next-line @next/next/no-img-element -- next/image cannot serve our dynamic backend /api/stream proxy URLs; the poster streams from our own backend exactly like <video> does
+                      <img
+                        src={videoThumbSrc}
+                        alt={
+                          result.title
+                            ? decodeHtmlEntities(result.title).slice(0, 120)
+                            : t.typeBadges.video
+                        }
+                        draggable={false}
+                        onError={() => setPosterFailed(true)}
+                        className="h-full w-full object-contain"
+                        style={{ opacity: 0.92 }}
+                      />
+                    )}
+                    {/* Center Play: the same handler as Preview, so the user
+                        never has to click Preview first. A real <button> is
+                        keyboard-focusable and works with touch; it swallows the
+                        click so the surrounding poster surface doesn't
+                        double-fire the identical action. */}
+                    {posterIsClickable && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePreview();
+                        }}
+                        aria-label={t.result.playVideo}
+                        className="media-play-center"
+                      >
+                        <Play className="ml-0.5 h-7 w-7" fill="currentColor" strokeWidth={0} />
+                      </button>
+                    )}
+                    {(!videoThumbSrc || posterFailed) && (
+                      <p
+                        className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[12px] font-semibold"
+                        style={{ color: "rgba(255,255,255,0.8)" }}
+                      >
+                        {t.result.playVideo}
+                      </p>
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="flex min-h-[180px] w-full flex-col items-center justify-center gap-2 rounded-[20px] bg-black/5">
                   <ImageIcon className="h-10 w-10" style={{ color: "var(--fg-subtle)", opacity: 0.4 }} />
@@ -1288,7 +1729,12 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
               // tall empty crop from a forced Story/4:5 box.
               <div
                 className="media-frame media-post relative mx-auto flex w-full items-center justify-center overflow-hidden rounded-[20px]"
-                style={{ background: "#0a0a14", aspectRatio: imgAspect ?? "1 / 1" }}
+                style={{
+                  background: "#0a0a14",
+                  aspectRatio: imgAspect ?? "1 / 1",
+                  ...(imageCapMaxWidth ? { maxWidth: imageCapMaxWidth } : null),
+                  ...(imageCapMaxHeight ? { maxHeight: imageCapMaxHeight } : null),
+                }}
               >
                 {!imgLoaded && !imgFailed && (
                   <div aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -1311,10 +1757,12 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                     setImgLoaded(true);
                   }}
                   onError={handleImgError}
-                  className="max-h-full max-w-full object-contain object-center"
+                  className="m-auto max-h-full max-w-full object-contain object-center"
                   style={{
-                    width: "100%",
-                    height: "100%",
+                    width: "auto",
+                    height: "auto",
+                    maxWidth: "100%",
+                    maxHeight: "100%",
                     objectFit: "contain",
                     objectPosition: "center center",
                     opacity: imgLoaded ? 1 : 0,
@@ -1323,27 +1771,100 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 />
               </div>
             )}
+              {/* On-media Preview/Download controls for EVERY video result.
+                  Driven by the real element's play/pause/ended events: before
+                  playback the Preview + Download pills show over the poster;
+                  while playing only a compact circular Download shows, and the
+                  moment the video is paused or ends the pills come back. A Close
+                  control appears once the real player is mounted so the user can
+                  return to the poster. Anchored at the top so it never covers
+                  the native control bar. */}
+              {videoOverlay.showOverlay && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2.5 p-2.5 sm:p-3">
+                  {videoOverlay.showPreview ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        // Never let this bubble to the poster surface / card.
+                        e.stopPropagation();
+                        handlePreview();
+                      }}
+                      aria-label={t.result.playVideo}
+                      className="media-cta media-cta-preview h-11 w-11 px-0 text-[13px] sm:h-auto sm:w-auto sm:min-h-[42px] sm:px-4"
+                    >
+                      <Play className="h-4 w-4" fill="currentColor" strokeWidth={0} />
+                      <span className="hidden sm:inline">Preview</span>
+                    </button>
+                  ) : (
+                    <span aria-hidden="true" />
+                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        // Download must never start or pause the video.
+                        e.stopPropagation();
+                        handleDownloadVideo();
+                      }}
+                      disabled={downloading === "preparing"}
+                      aria-label={t.result.downloadVideoLabel}
+                      className={`media-cta media-cta-download text-[13px] ${
+                        videoOverlay.compactDownload
+                          ? "media-cta--icon"
+                          : "h-11 w-11 px-0 sm:h-auto sm:w-auto sm:min-h-[42px] sm:px-4"
+                      }`}
+                    >
+                      {downloading === "preparing" ? (
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                          <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+                        </svg>
+                      ) : (
+                        <DownloadIcon className="h-4 w-4" />
+                      )}
+                      {videoOverlay.showPreview && <span className="hidden sm:inline">{t.result.download}</span>}
+                    </button>
+                    {mediaPlan.mountVideo && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeVideoPreview();
+                        }}
+                        aria-label="Close preview"
+                        className="media-cta media-cta-close media-cta--icon"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               {/* Overlay carousel arrows: vertically centered on the media
                   edges, visible without covering important content. */}
               {showCarouselNav && currentMedia && (
                 <>
                   <button
                     type="button"
-                    onClick={goPrev}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goPrev();
+                    }}
                     disabled={safeIndex === 0}
                     aria-label="Previous image"
-                    className="absolute left-2 top-1/2 z-10 flex h-11 w-11 touch-manipulation -translate-y-1/2 items-center justify-center rounded-full text-white backdrop-blur-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-                    style={{ background: "rgba(10,10,20,0.55)", border: "1px solid rgba(255,255,255,0.25)" }}
+                    className="media-nav media-nav--prev"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     type="button"
-                    onClick={goNext}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goNext();
+                    }}
                     disabled={safeIndex === items.length - 1}
                     aria-label="Next image"
-                    className="absolute right-2 top-1/2 z-10 flex h-11 w-11 touch-manipulation -translate-y-1/2 items-center justify-center rounded-full text-white backdrop-blur-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-                    style={{ background: "rgba(10,10,20,0.55)", border: "1px solid rgba(255,255,255,0.25)" }}
+                    className="media-nav media-nav--next"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -1355,15 +1876,24 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 {safeIndex + 1} / {items.length}
               </p>
             )}
+            {showMediaDownloadControls && mediaDownloadControls}
+            {isMediaFirst && (downloading === "error" || zipState === "error") && (
+              <p className="mt-2 text-center text-[12px] font-medium text-danger" role="alert">
+                {t.result.downloadFailed}
+              </p>
+            )}
           </div>
 
-          {/* Actions + metadata */}
+          {/* Actions + metadata: audio result only. Every video/image result
+              uses the on/beside-media controls above and shows no metadata
+              tiles. */}
+          {isAudio && (
           <div className="result-details flex min-w-0 flex-col gap-3 md:gap-4">
             <div className="result-actions flex flex-col gap-2.5 sm:flex-row">
               <button
                 type="button"
                 onClick={handlePreview}
-                className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary"
+                className="media-cta media-cta-preview min-h-[48px] flex-1 text-[14px]"
               >
                 <Play className="h-4 w-4" />
                 Preview
@@ -1374,7 +1904,7 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
                 onClick={isAudio ? handleDownloadAudio : handleDownloadVideo}
                 disabled={(isAudio && !audioUrl) || downloading === "preparing" || (isAudio && audioLoading)}
                 aria-label={isAudio ? t.result.downloadAudioLabel : t.result.downloadVideoLabel}
-                className="gradient-btn min-h-[48px] flex-1 text-[14px] disabled:opacity-60"
+                className="media-cta media-cta-download min-h-[48px] flex-1 text-[14px] disabled:opacity-60"
               >
                 {downloading === "preparing" ? (
                   <>
@@ -1425,11 +1955,12 @@ export function MediaResult({ result, mode, onReset }: MediaResultProps) {
               </div>
             </dl>
           </div>
+          )}
         </div>
 
       </div>
 
-      <p className="mt-4 break-words px-2 text-center text-[12px] text-fg-subtle sm:text-[12px]">{t.result.tempNote}</p>
+      <p className={`break-words px-2 text-center text-[12px] text-fg-subtle sm:text-[12px] ${isMediaFirst ? "mt-3" : "mt-4"}`}>{t.result.tempNote}</p>
     </div>
   );
 }

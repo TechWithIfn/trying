@@ -1201,7 +1201,7 @@ const STEALTH_FN = `
 `;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function applyStealthPatches(page: any) {
+export async function applyStealthPatches(page: any) {
   try {
     await page.evaluateOnNewDocument(STEALTH_FN);
   } catch {

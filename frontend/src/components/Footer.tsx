@@ -54,6 +54,8 @@ export default function Footer() {
     { label: "Instagram Photo & Carousel Downloader", href: "/instagram-photo-downloader" },
     { label: "Instagram Story Downloader", href: "/instagram-story-downloader" },
     { label: "Instagram Audio Downloader", href: "/instagram-audio-downloader" },
+    { label: "Pinterest Video Downloader", href: "/pinterest-video-downloader" },
+    { label: "Pinterest Image and Carousel Downloader", href: "/pinterest-image-downloader" },
   ];
 
   const RESOURCE_LINKS = [

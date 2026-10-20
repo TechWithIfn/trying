@@ -48,9 +48,13 @@ const CDN_HOST_MATCHERS: Array<(hostname: string) => boolean> = [
   (h) => h === "cdninstagram.com" || h.endsWith(".cdninstagram.com"),
   (h) => h === "fbcdn.net" || h.endsWith(".fbcdn.net"),
   (h) => h.startsWith("scontent."),
+  // Pinterest media CDN (i./v./s. subdomains). Kept strict to the exact
+  // pinimg.com domain — never a broad pinterest.* match — so the download
+  // and stream proxies cannot be pointed at arbitrary Pinterest web hosts.
+  (h) => h === "pinimg.com" || h.endsWith(".pinimg.com"),
 ];
 
-/** Strict allowlist for Instagram/Facebook media CDN hosts (no open proxy). */
+/** Strict allowlist for Instagram/Facebook/Pinterest media CDN hosts (no open proxy). */
 export function isCdnMediaHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   return CDN_HOST_MATCHERS.some((match) => match(h));

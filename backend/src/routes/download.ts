@@ -8,15 +8,27 @@ import { readBoundedInt } from "../lib/env.js";
 import {
   validateProxyUrl,
   getClientIp,
+  fetchUpstreamMedia,
   fetchUpstreamMediaResilient,
   isHtmlContent,
   pipeUpstreamToClient,
   upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
 import { withoutEmbeddedByteSlice } from "../lib/providers/puppeteer.js";
+import {
+  sanitizeDownloadFilename,
+  sanitizeFilenameBase,
+  contentDispositionAttachment,
+  extensionForContentType,
+} from "../lib/download-filename.js";
+import { buildZip, type ZipEntry } from "../lib/zip.js";
 
 const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 30_000;
+/** Archive limits: bounded entries and total bytes keep a ZIP in memory-safe territory. */
+const MAX_ZIP_ENTRIES = readBoundedInt("MAX_ZIP_ENTRIES", 20, 1, 50);
+const MAX_ZIP_TOTAL_BYTES = readBoundedInt("MAX_ZIP_TOTAL_BYTES", 150 * 1024 * 1024, 1024 * 1024, 512 * 1024 * 1024);
+const MAX_ZIP_FILE_BYTES = Math.min(MAX_ZIP_TOTAL_BYTES, 50 * 1024 * 1024);
 
 /**
  * Downloads are long-lived and hold a socket plus a CDN connection for their
@@ -26,27 +38,6 @@ const UPSTREAM_TIMEOUT_MS = 30_000;
  */
 const downloadGate = getGate("download");
 const perIpDownload = new KeyedConcurrency(readBoundedInt("MAX_CONCURRENT_DOWNLOADS_PER_IP", 2, 1, 16));
-
-function sanitizeDownloadFilename(raw: unknown, contentType: string): string {
-  let base = typeof raw === "string" ? raw.toLowerCase().slice(0, 80) : "";
-  base = base
-    .replace(/\.\.+/g, "-") // kill dot-runs (traversal) first
-    .replace(/[^a-zA-Z0-9._-]/g, "-") // dangerous chars incl. quotes, slashes, CRLF
-    .replace(/-+/g, "-") // collapse dashes
-    .replace(/^-+|-+$/g, "") // trim edge dashes
-    .replace(/^\.+|\.+$/g, "") // trim edge dots
-    .replace(/\.[a-z0-9]{2,4}$/, ""); // strip client extension; server decides
-  if (!base) base = "downloadit-media";
-  // Enforce the extension from the VERIFIED upstream content type.
-  const ct = contentType.toLowerCase();
-  let ext = ".mp4";
-  if (ct.includes("audio/mpeg") || ct.includes("audio/mp3")) ext = ".mp3";
-  else if (ct.includes("audio/mp4") || ct.includes("audio/x-m4a")) ext = ".m4a";
-  else if (ct.includes("image/png")) ext = ".png";
-  else if (ct.includes("image/webp")) ext = ".webp";
-  else if (ct.includes("image/jpeg") || ct.includes("image/jpg")) ext = ".jpg";
-  return base + ext;
-}
 
 const router = Router();
 
@@ -90,6 +81,215 @@ router.get("/", async (req: Request, res: ExpressResponse): Promise<void> => {
     }
     const mapped = toMediaAppError(error);
     logger.error("[DOWNLOAD] proxy error", {
+      requestId,
+      errorCode: mapped.code,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    res.status(mapped.statusCode).json(mapped.toResponse());
+  } finally {
+    res.off("close", onClose);
+    perIpDownload.release(ip);
+  }
+});
+
+/**
+ * Read an upstream body fully into memory, refusing to exceed `maxBytes`.
+ * A declared `Content-Length` over the cap is rejected before a single byte is
+ * read; an unlabelled stream is capped while it is drained.
+ */
+async function readUpstreamBytes(response: Response, maxBytes: number): Promise<Buffer> {
+  const declared = response.headers.get("content-length");
+  if (declared && Number.parseInt(declared, 10) > maxBytes) {
+    await response.body?.cancel().catch(() => {});
+    throw createError("REQUEST_TOO_LARGE");
+  }
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw createError("REQUEST_TOO_LARGE");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock?.();
+  }
+  return Buffer.concat(chunks);
+}
+
+/** Unique, sanitized archive entry name for the Nth image. */
+function zipEntryName(base: string, index: number, ext: string): string {
+  const trimmed = base.slice(0, 80).replace(/[\s.\-]+$/, "") || "image";
+  return `${trimmed}-${index}${ext}`;
+}
+
+/**
+ * Multi-image download: fetch every image, package them into one ZIP and return
+ * it as a single attachment. Every URL passes the same CDN/SSRF allowlist as a
+ * normal download; ANY failure fails the whole request with an honest error
+ * instead of silently shipping a partial archive.
+ */
+async function handleZipDownload(
+  req: Request,
+  res: ExpressResponse,
+  requestId: string,
+  signal: AbortSignal
+): Promise<void> {
+  try {
+    res.setHeader("Cache-Control", "no-store");
+    const rateLimitResult = checkRateLimit(`download:${getClientIp(req)}`, routeRateLimitConfig("download"));
+    if (!rateLimitResult.allowed) {
+      res.setHeader("Retry-After", String(Math.ceil(rateLimitResult.retryAfterMs / 1000)));
+      res.status(429).json(createErrorResponse("RATE_LIMITED"));
+      return;
+    }
+
+    const rawUrls = req.query.url;
+    const urls = (Array.isArray(rawUrls) ? rawUrls : rawUrls ? [rawUrls] : []).filter(
+      (u): u is string => typeof u === "string" && u.length > 0
+    );
+    // A ZIP of one is meaningless — that is a normal single download.
+    if (urls.length < 2) {
+      res.status(400).json(createErrorResponse("VALIDATION_ERROR"));
+      return;
+    }
+    if (urls.length > MAX_ZIP_ENTRIES) {
+      logger.warn("[DOWNLOAD] zip entry limit exceeded", { requestId, count: urls.length, limit: MAX_ZIP_ENTRIES });
+      res.status(400).json(createErrorResponse("VALIDATION_ERROR"));
+      return;
+    }
+
+    const base = sanitizeFilenameBase(req.query.filename);
+    const entries: ZipEntry[] = [];
+    let totalBytes = 0;
+
+    for (const raw of urls) {
+      const validation = validateProxyUrl(raw);
+      if (!validation.ok) {
+        logger.info("[DOWNLOAD] zip URL validation failed", { requestId, error: validation.error });
+        const code = validation.error === "MISSING" ? "VALIDATION_ERROR" : "INVALID_URL";
+        res
+          .status(validation.error === "DISALLOWED_HOST" || validation.error === "PRIVATE_HOST" ? 403 : 400)
+          .json(createErrorResponse(code));
+        return;
+      }
+      const fullUrl = withoutEmbeddedByteSlice(validation.value.url);
+      const upstream = await fetchUpstreamMedia(fullUrl, {
+        timeoutMs: UPSTREAM_TIMEOUT_MS,
+        tag: "DOWNLOAD-ZIP",
+        requestId,
+        signal,
+      });
+      if (upstream.kind === "timeout") {
+        res.status(504).json(createErrorResponse("PROVIDER_TIMEOUT"));
+        return;
+      }
+      if (upstream.kind === "client-gone") {
+        return;
+      }
+      if (upstream.kind !== "ok") {
+        res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+        return;
+      }
+      const { response, finalUrl } = upstream;
+      if (response.status === 401 || response.status === 403 || response.status === 404) {
+        await response.body?.cancel().catch(() => {});
+        const expired = createError("MEDIA_URL_EXPIRED");
+        res.status(expired.statusCode).json(expired.toResponse());
+        return;
+      }
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => {});
+        res.status(502).json(createErrorResponse("MEDIA_DOWNLOAD_FAILED"));
+        return;
+      }
+      const ct = (response.headers.get("content-type") || "").toLowerCase();
+      if (isHtmlContent(ct) || !ct.startsWith("image/")) {
+        await response.body?.cancel().catch(() => {});
+        logger.warn("[DOWNLOAD] zip rejected non-image media", {
+          requestId,
+          contentType: ct,
+          finalHost: new URL(finalUrl).hostname,
+        });
+        res.status(502).json(createErrorResponse("CONTENT_UNAVAILABLE"));
+        return;
+      }
+      const bytes = await readUpstreamBytes(response, MAX_ZIP_FILE_BYTES);
+      totalBytes += bytes.length;
+      if (totalBytes > MAX_ZIP_TOTAL_BYTES) {
+        logger.warn("[DOWNLOAD] zip exceeds total size limit", { requestId, totalBytes });
+        res.status(413).json(createErrorResponse("REQUEST_TOO_LARGE"));
+        return;
+      }
+      entries.push({ name: zipEntryName(base, entries.length + 1, extensionForContentType(ct)), data: bytes });
+    }
+
+    const zip = buildZip(entries);
+    logger.info("[DOWNLOAD] zip built", { requestId, entries: entries.length, bytes: zip.length });
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", contentDispositionAttachment(`${base}.zip`));
+    res.setHeader("Content-Length", String(zip.length));
+    res.setHeader("X-Request-Id", requestId);
+    res.status(200).end(zip);
+  } catch (error) {
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json(error.toResponse());
+      return;
+    }
+    const mapped = toMediaAppError(error);
+    logger.error("[DOWNLOAD] zip error", {
+      requestId,
+      errorCode: mapped.code,
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    res.status(mapped.statusCode).json(mapped.toResponse());
+  }
+}
+
+router.get("/zip", async (req: Request, res: ExpressResponse): Promise<void> => {
+  const requestId = generateToken();
+  const ip = getClientIp(req);
+  const controller = new AbortController();
+  const onClose = (): void => {
+    if (!res.writableEnded) controller.abort();
+  };
+  res.on("close", onClose);
+
+  if (!perIpDownload.tryAcquire(ip)) {
+    res.off("close", onClose);
+    logger.warn("[DOWNLOAD] per-client download limit reached (zip)", { requestId, ip });
+    res.setHeader("Retry-After", "3");
+    res.status(503).json(createErrorResponse("CAPACITY_EXHAUSTED"));
+    return;
+  }
+
+  try {
+    await downloadGate.run(() => handleZipDownload(req, res, requestId, controller.signal), {
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    if (error instanceof AppError) {
+      if (error.statusCode === 503) res.setHeader("Retry-After", "3");
+      res.status(error.statusCode).json(error.toResponse());
+      return;
+    }
+    const mapped = toMediaAppError(error);
+    logger.error("[DOWNLOAD] zip proxy error", {
       requestId,
       errorCode: mapped.code,
       error: error instanceof Error ? error.message : "unknown",
@@ -242,7 +442,7 @@ async function handleDownload(
       (!upstreamCT.includes("image") && !upstreamCT.includes("audio"));
 
     res.setHeader("Content-Type", isVideo ? "video/mp4" : upstreamCT || "application/octet-stream");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Disposition", contentDispositionAttachment(filename));
     if (contentLength) {
       res.setHeader("Content-Length", contentLength);
     }

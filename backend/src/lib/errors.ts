@@ -374,6 +374,62 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     status: 504,
     retryable: true,
   },
+  /**
+   * Pinterest-specific verdicts. Every failure path in the Pinterest resolver
+   * maps to exactly one of these codes so the UI can show an honest, specific
+   * reason — never a fabricated download.
+   */
+  PINTEREST_INVALID_URL: {
+    message:
+      "That does not look like a Pinterest link. Paste a pin URL such as pinterest.com/pin/… or a pin.it short link.",
+    status: 400,
+    retryable: false,
+  },
+  PINTEREST_PIN_NOT_FOUND: {
+    message:
+      "That Pinterest pin could not be found. It may have been deleted or the link may be incorrect.",
+    status: 404,
+    retryable: false,
+  },
+  PINTEREST_PIN_RESTRICTED: {
+    message:
+      "This Pinterest pin is not publicly accessible right now. It may be private, require a login, or Pinterest may be limiting automated access — try opening the pin in your browser.",
+    status: 403,
+    retryable: true,
+  },
+  PINTEREST_NO_VIDEO: {
+    message:
+      "This pin has no downloadable video. It looks like an image-only pin — switch to Carousel, or try the Pinterest Image and Carousel Downloader instead.",
+    status: 404,
+    retryable: false,
+  },
+  PINTEREST_NO_IMAGE: {
+    message:
+      "This pin has no downloadable image available. It may be video-only — switch to Video, or try the Pinterest Video Downloader instead.",
+    status: 404,
+    retryable: false,
+  },
+  PINTEREST_PARSE_FAILED: {
+    message:
+      "Pinterest returned an unexpected page format, so the media could not be extracted. Please try again shortly.",
+    status: 502,
+    retryable: true,
+  },
+  PINTEREST_TIMEOUT: {
+    message: "Pinterest took too long to respond. Please try again.",
+    status: 504,
+    retryable: true,
+  },
+  PINTEREST_RATE_LIMITED: {
+    message: "Pinterest is temporarily rate-limiting requests. Please try again in a few seconds.",
+    status: 429,
+    retryable: true,
+  },
+  PINTEREST_UPSTREAM_ERROR: {
+    message: "Pinterest returned an unexpected error. Please try again in a few seconds.",
+    status: 502,
+    retryable: true,
+  },
 };
 
 /**

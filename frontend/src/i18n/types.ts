@@ -50,6 +50,12 @@ export interface Strings {
     howItWorks: string;
     faq: string;
   };
+  pinterest: {
+    groupLabel: string;
+    auto: string;
+    video: string;
+    carousel: string;
+  };
   hero: {
     badge: string;
     titleA: string;
@@ -128,6 +134,7 @@ export interface Strings {
     previewUnavailable: string;
     newBtn: string;
     playVideo: string;
+    playbackError: string;
     pauseVideo: string;
     playAudio: string;
     pauseAudio: string;
@@ -136,6 +143,9 @@ export interface Strings {
     audioErrorFallback: string;
     downloadVideoLabel: string;
     downloadAudioLabel: string;
+    downloadSingleImage: string;
+    downloadAllImages: string;
+    downloadMenuLabel: string;
   };
   errors: {
     empty: string;

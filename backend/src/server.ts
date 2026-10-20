@@ -80,6 +80,9 @@ registerCleanup("provider-close", async () => {
   }
 });
 
+// Pinterest resolves over plain HTTP (no browser to drain), so it needs no
+// dedicated shutdown cleanup.
+
 let shuttingDown = false;
 
 /**

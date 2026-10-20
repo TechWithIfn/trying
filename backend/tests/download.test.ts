@@ -1,38 +1,34 @@
 import { describe, it, expect } from "vitest";
+import { crc32 as nodeCrc32 } from "node:zlib";
+import {
+  sanitizeDownloadFilename,
+  sanitizeFilenameBase,
+  contentDispositionAttachment,
+  extensionForContentType,
+} from "../src/lib/download-filename.js";
+import { buildZip, crc32 } from "../src/lib/zip.js";
 
 describe("Download query-param validation", () => {
-  function sanitizeDownloadFilename(raw: unknown, contentType: string): string {
-    let base = typeof raw === "string" ? raw.toLowerCase().slice(0, 80) : "";
-    base = base
-      .replace(/\.\.+/g, "-")
-      .replace(/[^a-zA-Z0-9._-]/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .replace(/^\.+|\.+$/g, "")
-      .replace(/\.[a-z0-9]{2,4}$/, "");
-    if (!base) base = "downloadit-media";
-    const ct = contentType.toLowerCase();
-    let ext = ".mp4";
-    if (ct.includes("audio/mpeg") || ct.includes("audio/mp3")) ext = ".mp3";
-    else if (ct.includes("audio/mp4") || ct.includes("audio/x-m4a")) ext = ".m4a";
-    else if (ct.includes("image/png")) ext = ".png";
-    else if (ct.includes("image/webp")) ext = ".webp";
-    else if (ct.includes("image/jpeg") || ct.includes("image/jpg")) ext = ".jpg";
-    return base + ext;
-  }
+  it("preserves case and spaces in the requested base name", () => {
+    expect(sanitizeDownloadFilename("Downloadit My Pin", "video/mp4")).toBe("Downloadit My Pin.mp4");
+    expect(sanitizeDownloadFilename("Downloadit Sunset Beach", "image/jpeg")).toBe(
+      "Downloadit Sunset Beach.jpg"
+    );
+  });
 
   it("enforces extension from verified content type", () => {
     expect(sanitizeDownloadFilename("creator-video", "video/mp4")).toBe("creator-video.mp4");
     expect(sanitizeDownloadFilename("creator-video.mp4", "image/jpeg")).toBe("creator-video.jpg");
     expect(sanitizeDownloadFilename("pic", "image/png")).toBe("pic.png");
+    expect(sanitizeDownloadFilename("pic", "image/webp")).toBe("pic.webp");
     expect(sanitizeDownloadFilename("track", "audio/mpeg")).toBe("track.mp3");
     expect(sanitizeDownloadFilename("track", "audio/mp4")).toBe("track.m4a");
   });
 
   it("strips path traversal and dangerous characters", () => {
     expect(sanitizeDownloadFilename("../../etc/passwd", "video/mp4")).toBe("etc-passwd.mp4");
-    expect(sanitizeDownloadFilename('a"b\r\nc', "video/mp4")).toBe("a-b-c.mp4");
-    expect(sanitizeDownloadFilename("C:\\evil.exe", "video/mp4")).toBe("c-evil.mp4");
+    expect(sanitizeDownloadFilename('a"b\r\nc', "video/mp4")).toBe("a-bc.mp4");
+    expect(sanitizeDownloadFilename("C:\\evil.exe", "video/mp4")).toBe("C-evil.mp4");
   });
 
   it("falls back to a safe name for empty input", () => {
@@ -41,8 +37,76 @@ describe("Download query-param validation", () => {
     expect(sanitizeDownloadFilename("...", "video/mp4")).toBe("downloadit-media.mp4");
   });
 
-  it("truncates long names", () => {
-    expect(sanitizeDownloadFilename("a".repeat(100), "video/mp4").length).toBeLessThanOrEqual(84);
+  it("truncates long names without splitting a Unicode code point", () => {
+    expect(sanitizeDownloadFilename("a".repeat(200), "video/mp4").length).toBeLessThanOrEqual(124);
+    // 200 emoji code points → capped at 120 code points, never a broken surrogate.
+    const emoji = sanitizeDownloadFilename("😀".repeat(200), "video/mp4");
+    expect(Array.from(emoji.replace(/\.mp4$/, "")).length).toBeLessThanOrEqual(120);
+    expect(emoji).not.toContain("\uFFFD");
+  });
+
+  it("maps verified content types to extensions", () => {
+    expect(extensionForContentType("image/jpeg")).toBe(".jpg");
+    expect(extensionForContentType("image/png")).toBe(".png");
+    expect(extensionForContentType("audio/mpeg")).toBe(".mp3");
+    expect(extensionForContentType("video/mp4")).toBe(".mp4");
+    expect(extensionForContentType("")).toBe(".mp4");
+  });
+
+  it("builds an RFC 5987 Content-Disposition with an ASCII fallback", () => {
+    const header = contentDispositionAttachment("Downloadit नमस्ते Pin.jpg");
+    expect(header.startsWith("attachment;")).toBe(true);
+    expect(header).toContain('filename="Downloadit ');
+    expect(header).toContain("filename*=UTF-8''");
+    expect(header).toContain("%E0%A4%A8"); // percent-encoded Devanagari
+    // The ASCII fallback never leaks the raw non-ASCII bytes.
+    expect(header.split(";")[1]).not.toMatch(/[^\x20-\x7e]/);
+  });
+
+  it("keeps the zip base usable for a folder-less archive name", () => {
+    expect(sanitizeFilenameBase("Downloadit Trip.zip")).toBe("Downloadit Trip");
+    expect(`${sanitizeFilenameBase("Downloadit Trip")}.zip`).toBe("Downloadit Trip.zip");
+  });
+});
+
+describe("ZIP archive writer", () => {
+  const readUInt32 = (b: Buffer, o: number) => b.readUInt32LE(o);
+
+  it("writes a valid store-method archive with central directory", () => {
+    const a = Buffer.from("hello world");
+    const b = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05]);
+    const zip = buildZip([
+      { name: "one.jpg", data: a },
+      { name: "two.png", data: b },
+    ]);
+
+    // Local file header signature.
+    expect(readUInt32(zip, 0)).toBe(0x04034b50);
+    // End of central directory signature.
+    const eocdOffset = zip.length - 22;
+    expect(readUInt32(zip, eocdOffset)).toBe(0x06054b50);
+    expect(zip.readUInt16LE(eocdOffset + 10)).toBe(2); // total entries
+    // Central directory offset points at a central header.
+    const cdOffset = readUInt32(zip, eocdOffset + 16);
+    expect(readUInt32(zip, cdOffset)).toBe(0x02014b50);
+  });
+
+  it("stores real bytes and the correct CRC-32", () => {
+    const data = Buffer.from("The quick brown fox");
+    // Cross-checked against Node's own zlib.crc32 reference implementation.
+    expect(crc32(data)).toBe(nodeCrc32(data));
+    const zip = buildZip([{ name: "f.bin", data }]);
+    // CRC in local header (offset 14) matches the data CRC.
+    expect(zip.readUInt32LE(14)).toBe(crc32(data));
+    // The raw payload is present verbatim (STORE, no compression).
+    expect(zip.includes(data)).toBe(true);
+  });
+
+  it("produces an empty but structurally valid archive", () => {
+    const zip = buildZip([]);
+    expect(zip.length).toBe(22);
+    expect(readUInt32(zip, 0)).toBe(0x06054b50);
+    expect(zip.readUInt16LE(10)).toBe(0);
   });
 });
 

@@ -84,7 +84,9 @@ export type ApiRequestType =
   | "resolve-sse"
   | "media-stream"
   | "media-download"
-  | "audio-post";
+  | "audio-post"
+  | "pinterest-resolve"
+  | "pinterest-sse";
 
 export type ApiFailureCategory =
   | "network"
@@ -408,8 +410,8 @@ export interface ResolveStreamHandle {
  * Late or repeated events after close are ignored, so the fallback — and any
  * handler — runs at most once per handle.
  */
-export function startResolveStream(url: string, handlers: ResolveStreamHandlers): ResolveStreamHandle {
-  const es = new EventSource(`${getApiBase()}/api/resolve/stream?url=${encodeURIComponent(url)}`);
+function openResolveStream(streamUrl: string, handlers: ResolveStreamHandlers): ResolveStreamHandle {
+  const es = new EventSource(streamUrl);
   let closed = false;
   // Monotonic per-stream guard (mirrors the backend gate): resolver fallback
   // stages can legitimately repeat a value, but a late event from a
@@ -487,9 +489,217 @@ export function startResolveStream(url: string, handlers: ResolveStreamHandlers)
   return { close };
 }
 
+export function startResolveStream(url: string, handlers: ResolveStreamHandlers): ResolveStreamHandle {
+  return openResolveStream(`${getApiBase()}/api/resolve/stream?url=${encodeURIComponent(url)}`, handlers);
+}
+
+/**
+ * Pin media the caller expects. "any" lets the backend auto-detect whether the
+ * pin carries a video or an image (and answer with whichever it actually has);
+ * "video"/"image" are strict manual overrides that fail honestly when the pin
+ * does not carry that media type.
+ */
+export type PinterestKind = "video" | "image" | "any";
+
+/**
+ * Client-side Pinterest URL shape check (mirrors the backend validator). This
+ * only gates the submit button and gives an instant message; the backend
+ * re-validates every URL authoritatively before any browser work starts.
+ */
+export function isValidPinterestUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  const host = parsed.hostname.toLowerCase();
+  if (host === "pin.it" || host === "www.pin.it") return true;
+  return /^(?:[a-z0-9-]+\.)*pinterest\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/.test(host);
+}
+
+/**
+ * Opens the Pinterest resolve SSE stream. Same single-use / supersede
+ * contract as {@link startResolveStream}; `kind` selects the pin media the
+ * caller expects ("video", "image", or "any" for automatic detection) so the
+ * backend can answer honestly when the pin does not carry that media type.
+ */
+export function startPinterestResolveStream(
+  url: string,
+  kind: PinterestKind,
+  handlers: ResolveStreamHandlers
+): ResolveStreamHandle {
+  return openResolveStream(
+    `${getApiBase()}/api/pinterest/resolve/stream?url=${encodeURIComponent(url)}&kind=${kind}`,
+    handlers
+  );
+}
+
+/**
+ * Plain-POST fallback for the Pinterest stream (used only when the SSE
+ * transport drops without a server verdict — same policy as the Instagram
+ * flow). Resolves to the honest backend verdict on every failure path.
+ */
+export async function resolvePinterestUrl(
+  url: string,
+  kind: PinterestKind,
+  signal?: AbortSignal
+): Promise<ResolveResponse> {
+  const requestUrl = `${getApiBase()}/api/pinterest/resolve`;
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, kind }),
+      signal,
+    });
+  } catch (error) {
+    logApiFailure({ requestType: "pinterest-resolve", requestUrl, status: null, error });
+    throw error;
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    if (isResolveResponse(body) && !body.success) {
+      logApiFailure({
+        requestType: "pinterest-resolve",
+        requestUrl,
+        status: response.status,
+        error: new Error(`pinterest-resolve-${body.error.code}`),
+      });
+      return body;
+    }
+    logApiFailure({
+      requestType: "pinterest-resolve",
+      requestUrl,
+      status: response.status,
+      error: new Error("pinterest-resolve-malformed-response"),
+      category: "malformed-response",
+    });
+    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+  }
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch (error) {
+    logApiFailure({
+      requestType: "pinterest-resolve",
+      requestUrl,
+      status: response.status,
+      error,
+      category: "malformed-response",
+    });
+    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+  }
+  if (!isResolveResponse(body)) {
+    logApiFailure({
+      requestType: "pinterest-resolve",
+      requestUrl,
+      status: response.status,
+      error: new Error("pinterest-resolve-malformed-response"),
+      category: "malformed-response",
+    });
+    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+  }
+  return body;
+}
+
 export function getStreamUrl(mediaUrl: string, sourceUrl?: string): string {
   const base = `${getApiBase()}/api/stream?url=${encodeURIComponent(mediaUrl)}`;
   return sourceUrl ? `${base}&source=${encodeURIComponent(sourceUrl)}` : base;
+}
+
+/**
+ * True only for a directly usable remote URL: a non-empty http(s) string.
+ * Rejects javascript:/data:/blob: and other non-http(s) schemes so an unsafe
+ * or empty value can never be mounted into a <video>/<img>. Shared by the
+ * video preview source and the poster/thumbnail.
+ */
+export function isPlayableVideoUrl(u: unknown): u is string {
+  if (typeof u !== "string") return false;
+  const v = u.trim();
+  if (!v) return false;
+  try {
+    const parsed = new URL(v);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A poster/thumbnail is only used when it is a plausible remote image:
+ * non-empty http(s) URL, never blob:/data:/javascript: and never an .mp4.
+ * Query-signed CDN URLs carry no file extension, so no extension is required.
+ */
+export function isValidImagePoster(u: unknown): u is string {
+  if (!isPlayableVideoUrl(u)) return false;
+  const v = u.trim().toLowerCase();
+  if (v.endsWith(".mp4") || v.includes(".mp4?") || v.includes(".mp4#")) return false;
+  return true;
+}
+
+/**
+ * The initial (pre-Preview) video surface: a small poster image streamed
+ * through our own backend exactly like the full preview is. Returns null when
+ * there is no usable thumbnail, in which case the caller shows a branded
+ * fallback tile — never a huge empty player. Only the poster image is fetched;
+ * the video itself is never downloaded to render the thumbnail.
+ */
+export function proxiedPosterUrl(
+  thumbnail: string | null | undefined,
+  sourceUrl?: string
+): string | null {
+  return isValidImagePoster(thumbnail) ? getStreamUrl(thumbnail, sourceUrl) : null;
+}
+
+/**
+ * The one decision for the preview-first video surface, shared by EVERY
+ * platform's result card (Instagram Reels/videos, Pinterest videos, ...).
+ * `showThumbnailFirst` is the default state: a compact poster with
+ * Preview + Download. `mountVideo` is true only after the user explicitly
+ * opens the preview, at which point the real <video> is mounted (and only
+ * then may it play). A non-video item, or a video without a playable source,
+ * never gets either surface.
+ */
+export interface MediaPreviewPlan {
+  /** A real, playable video the user can open. */
+  canPreviewVideo: boolean;
+  /** Render the poster/thumbnail as the initial, non-playing surface. */
+  showThumbnailFirst: boolean;
+  /** Mount the real <video> element (user opened the preview). */
+  mountVideo: boolean;
+}
+
+export function mediaPreviewPlan(opts: {
+  isVideo: boolean;
+  hasPlayableVideo: boolean;
+  previewOpen: boolean;
+}): MediaPreviewPlan {
+  const canPreviewVideo = Boolean(opts.isVideo && opts.hasPlayableVideo);
+  const mountVideo = canPreviewVideo && Boolean(opts.previewOpen);
+  return { canPreviewVideo, showThumbnailFirst: canPreviewVideo && !opts.previewOpen, mountVideo };
+}
+
+/**
+ * What a click on a video result's media surface should do. While the compact
+ * poster is showing, the whole surface (and its center Play control) opens the
+ * preview and starts playback — the same action as the Preview button. Once the
+ * real <video> is mounted the surface is inert (`"none"`): the native controls
+ * own play/pause, so a click there must never double-toggle. Non-video and
+ * unplayable items are always inert.
+ */
+export type MediaSurfaceAction = "open-preview" | "none";
+
+export function mediaSurfaceAction(opts: {
+  isVideo: boolean;
+  hasPlayableVideo: boolean;
+  previewOpen: boolean;
+}): MediaSurfaceAction {
+  return opts.isVideo && opts.hasPlayableVideo && !opts.previewOpen ? "open-preview" : "none";
 }
 
 /**
@@ -508,6 +718,63 @@ export function isExpiredMediaErrorCode(code: unknown): boolean {
 
 export function isExpiredMediaStatus(status: number | null | undefined): boolean {
   return status === 410;
+}
+
+/**
+ * The one definition of "currently playing" for the result card's overlay —
+ * derived from the real <video>/<audio> element's own flags, never a timer.
+ * `ended` counts as NOT playing, so the main Preview/Download controls return
+ * when playback finishes.
+ */
+export function isVideoPlaying(paused: boolean, ended: boolean): boolean {
+  return !paused && !ended;
+}
+
+/**
+ * Shared on-video overlay state for EVERY platform's result card (Instagram
+ * Reels/videos, Pinterest videos, any future video source). The overlay only
+ * exists when a real, playable video preview is mounted. Before playback it
+ * shows the Preview + Download pills; the instant the element reports playing
+ * the Preview pill is hidden and Download collapses to a compact circular icon.
+ * Paused, stopped or ended restores both. Derived purely from the element's own
+ * flags — never a timer or a simulated state.
+ */
+export interface VideoOverlayState {
+  showOverlay: boolean;
+  showPreview: boolean;
+  compactDownload: boolean;
+}
+
+export function videoOverlayState(opts: {
+  isVideo: boolean;
+  hasPlayableSrc: boolean;
+  playing: boolean;
+}): VideoOverlayState {
+  const showOverlay = Boolean(opts.isVideo && opts.hasPlayableSrc);
+  return {
+    showOverlay,
+    showPreview: showOverlay && !opts.playing,
+    compactDownload: showOverlay && opts.playing,
+  };
+}
+
+/**
+ * The one decision for a genuine multi-image download. "Download all images"
+ * only exists when the backend actually returned MORE THAN ONE image, so a
+ * single-image post never shows a misleading multi-image action, and a mixed
+ * carousel (e.g. one image + one video) never invents one or downloads the same
+ * image twice.
+ */
+export interface ImageDownloadPlan {
+  /** Number of real image items the backend returned. */
+  imageCount: number;
+  /** True only when a genuine multi-image set exists (>= 2 images). */
+  canDownloadAll: boolean;
+}
+
+export function imageDownloadPlan(items: Array<{ type: string }> | null | undefined): ImageDownloadPlan {
+  const imageCount = Array.isArray(items) ? items.filter((m) => m.type === "image").length : 0;
+  return { imageCount, canDownloadAll: imageCount > 1 };
 }
 
 /**
@@ -570,4 +837,52 @@ export function refreshMediaItemUrl(
 export function getDownloadUrl(mediaUrl: string, filename: string, sourceUrl?: string): string {
   const base = `${getApiBase()}/api/download?url=${encodeURIComponent(mediaUrl)}&filename=${encodeURIComponent(filename)}`;
   return sourceUrl ? `${base}&source=${encodeURIComponent(sourceUrl)}` : base;
+}
+
+/**
+ * Multi-image download: one ZIP from the backend. `url` is appended once per
+ * image so the server can package every slide in a single attachment.
+ */
+export function getZipDownloadUrl(mediaUrls: string[], filename: string, sourceUrl?: string): string {
+  const params = new URLSearchParams();
+  for (const url of mediaUrls) params.append("url", url);
+  params.set("filename", filename);
+  if (sourceUrl) params.set("source", sourceUrl);
+  return `${getApiBase()}/api/download/zip?${params.toString()}`;
+}
+
+/**
+ * Make one filename component safe on Windows/Android/iOS: drop the reserved
+ * characters and control bytes, collapse whitespace, remove trailing dots and
+ * spaces, and truncate to `maxLen` Unicode code points (never splitting a
+ * surrogate pair / combining mark). Returns "" when nothing usable remains so
+ * the caller can substitute a fallback.
+ */
+export function sanitizeFilenameComponent(raw: string | null | undefined, maxLen = 100): string {
+  if (typeof raw !== "string" || !raw) return "";
+  let base = raw.normalize("NFC").replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, " ");
+  base = base.replace(/\s+/g, " ").trim();
+  base = base.replace(/[.\s]+$/, "");
+  const chars = Array.from(base);
+  if (chars.length > maxLen) base = chars.slice(0, maxLen).join("").trim();
+  return base.replace(/[.\s]+$/, "");
+}
+
+/**
+ * The download name pattern used across the tool: `Downloadit {title}.{ext}`.
+ * The title prefers the original pin/post title and falls back to a media-type
+ * label — never a username — so the saved file is always recognisable.
+ */
+export function buildDownloadFilename(opts: {
+  title?: string | null;
+  extension?: string | null;
+  fallback?: string;
+}): string {
+  const title =
+    sanitizeFilenameComponent(opts.title) ||
+    sanitizeFilenameComponent(opts.fallback) ||
+    "Media";
+  const base = `Downloadit ${title}`;
+  const ext = (opts.extension ?? "").replace(/^\.+/, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ext ? `${base}.${ext}` : base;
 }

@@ -722,6 +722,38 @@ body {
   scrollbar-color: var(--border) transparent;
 }
 
+/* ─────────────────────────────────────────────
+   Categories (tool) dropdown — compact, fully readable menu shared by the
+   header. Width tracks the longest tool name (one line where there is room)
+   and is hard-capped so it can never overflow the viewport; long names wrap
+   onto a second line instead of being clipped (deliberately NO ellipsis).
+   Height is bounded by the viewport so the list scrolls internally rather than
+   pushing the page taller, and it respects the mobile safe area at the bottom.
+   ───────────────────────────────────────────── */
+.tool-category-menu {
+  width: max-content;
+  max-width: min(22.5rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 6rem - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+@supports not (height: 100dvh) {
+  .tool-category-menu {
+    max-height: calc(100vh - 6rem);
+  }
+}
+
+@media (max-width: 359.98px) {
+  .tool-category-menu {
+    max-width: calc(100vw - 1.5rem);
+  }
+}
+
 @media (max-width: 767.98px) {
   .result-card {
     width: calc(100% - 32px);
@@ -1309,5 +1341,397 @@ html:not(.js) .readmore-toggle {
   .readmore-toggle,
   .readmore-toggle .readmore-chevron {
     transition: none;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Media-first result card: compact, media-focused. Shared by EVERY video and
+   image result across the site (Instagram Reels, videos, photos, carousels,
+   Stories; Pinterest videos and images/carousels). Scoped with the extra
+   `--media` class so the audio result card (which still uses the two-column
+   layout) keeps its own sizing. Placed last and with two-class specificity so
+   it wins over the earlier `.result-card` rules and the Tailwind width/padding
+   utilities on the same element.
+   ───────────────────────────────────────────── */
+.result-card.result-card--media {
+  /* Max height of the media surface, so the whole card (poster/player + title +
+     actions) fits a typical desktop/phone viewport without vertical scrolling.
+     Overridden per breakpoint below. */
+  --media-max-h: min(64vh, 600px);
+  --media-max-h: min(64dvh, 600px);
+  /* Photo/carousel images get a slightly tighter cap than video. The viewport
+     term subtracts the site header, card header/title, image counter and
+     download controls so the COMPLETE image stays visible without scrolling.
+     Never stretches (object-fit:contain) and never crops. Overridden below. */
+  --media-post-max-h: max(220px, min(60vh, calc(100vh - 340px), 560px));
+  --media-post-max-h: max(220px, min(60dvh, calc(100dvh - 340px), 560px));
+  /* Tiny, consistent gap between the media and the card edge (visual target
+     ~0.3 mm; 2-4px at typical DPI) instead of wide white side gutters. */
+  --result-pad: clamp(1px, 0.1vw, 1.6px);
+  /* Shrink-wrap the card to the media's rendered width (height cap × aspect
+     ratio) so portrait media is not stranded inside a wide white card. The
+     aspect ratio comes from `--media-ar`, set inline per result. 100% keeps
+     narrow screens safe, 260px keeps the header/controls usable, 520px is the
+     desktop ceiling. */
+  width: min(100%, clamp(260px, calc(var(--media-max-h) * var(--media-ar, 1) + 2 * var(--result-pad)), 520px));
+  max-width: min(100%, 520px);
+  padding: 0;
+  margin-inline: auto;
+}
+
+/* Photo/carousel cards use the photo height cap (slightly smaller) so their
+   shrink-wrapped width matches the image exactly. */
+.result-card.result-card--media.result-card--photo {
+  width: min(100%, clamp(260px, calc(var(--media-post-max-h) * var(--media-ar, 1) + 2 * var(--result-pad)), 520px));
+}
+
+/* The white surface is the inner `.result-surface`; this is the container that
+   actually surrounds the video, so its padding/radius are what we tighten. */
+.result-card.result-card--media > .result-surface {
+  padding: var(--result-pad);
+  border-radius: clamp(18px, 3vw, 24px);
+}
+
+/* Tight, content-driven rhythm between header, title and the media. */
+.result-card.result-card--media .result-top-row {
+  margin-bottom: clamp(6px, 1.2vw, 10px);
+}
+
+.result-card.result-card--media .result-title {
+  padding-bottom: clamp(6px, 1.2vw, 10px);
+}
+
+/* The media fills the card's inner width — no wide empty gutters beside it. */
+.result-card.result-card--media .result-video-wrap {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  align-self: stretch;
+}
+
+.result-card.result-card--media .result-video-wrap .media-frame {
+  width: 100%;
+  /* Height-capped on every screen: the frame's width is capped at
+     (max media height × aspect ratio), so portrait media stays narrow and
+     centered and landscape stays inside the container, while object-fit:contain
+     letterboxes without distorting. */
+  max-width: min(100%, calc(var(--media-max-h) * var(--media-ar, 0.5625)));
+  max-height: var(--media-max-h);
+  margin-inline: auto;
+}
+
+/* Photo / carousel images: cap to the image-specific height (room for the
+   header, title, counter and download controls) while keeping the image's own
+   ratio. `object-fit: contain` + the natural-size <img> below mean the image is
+   never stretched, never cropped and small sources are never enlarged. */
+.result-card.result-card--media .result-video-wrap .media-frame.media-post {
+  max-height: var(--media-post-max-h);
+  max-width: min(100%, calc(var(--media-post-max-h) * var(--media-ar, 1)));
+}
+
+/* The stage shrink-wraps the media frame so the overlay carousel arrows sit
+   INSIDE the image edges — not out at the card/column edges — for every
+   portrait, square and landscape item (images and video segments alike).
+   Images use the tighter photo height so the stage matches the image exactly. */
+.result-card.result-card--media .media-stage {
+  width: 100%;
+  max-width: min(100%, calc(var(--media-max-h) * var(--media-ar, 0.5625)));
+  margin-inline: auto;
+}
+
+.result-card.result-card--media .media-stage--post {
+  max-width: min(100%, calc(var(--media-post-max-h) * var(--media-ar, 1)));
+}
+
+/* Overlay carousel arrows: vertically centred, inset from the image edge, with
+   a semi-transparent scrim + white ring so they stay legible on light AND dark
+   images. Kept just under the top overlay controls' z-index. */
+.media-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 10;
+  display: flex;
+  height: 40px;
+  width: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #ffffff;
+  background: rgba(10, 10, 20, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.12);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transform: translateY(-50%);
+  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  touch-action: manipulation;
+}
+
+.media-nav:hover {
+  background: rgba(10, 10, 20, 0.72);
+}
+
+.media-nav:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.media-nav:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.media-nav:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.media-nav--prev {
+  left: 10px;
+}
+
+.media-nav--next {
+  right: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-nav {
+    transition: none;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .result-card.result-card--media {
+    --media-max-h: min(60vh, 540px);
+    --media-max-h: min(60dvh, 540px);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .result-card.result-card--media {
+    --media-max-h: min(58vh, 500px);
+    --media-max-h: min(58dvh, 500px);
+    --media-post-max-h: max(200px, min(56vh, calc(100vh - 300px), 470px));
+    --media-post-max-h: max(200px, min(56dvh, calc(100dvh - 300px), 470px));
+    /* Older mobile `.result-card` rules use !important; the media-first card
+       must keep its shrink-wrapped width and zero outer padding. */
+    width: min(100%, clamp(260px, calc(var(--media-max-h) * var(--media-ar, 1) + 2 * var(--result-pad)), 480px)) !important;
+    max-width: min(100%, 480px) !important;
+    padding: 0 !important;
+  }
+
+  .result-card.result-card--media.result-card--photo {
+    width: min(100%, clamp(260px, calc(var(--media-post-max-h) * var(--media-ar, 1) + 2 * var(--result-pad)), 480px)) !important;
+  }
+
+  .result-card.result-card--media > .result-surface {
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 639.98px) {
+  .result-card.result-card--media {
+    --media-max-h: min(56vh, 460px);
+    --media-max-h: min(56dvh, 460px);
+    --media-post-max-h: max(180px, min(54vh, calc(100vh - 290px), 440px));
+    --media-post-max-h: max(180px, min(54dvh, calc(100dvh - 290px), 440px));
+  }
+}
+
+@media (max-width: 359.98px) {
+  .result-card.result-card--media {
+    max-width: 100%;
+  }
+
+  .result-card.result-card--media > .result-surface {
+    border-radius: 18px;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Result-card action buttons (Preview / Download / Close). Shared by every
+   video and image result. Preview is a distinct solid brand-purple treatment;
+   Download is the primary purple→pink/coral brand gradient with a subtle hover
+   sweep. Sizing is left to the call site so pills and compact circles reuse the
+   same visual language. Reduced-motion preferences are honored below.
+   ───────────────────────────────────────────── */
+.media-cta {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.30);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background-position 0.5s ease;
+}
+
+.media-cta:focus-visible {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 5px var(--focus-ring);
+}
+
+.media-cta:active {
+  transform: scale(0.96);
+}
+
+.media-cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.media-cta--icon {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  gap: 0;
+}
+
+/* Preview: solid brand purple, clearly distinct from the gradient Download. */
+.media-cta-preview {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c4df5 100%);
+  box-shadow: 0 6px 18px rgba(64, 24, 140, 0.34);
+}
+
+.media-cta-preview:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(64, 24, 140, 0.44);
+}
+
+.media-cta-preview:active {
+  transform: scale(0.96);
+}
+
+/* Download: the primary action — brand gradient with a gentle highlight sweep. */
+.media-cta-download {
+  position: relative;
+  overflow: hidden;
+  background-image: var(--brand-gradient);
+  background-size: 170% 170%;
+  background-position: 0% 50%;
+  box-shadow: var(--shadow-brand);
+}
+
+.media-cta-download:hover {
+  transform: translateY(-1px);
+  background-position: 100% 50%;
+  box-shadow: 0 14px 34px rgba(124, 77, 245, 0.44);
+}
+
+.media-cta-download::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.42) 50%, transparent 68%);
+  transform: translateX(-125%);
+  transition: transform 0.65s ease;
+  pointer-events: none;
+}
+
+.media-cta-download:hover::after {
+  transform: translateX(125%);
+}
+
+/* Close-preview control (only when the real player is mounted). */
+.media-cta-close {
+  background: rgba(10, 10, 20, 0.62);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.media-cta-close:hover {
+  transform: scale(1.05);
+  background: rgba(10, 10, 20, 0.80);
+}
+
+.media-cta-close:active {
+  transform: scale(0.94);
+}
+
+/* Center Play control on the preview-first poster. Same action as Preview:
+   clicking it opens the real player and starts playback from the same user
+   gesture. A real <button>, so it is keyboard-focusable and touch-friendly. */
+.media-play-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border-radius: 9999px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #6d28d9 0%, #7c4df5 100%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(64, 24, 140, 0.45);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.media-play-center:hover {
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: 0 14px 38px rgba(64, 24, 140, 0.55);
+}
+
+.media-play-center:active {
+  transform: translate(-50%, -50%) scale(0.97);
+}
+
+.media-play-center:focus-visible {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px var(--focus-ring);
+}
+
+@media (max-width: 639.98px) {
+  .media-play-center {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-cta,
+  .media-cta-preview,
+  .media-cta-download,
+  .media-cta-download::after,
+  .media-play-center {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .media-cta:hover,
+  .media-cta:active,
+  .media-cta-preview:hover,
+  .media-cta-preview:active,
+  .media-cta-download:hover,
+  .media-cta-close:hover,
+  .media-cta-close:active {
+    transform: none !important;
+  }
+
+  .media-play-center:hover,
+  .media-play-center:active {
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .media-cta-download:hover {
+    background-position: 0% 50%;
+  }
+
+  .media-cta-download:hover::after {
+    transform: translateX(-125%);
   }
 }

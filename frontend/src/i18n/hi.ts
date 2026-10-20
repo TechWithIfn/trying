@@ -29,6 +29,12 @@ export const hi: Strings = {
     howItWorks: "यह कैसे काम करता है",
     faq: "आम सवाल",
   },
+  pinterest: {
+    groupLabel: "मीडिया प्रकार",
+    auto: "स्वतः पहचान",
+    video: "वीडियो",
+    carousel: "कैरोसेल",
+  },
   hero: {
     badge: "तेज़ · मुफ़्त · बिना लॉगिन",
     titleA: "Instagram कंटेंट सहेजें",
@@ -213,6 +219,7 @@ export const hi: Strings = {
     previewUnavailable: "प्रीव्यू उपलब्ध नहीं",
     newBtn: "नया",
     playVideo: "वीडियो चलाएं",
+    playbackError: "प्लेबैक शुरू नहीं हो सका। फिर से प्ले दबाएँ।",
     pauseVideo: "वीडियो रोकें",
     playAudio: "ऑडियो चलाएं",
     pauseAudio: "ऑडियो रोकें",
@@ -221,6 +228,9 @@ export const hi: Strings = {
     audioErrorFallback: "ऑडियो निकालने में विफल",
     downloadVideoLabel: "वीडियो MP4 के रूप में डाउनलोड करें",
     downloadAudioLabel: "ऑडियो MP3 के रूप में डाउनलोड करें",
+    downloadSingleImage: "यह छवि डाउनलोड करें",
+    downloadAllImages: "सभी छवियाँ डाउनलोड करें",
+    downloadMenuLabel: "डाउनलोड विकल्प",
   },
   errors: {
     empty: "कृपया Instagram पोस्ट, रील, स्टोरी या हाइलाइट का लिंक डालें।",
