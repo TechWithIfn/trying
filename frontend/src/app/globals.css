@@ -1365,9 +1365,10 @@ html:not(.js) .readmore-toggle {
      Never stretches (object-fit:contain) and never crops. Overridden below. */
   --media-post-max-h: max(220px, min(60vh, calc(100vh - 340px), 560px));
   --media-post-max-h: max(220px, min(60dvh, calc(100dvh - 340px), 560px));
-  /* Tiny, consistent gap between the media and the card edge (visual target
-     ~0.3 mm; 2-4px at typical DPI) instead of wide white side gutters. */
-  --result-pad: clamp(1px, 0.1vw, 1.6px);
+  /* Small, balanced breathing room between the media and the card edge:
+     4px on phones up to 6px on wide screens. Still far from the old wide
+     white gutters. */
+  --result-pad: clamp(4px, 0.4vw, 6px);
   /* Shrink-wrap the card to the media's rendered width (height cap × aspect
      ratio) so portrait media is not stranded inside a wide white card. The
      aspect ratio comes from `--media-ar`, set inline per result. 100% keeps

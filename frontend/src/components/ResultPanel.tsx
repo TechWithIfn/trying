@@ -6,15 +6,17 @@
 // progress ring, and error states stay in the critical bundle.
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react";
+import { createPortal } from "react-dom";
 import {
   Download as DownloadIcon,
   Pause,
   Play,
+  Eye,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   AlertCircle,
   Image as ImageIcon,
+  Images as ImagesIcon,
   X,
 } from "lucide-react";
 import {
@@ -71,6 +73,25 @@ function decodeHtmlEntities(text: string): string {
     String.fromCodePoint(parseInt(dec, 10))
   );
   return decoded;
+}
+
+const TITLE_PREVIEW_LENGTH = 20;
+
+function titlePreview(text: string): { text: string; isLong: boolean } {
+  let chars: string[];
+  try {
+    chars =
+      typeof Intl.Segmenter === "function"
+        ? Array.from(
+            new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text),
+            (part) => part.segment
+          )
+        : Array.from(text);
+  } catch {
+    chars = Array.from(text);
+  }
+  if (chars.length <= TITLE_PREVIEW_LENGTH) return { text, isLong: false };
+  return { text: chars.slice(0, TITLE_PREVIEW_LENGTH).join(""), isLong: true };
 }
 
 function getContentTypeLabel(type: string, badges: Strings["typeBadges"]): string {
@@ -753,8 +774,8 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
   // browser autoplay-policy refusal). Surfaced as an honest message; cleared the
   // moment real playback starts. Never a simulated state.
   const [, setPlaybackError] = useState<string | null>(null);
-  // Image/carousel download menu (single vs all).
-  const [imgMenuOpen, setImgMenuOpen] = useState(false);
+  // Full-size lightbox for static images/carousel slides.
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(true);
   const [audioError, setAudioError] = useState<string | null>(null);
@@ -782,7 +803,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     }
     return 0;
   });
-  // Long captions are clamped with a Show more/less toggle.
+  // Titles longer than 20 characters collapse behind Show more/less.
   const [captionExpanded, setCaptionExpanded] = useState(false);
   // Real duration/resolution observed from the <video> element (never faked).
   const [realDuration, setRealDuration] = useState<number | null>(null);
@@ -922,7 +943,6 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     setVideoPreviewOpen(false);
     setPosterFailed(false);
     setPlaybackError(null);
-    setImgMenuOpen(false);
   }, []);
 
   // Carousel navigation must never wait on the stream proxy — a hung preload
@@ -1085,21 +1105,6 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     }, 4000);
   }, [items, result.title, result.sourceUrl, zipState, handleDownloadVideo, platformLabel]);
 
-  // Dismiss the image download menu on an outside click or Escape.
-  useEffect(() => {
-    if (!imgMenuOpen) return;
-    const close = () => setImgMenuOpen(false);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setImgMenuOpen(false);
-    };
-    document.addEventListener("click", close);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("click", close);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [imgMenuOpen]);
-
   const handleDownloadAudio = useCallback(() => {
     if (!audioUrl) return;
     // Same pattern as every other media type (`Downloadit - {title}.mp3`); the
@@ -1147,10 +1152,9 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
   const rawPoster = currentMedia?.thumbnail ?? result.thumbnail ?? undefined;
   const videoThumbSrc = proxiedPosterUrl(rawPoster, result.sourceUrl);
 
-  // Every video result (all platforms) gets its controls as an on-media overlay;
-  // every image/carousel gets its download control(s) directly under the
-  // picture. A video whose preview could not be mounted keeps an under-media
-  // download so the action is never unreachable.
+  // Every image/carousel and every previewable video gets Preview + Download
+  // as an on-media overlay at the top edge. A video whose preview could not be
+  // mounted keeps an under-media download so the action is never unreachable.
   const isImageItem = Boolean(currentMedia && currentMedia.type === "image");
   const videoOverlay = videoOverlayState({
     isVideo: isVideoItem && !isAudio,
@@ -1173,7 +1177,9 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
   });
   const posterIsClickable = surfaceAction === "open-preview";
   const showMediaDownloadControls =
-    Boolean(currentMedia) && !isAudio && (!isVideoItem || !proxyVideoSrc);
+    Boolean(currentMedia) && !isAudio && isVideoItem && !proxyVideoSrc;
+  const showTopMediaControls =
+    Boolean(currentMedia) && !isAudio && (isImageItem || videoOverlay.showOverlay);
   // A genuine multi-image set is the only thing that offers "Download all
   // images"; the plan is derived from the real backend items.
   const imagePlan = imageDownloadPlan(items);
@@ -1374,6 +1380,27 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     setPlaybackError(null);
   }, []);
 
+  const openImagePreview = useCallback(() => {
+    if (!isImageItem || imgFailed) return;
+    setImagePreviewOpen(true);
+  }, [isImageItem, imgFailed]);
+
+  useEffect(() => {
+    if (!imagePreviewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImagePreviewOpen(false);
+      else if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [imagePreviewOpen, goPrev, goNext]);
+
   // Strict validation: for Story, never show profile/avatar as success
   if (isStoryProfileFallback) {
     return (
@@ -1402,113 +1429,96 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     );
   }
 
-  /**
-   * Image/carousel download control(s) shown directly under the media (every
-   * platform). A single image — or a video whose preview failed to mount — gets
-   * one button; a genuine multi-image carousel gets a menu offering the current
-   * slide or the whole set as one ZIP. The "all" action only exists when the
-   * backend really returned more than one image.
-   */
-  const mediaDownloadControls = (
-    <div className="relative mt-3 w-full">
-      {isImageItem && imagePlan.canDownloadAll ? (
-        <>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setImgMenuOpen((v) => !v);
-            }}
-            disabled={zipState === "preparing"}
-            aria-haspopup="menu"
-            aria-expanded={imgMenuOpen}
-            aria-label={t.result.downloadMenuLabel}
-            className="media-cta media-cta-download min-h-[48px] w-full text-[14px] disabled:opacity-60"
-          >
-            {zipState === "preparing" ? (
-              <>
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                  <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
-                </svg>
-                {t.result.downloading}
-              </>
-            ) : (
-              <>
-                <DownloadIcon className="h-4 w-4" />
-                {t.result.download}
-                <ChevronDown className="h-4 w-4" />
-              </>
-            )}
-          </button>
-          {imgMenuOpen && (
-            <div
-              role="menu"
-              className="absolute inset-x-0 bottom-[calc(100%+6px)] z-30 overflow-hidden rounded-2xl p-1 text-left"
-              style={{ background: "var(--card)", border: "1px solid var(--border)", boxShadow: "0 16px 40px rgba(60,40,120,0.22)" }}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setImgMenuOpen(false);
-                  handleDownloadVideo();
-                }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary"
-              >
-                <DownloadIcon className="h-4 w-4" />
-                {t.result.downloadSingleImage}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setImgMenuOpen(false);
-                  handleDownloadAll();
-                }}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary"
-              >
-                <DownloadIcon className="h-4 w-4" />
-                {t.result.downloadAllImages}
-                <span
-                  className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-bold"
-                  style={{ background: "var(--primary-light)", color: "var(--primary-strong)" }}
-                >
-                  {imagePlan.imageCount}
-                </span>
-              </button>
-            </div>
-          )}
-        </>
-      ) : (
+  const spinner = (
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+      <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+    </svg>
+  );
+
+  // Image/carousel controls live on the media's top edge, matching video.
+  // A carousel exposes both actions as separate buttons so the choices stay
+  // visible without a dropdown covering the photo.
+  const imageDownloadControl = !isImageItem ? null : (
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDownloadVideo();
+        }}
+        disabled={downloading === "preparing"}
+        aria-label={t.result.downloadSingleImage}
+        className="media-cta media-cta-download h-11 w-11 px-0 text-[13px] disabled:opacity-60 sm:h-auto sm:w-auto sm:min-h-[42px] sm:px-4"
+      >
+        {downloading === "preparing" ? (
+          spinner
+        ) : downloading === "error" ? (
+          <>
+            <DownloadIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.result.tryAgain}</span>
+          </>
+        ) : (
+          <>
+            <DownloadIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">{t.result.download}</span>
+          </>
+        )}
+      </button>
+      {imagePlan.canDownloadAll && (
         <button
           type="button"
-          onClick={handleDownloadVideo}
-          disabled={downloading === "preparing"}
-          aria-label={isVideoItem ? t.result.downloadVideoLabel : t.result.downloadSingleImage}
-          className="media-cta media-cta-download min-h-[48px] w-full text-[14px] disabled:opacity-60"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDownloadAll();
+          }}
+          disabled={zipState === "preparing"}
+          aria-label={`${t.result.downloadAllImages} (${imagePlan.imageCount})`}
+          className="media-cta media-cta-download h-11 px-3 text-[12px] disabled:opacity-60 sm:h-auto sm:min-h-[42px] sm:px-4 sm:text-[13px]"
         >
-          {downloading === "preparing" ? (
-            <>
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
-              </svg>
-              {t.result.downloading}
-            </>
-          ) : downloading === "error" ? (
-            <>
-              <DownloadIcon className="h-4 w-4" />
-              {t.result.tryAgain}
-            </>
+          {zipState === "preparing" ? (
+            spinner
           ) : (
             <>
-              <DownloadIcon className="h-4 w-4" />
-              {t.result.download}
+              <ImagesIcon className="h-4 w-4" />
+              <span>All {imagePlan.imageCount}</span>
             </>
           )}
         </button>
       )}
+    </>
+  );
+
+  /**
+   * Fallback download for a video whose preview could not be mounted, kept
+   * directly under the media so the action is never unreachable.
+   */
+  const mediaDownloadControls = (
+    <div className="mt-3 w-full">
+      <button
+        type="button"
+        onClick={handleDownloadVideo}
+        disabled={downloading === "preparing"}
+        aria-label={t.result.downloadVideoLabel}
+        className="media-cta media-cta-download min-h-[48px] w-full text-[14px] disabled:opacity-60"
+      >
+        {downloading === "preparing" ? (
+          <>
+            {spinner}
+            {t.result.downloading}
+          </>
+        ) : downloading === "error" ? (
+          <>
+            <DownloadIcon className="h-4 w-4" />
+            {t.result.tryAgain}
+          </>
+        ) : (
+          <>
+            <DownloadIcon className="h-4 w-4" />
+            {t.result.download}
+          </>
+        )}
+      </button>
     </div>
   );
 
@@ -1551,20 +1561,31 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
 
         {result.title && (() => {
           const caption = decodeHtmlEntities(result.title);
-          const isLong = caption.length > 160;
+          const preview = titlePreview(caption);
+          const visibleTitle = captionExpanded || !preview.isLong ? caption : preview.text;
           return (
             <div className="result-title px-1 pb-3">
-              <p className={`text-[14px] leading-[1.5] text-fg-muted break-words ${!captionExpanded && isLong ? "line-clamp-3" : ""}`}>
-                {caption}
+              <p className="text-[14px] leading-[1.5] text-fg-muted break-words">
+                {visibleTitle}
+                {preview.isLong && !captionExpanded && (
+                  <button
+                    type="button"
+                    onClick={() => setCaptionExpanded(true)}
+                    className="ml-1 inline align-baseline text-[12px] font-semibold text-primary-strong transition-colors hover:text-primary-hover"
+                    aria-expanded={false}
+                  >
+                    Show more
+                  </button>
+                )}
               </p>
-              {isLong && (
+              {preview.isLong && captionExpanded && (
                 <button
                   type="button"
-                  onClick={() => setCaptionExpanded((v) => !v)}
+                  onClick={() => setCaptionExpanded(false)}
                   className="mt-1 min-h-[32px] text-[12px] font-semibold text-primary-strong transition-colors hover:text-primary-hover"
-                  aria-expanded={captionExpanded}
+                  aria-expanded={true}
                 >
-                  {captionExpanded ? "Show less" : "Show more"}
+                  Show less
                 </button>
               )}
             </div>
@@ -1771,17 +1792,29 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
                 />
               </div>
             )}
-              {/* On-media Preview/Download controls for EVERY video result.
-                  Driven by the real element's play/pause/ended events: before
-                  playback the Preview + Download pills show over the poster;
-                  while playing only a compact circular Download shows, and the
-                  moment the video is paused or ends the pills come back. A Close
-                  control appears once the real player is mounted so the user can
-                  return to the poster. Anchored at the top so it never covers
-                  the native control bar. */}
-              {videoOverlay.showOverlay && (
+              {/* On-media Preview/Download controls for every image/carousel
+                  and video. Images open a full-size lightbox; videos mount the
+                  real player. Video controls are driven by the element's own
+                  play/pause/ended events: before playback Preview + Download
+                  show over the poster, while playing only a compact Download
+                  remains. A Close control returns to the poster. */}
+              {showTopMediaControls && (
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2.5 p-2.5 sm:p-3">
-                  {videoOverlay.showPreview ? (
+                  {isImageItem ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openImagePreview();
+                      }}
+                      disabled={imgFailed}
+                      aria-label="Preview image"
+                      className="media-cta media-cta-preview h-11 w-11 px-0 text-[13px] disabled:opacity-60 sm:h-auto sm:w-auto sm:min-h-[42px] sm:px-4"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="hidden sm:inline">Preview</span>
+                    </button>
+                  ) : videoOverlay.showPreview ? (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1799,43 +1832,46 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
                     <span aria-hidden="true" />
                   )}
                   <div className="ml-auto flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        // Download must never start or pause the video.
-                        e.stopPropagation();
-                        handleDownloadVideo();
-                      }}
-                      disabled={downloading === "preparing"}
-                      aria-label={t.result.downloadVideoLabel}
-                      className={`media-cta media-cta-download text-[13px] ${
-                        videoOverlay.compactDownload
-                          ? "media-cta--icon"
-                          : "h-11 w-11 px-0 sm:h-auto sm:w-auto sm:min-h-[42px] sm:px-4"
-                      }`}
-                    >
-                      {downloading === "preparing" ? (
-                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                          <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
-                        </svg>
-                      ) : (
-                        <DownloadIcon className="h-4 w-4" />
-                      )}
-                      {videoOverlay.showPreview && <span className="hidden sm:inline">{t.result.download}</span>}
-                    </button>
-                    {mediaPlan.mountVideo && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          closeVideoPreview();
-                        }}
-                        aria-label="Close preview"
-                        className="media-cta media-cta-close media-cta--icon"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                    {isImageItem ? (
+                      imageDownloadControl
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            // Download must never start or pause the video.
+                            e.stopPropagation();
+                            handleDownloadVideo();
+                          }}
+                          disabled={downloading === "preparing"}
+                          aria-label={t.result.downloadVideoLabel}
+                          className={`media-cta media-cta-download text-[13px] ${
+                            videoOverlay.compactDownload
+                              ? "media-cta--icon"
+                              : "h-11 w-11 px-0 sm:h-auto sm:w-auto sm:min-h-[42px] sm:px-4"
+                          }`}
+                        >
+                          {downloading === "preparing" ? (
+                            spinner
+                          ) : (
+                            <DownloadIcon className="h-4 w-4" />
+                          )}
+                          {videoOverlay.showPreview && <span className="hidden sm:inline">{t.result.download}</span>}
+                        </button>
+                        {mediaPlan.mountVideo && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeVideoPreview();
+                            }}
+                            aria-label="Close preview"
+                            className="media-cta media-cta-close media-cta--icon"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -1961,6 +1997,79 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       </div>
 
       <p className={`break-words px-2 text-center text-[12px] text-fg-subtle sm:text-[12px] ${isMediaFirst ? "mt-3" : "mt-4"}`}>{t.result.tempNote}</p>
+
+      {imagePreviewOpen && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image preview"
+          onClick={() => setImagePreviewOpen(false)}
+        >
+          <button
+            type="button"
+            autoFocus
+            onClick={(e) => {
+              e.stopPropagation();
+              setImagePreviewOpen(false);
+            }}
+            aria-label="Close preview"
+            className="media-cta media-cta-close media-cta--icon absolute right-4 top-4 z-20"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div
+            className="relative flex max-h-full max-w-full items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- full-size view of the same backend /api/stream proxy used by the card */}
+            <img
+              key={currentMedia?.url}
+              src={imgSrc ?? streamSrc}
+              alt={result.title ? decodeHtmlEntities(result.title).slice(0, 120) : t.typeBadges.photo}
+              className="max-h-[86vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+            />
+            {showCarouselNav && currentMedia && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goPrev();
+                  }}
+                  disabled={safeIndex === 0}
+                  aria-label="Previous image"
+                  className="media-nav media-nav--prev"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goNext();
+                  }}
+                  disabled={safeIndex === items.length - 1}
+                  aria-label="Next image"
+                  className="media-nav media-nav--next"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </>
+            )}
+          </div>
+          {showCarouselNav && currentMedia && (
+            <p
+              className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[12px] font-bold tabular-nums text-white"
+              aria-live="polite"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {safeIndex + 1} / {items.length}
+            </p>
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
