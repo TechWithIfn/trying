@@ -20,8 +20,8 @@ const IMAGE_HTML =
 const VIDEO_HTML =
   `<script type="application/ld+json">{"@type":"VideoObject","name":"Clip","contentUrl":"https://v1.pinimg.com/videos/mc/720p/a.mp4"}</script>`;
 
-function relayHtml(payload: Record<string, unknown>): string {
-  const data = JSON.stringify({ entityId: "1234567890123456789", ...payload });
+function relayHtml(payload: Record<string, unknown>, entityId = "1234567890123456789"): string {
+  const data = JSON.stringify({ entityId, ...payload });
   return `<script>window.__PWS_RELAY_REGISTER_COMPLETED_REQUEST__("%7B%22queryID%22%3A%22x%22%7D", ${data})</script>`;
 }
 
@@ -340,5 +340,106 @@ describe("resolvePinterestPin â€” modern story/carousel video metadata", () => {
     const result = await resolvePinterestPin(PIN, "any");
     expect(result.type).toBe("VIDEO");
     expect(result.media.map((m) => m.url)).toEqual(["https://v1.pinimg.com/videos/iht/720p/story.mp4"]);
+  });
+});
+
+const REPRO_PIN_URL = "https://in.pinterest.com/pin/1077204804633867988/";
+const REPRO_PIN_ID = "1077204804633867988";
+const REPRO_COVER = "https://i.pinimg.com/originals/bb/70/2a/bb702aa2b8ba43e7960de8e6b4e98638.jpg";
+const REPRO_VIDEO_THUMB =
+  "https://i.pinimg.com/videos/thumbnails/originals/5d/e5/4a/5de54ad64980d37b3a7aa28dd0bc3d12.0000000.jpg";
+const REPRO_HLS =
+  "https://v1.pinimg.com/videos/iht/hls/5d/e5/4a/5de54ad64980d37b3a7aa28dd0bc3d12.m3u8";
+const REPRO_MP4 =
+  "https://v1.pinimg.com/videos/iht/expMp4/5d/e5/4a/5de54ad64980d37b3a7aa28dd0bc3d12_360w.mp4";
+
+function reproPage(includeLdVideo: boolean): string {
+  const blocks: Record<string, unknown>[] = [
+    { "@type": "SocialMediaPosting", name: "shayari", image: REPRO_COVER },
+  ];
+  if (includeLdVideo) {
+    blocks.push({
+      "@type": "VideoObject",
+      name: "shayari",
+      contentUrl: REPRO_MP4,
+      thumbnailUrl: REPRO_VIDEO_THUMB,
+      width: 360,
+      height: 640,
+      duration: "PT13.7S",
+    });
+  }
+  const ld = `<script type="application/ld+json">${JSON.stringify(blocks)}</script>`;
+  const relay = relayHtml(
+    {
+      images_orig: { url: REPRO_COVER, width: 1080, height: 1920 },
+      videos: null,
+      storyPinData: {
+        pages: [
+          {
+            blocks: [
+              {
+                videoDataV2: {
+                  videoList: {
+                    vHLSV3MOBILE: { url: REPRO_HLS, width: 360, height: 640, duration: 13700 },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    },
+    REPRO_PIN_ID
+  );
+  return ld + relay;
+}
+
+describe("resolvePinterestPin — reported pin 1077204804633867988", () => {
+  it("Auto Detect returns the exact LD VideoObject MP4, never the cover", async () => {
+    stubPinPage(reproPage(true));
+    const result = await resolvePinterestPin(REPRO_PIN_URL, "any");
+    expect(result.type).toBe("VIDEO");
+    expect(result.media.map((item) => item.url)).toEqual([REPRO_MP4]);
+    expect(result.media[0]).toMatchObject({ type: "video", width: 360, height: 640, duration: 13.7 });
+    expect(result.thumbnail).toBe(REPRO_VIDEO_THUMB);
+  });
+
+  it("Auto Detect derives and verifies expMp4 when LD omits the VideoObject", async () => {
+    stubPinPage(reproPage(false));
+    const result = await resolvePinterestPin(REPRO_PIN_URL, "any");
+    expect(result.type).toBe("VIDEO");
+    expect(result.media.map((item) => item.url)).toEqual([REPRO_MP4]);
+  });
+
+  it("manual Image returns the cover as PHOTO, while manual Video returns VIDEO", async () => {
+    stubPinPage(reproPage(true));
+    const image = await resolvePinterestPin(REPRO_PIN_URL, "image");
+    expect(image.type).toBe("PHOTO");
+    expect(image.media.map((item) => item.url)).toEqual([REPRO_COVER]);
+
+    const video = await resolvePinterestPin(REPRO_PIN_URL, "video");
+    expect(video.type).toBe("VIDEO");
+    expect(video.media.map((item) => item.url)).toEqual([REPRO_MP4]);
+  });
+
+  it("falls back to the genuine image when the derived MP4 is expired", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/pin/")) return html(reproPage(false));
+        if (String(url).includes("/expMp4/")) {
+          return new Response(null, { status: 404, headers: { "content-type": "text/html" } });
+        }
+        return new Response(null, { status: 206, headers: { "content-type": "image/jpeg" } });
+      })
+    );
+
+    const auto = await resolvePinterestPin(REPRO_PIN_URL, "any");
+    expect(auto.type).toBe("PHOTO");
+    expect(auto.media.map((item) => item.url)).toEqual([REPRO_COVER]);
+
+    await expect(resolvePinterestPin(REPRO_PIN_URL, "video")).rejects.toMatchObject({
+      code: "PINTEREST_PARSE_FAILED",
+    });
   });
 });

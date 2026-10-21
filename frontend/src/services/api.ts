@@ -533,7 +533,7 @@ export function startPinterestResolveStream(
   handlers: ResolveStreamHandlers
 ): ResolveStreamHandle {
   return openResolveStream(
-    `${getApiBase()}/api/pinterest/resolve/stream?url=${encodeURIComponent(url)}&kind=${kind}`,
+    `${getApiBase()}/api/pinterest/resolve/stream?url=${encodeURIComponent(url)}&kind=${kind}&_=${Date.now()}`,
     handlers
   );
 }
@@ -555,6 +555,7 @@ export async function resolvePinterestUrl(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, kind }),
+      cache: "no-store",
       signal,
     });
   } catch (error) {

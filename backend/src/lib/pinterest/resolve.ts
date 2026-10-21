@@ -62,6 +62,11 @@ const PIN_HEADERS: Record<string, string> = {
 export interface ExtractedPinPayload {
   videos: MediaItem[];
   images: MediaItem[];
+  /**
+   * Progressive MP4s derived from an HLS-only rendition. They are unverified
+   * and are only used when the normal video candidates fail verification.
+   */
+  fallbackVideos: MediaItem[];
   thumbnail: string | null;
   title: string | null;
   author: Author | null;
@@ -86,7 +91,15 @@ interface RawVideoRendition {
 export type PinterestExpected = "video" | "image" | "any";
 
 function emptyExtraction(): ExtractedPinPayload {
-  return { videos: [], images: [], thumbnail: null, title: null, author: null, notFound: false };
+  return {
+    videos: [],
+    images: [],
+    fallbackVideos: [],
+    thumbnail: null,
+    title: null,
+    author: null,
+    notFound: false,
+  };
 }
 
 function safePinimgUrl(raw: unknown): string | null {
@@ -437,6 +450,100 @@ function carouselEntities(payload: Record<string, any>): Record<string, any>[] {
 }
 
 /**
+ * Pinterest's modern `videos` object can carry only an HLS manifest while the
+ * same asset is also exposed as a progressive `expMp4` sibling. When the
+ * LD+JSON VideoObject is absent, derive that sibling from the manifest path
+ * (and its declared width) so Auto Detect still has a video candidate. The
+ * derived URL is never trusted on its own: the normal HEAD/Range verification
+ * step drops it when it is missing or serves a non-video response.
+ */
+const IHT_HLS_RE = /\/videos\/iht\/hls\/((?:[0-9a-f]{2}\/){3})([0-9a-f]{32})\.m3u8$/i;
+
+function expMp4FromHls(rawUrl: unknown, width: unknown): string | null {
+  const url = safePinimgUrl(rawUrl);
+  const w = toNumber(width);
+  if (!url || !w) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  const match = IHT_HLS_RE.exec(parsed.pathname);
+  if (!match) return null;
+  return `${parsed.origin}/videos/iht/expMp4/${match[1]}${match[2]}_${Math.round(w)}w.mp4`;
+}
+
+/**
+ * Collect progressive siblings for HLS-only relay/LD metadata. This runs at
+ * the HTML-composition layer because LD+JSON and the relay are both needed;
+ * `extractPinMedia` itself stays a pure, non-speculative mapper.
+ */
+export function deriveExpMp4Videos(
+  relay: Record<string, any> | null,
+  blocks: Record<string, any>[],
+  thumbnail: string | null,
+  existing: Set<string> = new Set()
+): MediaItem[] {
+  const out: MediaItem[] = [];
+  const seen = new Set(existing);
+
+  const add = (rawUrl: unknown, width: unknown, height: unknown, duration: unknown): void => {
+    const url = expMp4FromHls(rawUrl, width);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({
+      url,
+      type: "video",
+      width: toNumber(width),
+      height: toNumber(height),
+      duration: normalizeDuration(duration),
+      thumbnail,
+      format: "mp4",
+      mimeType: "video/mp4",
+    });
+  };
+
+  const addEntity = (entity: Record<string, any>): void => {
+    const sources: Record<string, any>[] = [entity];
+    if (Array.isArray(entity.blocks)) {
+      for (const block of entity.blocks) {
+        if (block && typeof block === "object") sources.push(block as Record<string, any>);
+      }
+    }
+    for (const source of sources) {
+      for (const rendition of collectVideoRenditions(source)) {
+        add(rendition.url, rendition.width, rendition.height, rendition.duration);
+      }
+    }
+  };
+
+  if (relay) {
+    for (const rendition of collectVideoRenditions(relay)) {
+      add(rendition.url, rendition.width, rendition.height, rendition.duration);
+    }
+    for (const entity of carouselEntities(relay)) addEntity(entity);
+    const storyData = relay.story_pin_data ?? relay.storyPinData;
+    const pages = Array.isArray(storyData?.pages) ? storyData.pages : [];
+    for (const page of pages) {
+      if (page && typeof page === "object") addEntity(page as Record<string, any>);
+    }
+  }
+
+  // LD+JSON normally points at the MP4 directly; handle variants that expose
+  // an HLS `contentUrl` alongside width/height instead.
+  for (const block of blocks) {
+    if (!block || typeof block !== "object") continue;
+    for (const source of collectLdVideoSources(block)) {
+      add(source.url, source.width, source.height, source.duration);
+    }
+  }
+
+  out.sort((a, b) => (b.height ?? 0) - (a.height ?? 0) || (b.width ?? 0) - (a.width ?? 0));
+  return out;
+}
+
+/**
  * Pure extraction: map one legacy/relay pin payload to normalized media items.
  * Every URL passes the shared CDN/SSRF allowlist before it is returned —
  * a payload that points anywhere else is silently dropped, never trusted.
@@ -573,6 +680,7 @@ export function extractPinMedia(payload: Record<string, any>): ExtractedPinPaylo
   return {
     videos: media,
     images,
+    fallbackVideos: [],
     thumbnail,
     title:
       cleanTitle(payload.grid_title) ??
@@ -961,7 +1069,8 @@ export function extractPinMediaFromHtml(
   pinId: string | null,
   precomputedBlocks?: Record<string, any>[]
 ): ExtractedPinPayload {
-  const fromLd = extractLdJsonMedia(precomputedBlocks ?? parseLdJsonBlocks(html));
+  const blocks = precomputedBlocks ?? parseLdJsonBlocks(html);
+  const fromLd = extractLdJsonMedia(blocks);
   const relay = extractRelayPinPayload(html, pinId);
   const fromRelay = relay ? extractPinMedia(relay) : emptyExtraction();
   const og = parseOgMeta(html);
@@ -984,9 +1093,17 @@ export function extractPinMediaFromHtml(
   }
   if (!thumbnail && images.length > 0) thumbnail = images[0].url;
 
+  const fallbackVideos = deriveExpMp4Videos(
+    relay,
+    blocks,
+    thumbnail,
+    new Set(videos.map((video) => video.url))
+  );
+
   return {
     videos,
     images,
+    fallbackVideos,
     thumbnail,
     title: fromLd.title ?? fromRelay.title ?? cleanTitle(og.title),
     author: fromLd.author ?? fromRelay.author,
@@ -1339,7 +1456,9 @@ export async function resolvePinterestPin(
     throw createError("PINTEREST_PIN_NOT_FOUND");
   }
 
-  const hasMedia = extracted.videos.length > 0 || extracted.images.length > 0;
+  const fallbackVideos = extracted.fallbackVideos;
+  const hasMedia =
+    extracted.videos.length > 0 || fallbackVideos.length > 0 || extracted.images.length > 0;
   if (!hasMedia) {
     const verdict = classifyPinPageText(page.body);
     if (verdict === "not-found") throw createError("PINTEREST_PIN_NOT_FOUND");
@@ -1355,6 +1474,22 @@ export async function resolvePinterestPin(
   emit(80, "Verifying media link");
   const verifyStartedAt = Date.now();
 
+  // The derived expMp4 candidate is only probed if the normal candidates do
+  // not verify, so a valid LD/relay rendition never pays for an extra request.
+  let fallbackVerified: MediaItem[] | null = null;
+  const verifiedFallback = async (): Promise<MediaItem[]> => {
+    if (fallbackVerified !== null) return fallbackVerified;
+    fallbackVerified = fallbackVideos.length > 0 ? await filterVerified(fallbackVideos, signal) : [];
+    if (fallbackVerified.length > 0) {
+      logger.info("[PINTEREST] using derived progressive fallback", {
+        requestId,
+        candidates: fallbackVideos.length,
+        selected: fallbackVerified.length,
+      });
+    }
+    return fallbackVerified;
+  };
+
   let media: MediaItem[];
   let type: ResolverResult["type"];
   if (expected === "image") {
@@ -1364,8 +1499,12 @@ export async function resolvePinterestPin(
     media = verified;
     type = media.length > 1 ? "CAROUSEL" : "PHOTO";
   } else if (expected === "video") {
-    if (extracted.videos.length === 0) throw createError("PINTEREST_NO_VIDEO");
-    const verified = await filterVerified(extracted.videos, signal);
+    if (extracted.videos.length === 0 && fallbackVideos.length === 0) {
+      throw createError("PINTEREST_NO_VIDEO");
+    }
+    let verified =
+      extracted.videos.length > 0 ? await filterVerified(extracted.videos, signal) : [];
+    if (verified.length === 0) verified = await verifiedFallback();
     if (verified.length === 0) throw createError("PINTEREST_PARSE_FAILED");
     media = verified;
     type = "VIDEO";
@@ -1373,7 +1512,9 @@ export async function resolvePinterestPin(
     // Auto Detect: classify from the media that actually verified. A thumbnail
     // alone never classifies as video; if every video candidate is unusable,
     // fall back to the genuine images instead of failing the whole resolve.
-    const verifiedVideos = extracted.videos.length > 0 ? await filterVerified(extracted.videos, signal) : [];
+    let verifiedVideos =
+      extracted.videos.length > 0 ? await filterVerified(extracted.videos, signal) : [];
+    if (verifiedVideos.length === 0) verifiedVideos = await verifiedFallback();
     if (verifiedVideos.length > 0) {
       media = verifiedVideos;
       type = "VIDEO";
@@ -1392,6 +1533,7 @@ export async function resolvePinterestPin(
     requestId,
     type,
     videoCount: extracted.videos.length,
+    fallbackVideoCount: fallbackVideos.length,
     imageCount: extracted.images.length,
     selected: media.length,
     fetchMs: duration,

@@ -64,6 +64,7 @@ export const hi: Strings = {
     story: "स्टोरी",
     video: "वीडियो",
     photo: "कैरोसेल",
+    image: "इमेज",
     content: "कंटेंट",
   },
   steps: {

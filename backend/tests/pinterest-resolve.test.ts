@@ -749,3 +749,72 @@ describe("extractPinMediaFromHtml", () => {
     expect(extracted.notFound).toBe(false);
   });
 });
+
+const REPRO_PIN_ID = "1077204804633867988";
+const REPRO_COVER = `${IMG}/originals/bb/70/2a/bb702aa2b8ba43e7960de8e6b4e98638.jpg`;
+const REPRO_VIDEO_THUMB = `${IMG}/videos/thumbnails/originals/5d/e5/4a/5de54ad64980d37b3a7aa28dd0bc3d12.0000000.jpg`;
+const REPRO_HLS = `${VID}/videos/iht/hls/5d/e5/4a/5de54ad64980d37b3a7aa28dd0bc3d12.m3u8`;
+const REPRO_MP4 = `${VID}/videos/iht/expMp4/5d/e5/4a/5de54ad64980d37b3a7aa28dd0bc3d12_360w.mp4`;
+
+function reproRelay(): string {
+  const payload = JSON.stringify({
+    entityId: REPRO_PIN_ID,
+    images_orig: { url: REPRO_COVER, width: 1080, height: 1920 },
+    videos: null,
+    storyPinData: {
+      pages: [
+        {
+          blocks: [
+            {
+              videoDataV2: {
+                videoList: {
+                  vHLSV3MOBILE: { url: REPRO_HLS, width: 360, height: 640, duration: 13700 },
+                },
+              },
+            },
+          ],
+        },
+      ],
+    },
+  });
+  return `<script>window.__PWS_RELAY_REGISTER_COMPLETED_REQUEST__("%7B%22queryID%22%3A%22x%22%7D", ${payload})</script>`;
+}
+
+describe("Pinterest reproduction pin 1077204804633867988", () => {
+  it("extracts the LD VideoObject MP4 and keeps the cover as a separate image", () => {
+    const html =
+      `<script type="application/ld+json">${JSON.stringify([
+        { "@type": "SocialMediaPosting", name: "shayari", image: REPRO_COVER },
+        {
+          "@type": "VideoObject",
+          name: "shayari",
+          contentUrl: REPRO_MP4,
+          thumbnailUrl: REPRO_VIDEO_THUMB,
+          width: 360,
+          height: 640,
+          duration: "PT13.7S",
+        },
+      ])}</script>` + reproRelay();
+
+    const extracted = extractPinMediaFromHtml(html, REPRO_PIN_ID);
+    expect(extracted.videos.map((video) => video.url)).toEqual([REPRO_MP4]);
+    expect(extracted.videos[0]).toMatchObject({ width: 360, height: 640, duration: 13.7 });
+    expect(extracted.images.map((image) => image.url)).toEqual([REPRO_COVER]);
+    expect(extracted.thumbnail).toBe(REPRO_VIDEO_THUMB);
+    expect(extracted.fallbackVideos).toHaveLength(0);
+  });
+
+  it("derives the expMp4 sibling when only the relay HLS rendition is present", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "SocialMediaPosting",
+      name: "shayari",
+      image: REPRO_COVER,
+    })}</script>` + reproRelay();
+
+    const extracted = extractPinMediaFromHtml(html, REPRO_PIN_ID);
+    expect(extracted.videos).toHaveLength(0);
+    expect(extracted.fallbackVideos.map((video) => video.url)).toEqual([REPRO_MP4]);
+    expect(extracted.fallbackVideos[0]).toMatchObject({ width: 360, height: 640, duration: 13.7 });
+    expect(extracted.images.map((image) => image.url)).toEqual([REPRO_COVER]);
+  });
+});

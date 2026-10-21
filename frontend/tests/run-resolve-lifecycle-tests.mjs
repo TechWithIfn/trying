@@ -179,12 +179,15 @@ async function main() {
   });
   const pinEs = FakeEventSource.instances[FakeEventSource.instances.length - 1];
   check("pinterest stream sends kind=any", new URL(pinEs.url).searchParams.get("kind"), "any");
+  check("pinterest stream cache-busts the request", Number(new URL(pinEs.url).searchParams.get("_")) > 0, true);
   pinEs.close();
 
   let pinterestBody = null;
   let pinterestUrl = null;
+  let pinterestInit = null;
   globalThis.fetch = async (url, init) => {
     pinterestUrl = String(url);
+    pinterestInit = init;
     pinterestBody = JSON.parse(init.body);
     return new Response(
       JSON.stringify({ success: false, error: { code: "PINTEREST_PIN_NOT_FOUND", message: "missing" } }),
@@ -195,6 +198,7 @@ async function main() {
   check("pinterest POST sends kind=any", pinterestBody.kind, "any");
   check("pinterest POST targets its own route", pinterestUrl.includes("/api/pinterest/resolve"), true);
   check("pinterest POST carries the url", pinterestBody.url, "https://www.pinterest.com/pin/123/");
+  check("pinterest POST bypasses the HTTP cache", pinterestInit.cache, "no-store");
 
   // ---- E. POST resolve: exactly one fetch attempt ----
   let fetchCalls = 0;

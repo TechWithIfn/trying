@@ -63,6 +63,7 @@ export const en: Strings = {
     story: "Story",
     video: "Video",
     photo: "Carousel",
+    image: "Image",
     content: "Content",
   },
   steps: {

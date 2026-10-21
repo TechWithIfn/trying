@@ -94,7 +94,11 @@ function titlePreview(text: string): { text: string; isLong: boolean } {
   return { text: chars.slice(0, TITLE_PREVIEW_LENGTH).join(""), isLong: true };
 }
 
-function getContentTypeLabel(type: string, badges: Strings["typeBadges"]): string {
+function getContentTypeLabel(
+  type: string,
+  badges: Strings["typeBadges"],
+  isPinterest = false
+): string {
   const labels: Record<string, string> = {
     REEL: badges.reel,
     POST: badges.post,
@@ -102,7 +106,7 @@ function getContentTypeLabel(type: string, badges: Strings["typeBadges"]): strin
     STORY: badges.story,
     STORY_PROFILE: badges.story,
     VIDEO: badges.video,
-    PHOTO: badges.photo,
+    PHOTO: isPinterest ? badges.image : badges.photo,
     AUDIO: badges.content,
     UNKNOWN: badges.content,
   };
@@ -1541,7 +1545,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
             className="inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-bold text-white"
             style={{ background: isAudio ? "linear-gradient(135deg, #7c4df5, #ec5fa8)" : "var(--brand-gradient)" }}
           >
-            {isAudio ? t.result.audio : getContentTypeLabel(result.type, t.typeBadges)}
+            {isAudio ? t.result.audio : getContentTypeLabel(result.type, t.typeBadges, isPinterest)}
           </span>
           {result.author && (
             <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 sm:justify-start">

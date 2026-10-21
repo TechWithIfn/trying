@@ -84,6 +84,7 @@ export interface Strings {
     story: string;
     video: string;
     photo: string;
+    image: string;
     content: string;
   };
   steps: {
