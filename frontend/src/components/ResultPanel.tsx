@@ -874,7 +874,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       let data;
       try {
         data = isPinterest
-          ? await resolvePinterestUrl(result.sourceUrl, "any")
+          ? await resolvePinterestUrl(result.sourceUrl, result.type === "VIDEO" ? "video" : "image")
           : await resolveInstagramUrl(result.sourceUrl, undefined, { refresh: true });
       } catch (err) {
         logApiFailure({ requestType, requestUrl, status: null, error: err });
@@ -901,7 +901,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       setFreshItems(next);
       return true;
     },
-    [result.sourceUrl, items, safeIndex, isPinterest]
+    [result.sourceUrl, result.type, items, safeIndex, isPinterest]
   );
 
   // Frontend safety: NEVER display profile/avatar as Story media

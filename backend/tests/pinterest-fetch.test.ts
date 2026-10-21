@@ -153,6 +153,39 @@ describe("resolvePinterestPin — Auto Detect", () => {
     expect(result.thumbnail).toBe("https://i.pinimg.com/236x/aa/bb/poster.jpg");
   });
 
+  it("auto-detects a video carried only in a top-level video_list", async () => {
+    stubPinPage(
+      relayHtml({
+        images_orig: { url: "https://i.pinimg.com/originals/aa/bb/poster.jpg", width: 1000, height: 1500 },
+        video_list: {
+          v720P: {
+            url: "https://v1.pinimg.com/videos/mc/720p/clip.mp4",
+            width: 720,
+            height: 1280,
+            contentType: "video/mp4",
+          },
+        },
+      })
+    );
+    const result = await resolvePinterestPin(PIN, "any");
+    expect(result.type).toBe("VIDEO");
+    expect(result.media.map((m) => m.url)).toEqual(["https://v1.pinimg.com/videos/mc/720p/clip.mp4"]);
+    expect(result.media[0].height).toBe(1280);
+    expect(result.thumbnail).toBe("https://i.pinimg.com/originals/aa/bb/poster.jpg");
+  });
+
+  it("never classifies a thumbnail listed as a video candidate as VIDEO", async () => {
+    stubPinPage(
+      relayHtml({
+        images_orig: { url: "https://i.pinimg.com/originals/aa/bb/poster.jpg" },
+        videos: {
+          videoUrls: ["https://i.pinimg.com/videos/thumbnails/originals/aa/bb/poster.0000000.jpg"],
+        },
+      })
+    );
+    await expect(resolvePinterestPin(PIN, "video")).rejects.toMatchObject({ code: "PINTEREST_NO_VIDEO" });
+  });
+
   it("falls back to images when the only video candidate is not media", async () => {
     vi.stubGlobal(
       "fetch",
@@ -252,5 +285,60 @@ describe("resolvePinterestPin — upstream resilience", () => {
       })
     );
     await expect(resolvePinterestPin(PIN, "video")).rejects.toMatchObject({ code: "PINTEREST_PARSE_FAILED" });
+  });
+
+  it("does not return a video candidate that is actually an image", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/pin/")) return html(VIDEO_HTML);
+        return new Response(null, { status: 200, headers: { "content-type": "image/jpeg" } });
+      })
+    );
+    await expect(resolvePinterestPin(PIN, "video")).rejects.toMatchObject({ code: "PINTEREST_PARSE_FAILED" });
+  });
+
+  it("does not return a missing video URL as a playable video", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/pin/")) return html(VIDEO_HTML);
+        return new Response(null, { status: 404, headers: { "content-type": "text/html" } });
+      })
+    );
+    await expect(resolvePinterestPin(PIN, "video")).rejects.toMatchObject({ code: "PINTEREST_PARSE_FAILED" });
+  });
+});
+
+describe("resolvePinterestPin — modern story/carousel video metadata", () => {
+  it("auto-detects a story video stored only in videoDataV2", async () => {
+    stubPinPage(
+      relayHtml({
+        images_orig: { url: "https://i.pinimg.com/originals/aa/bb/cover.jpg", width: 1080, height: 1920 },
+        videos: null,
+        storyPinData: {
+          pages: [
+            {
+              blocks: [
+                {
+                  videoDataV2: {
+                    videoList720P: {
+                      v720P: {
+                        url: "https://v1.pinimg.com/videos/iht/720p/story.mp4",
+                        width: 1080,
+                        height: 1920,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      })
+    );
+    const result = await resolvePinterestPin(PIN, "any");
+    expect(result.type).toBe("VIDEO");
+    expect(result.media.map((m) => m.url)).toEqual(["https://v1.pinimg.com/videos/iht/720p/story.mp4"]);
   });
 });

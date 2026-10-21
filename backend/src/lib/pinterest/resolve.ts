@@ -30,7 +30,12 @@ import type { Author, MediaItem, ResolveCallOptions, ResolveProgressCallback, Re
  */
 
 /** Per-attempt upstream timeout for the pin page + its media verification. */
-const FETCH_TIMEOUT_MS = readPositiveInt("PINTEREST_FETCH_TIMEOUT_MS", 12_000);
+const FETCH_TIMEOUT_MS = readPositiveInt("PINTEREST_FETCH_TIMEOUT_MS", 8_000);
+/**
+ * Total time budget across all page-fetch attempts. Without this, three slow
+ * attempts could occupy 3× the per-attempt timeout and look like a hang.
+ */
+const FETCH_BUDGET_MS = readPositiveInt("PINTEREST_FETCH_BUDGET_MS", 12_000);
 /** Hard ceiling on the buffered HTML (real pin pages are ~1.5 MB of markup). */
 const MAX_HTML_BYTES = 8 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
@@ -192,43 +197,91 @@ function smallestImage(images: RawImageSize): string | null {
 }
 
 /**
- * Flatten every video rendition map found on the payload.
- * Handles the classic `videos.video_list` shape, the multi-video
- * `videos_extension[].video_list` shape, and the modern v3 shape where
- * renditions live under `videos.videoList` (map) and `videos.videoUrls`
- * (bare URL array mixing progressive MP4 with HLS/DASH manifests).
+ * Video metadata is not always nested under `videos`. Pinterest has used
+ * `video_list`, `videoList`, `videoUrls`, direct `video_url`/`videoUrl`, and —
+ * on story/carousel blocks — `videoDataV2` maps such as `videoList720P`,
+ * `videoListMobile`, `v_hlsv4_video_list`, etc. Match all of those spellings
+ * (including quality-suffixed variants) while ignoring unrelated fields like
+ * `videoStatus` or `videoId`.
+ */
+const VIDEO_FIELD_RE =
+  /^(?:videos?|video(?:List|Url|Urls|Version|Versions|Data|Rendition|Renditions|Extension|Extensions|Format|Formats|Source|Sources)\w*|videos(?:List|Url|Urls|Version|Versions|Data|Rendition|Renditions|Extension|Extensions|Format|Formats|Source|Sources)\w*|video_(?:list|urls?|versions?|data|renditions?|extensions?|formats?|sources?)\w*|videos_(?:list|urls?|versions?|data|extensions?|formats?)\w*|v_hls\w*|renditions?|playlists?)$/i;
+
+/**
+ * Metadata stored beside a rendition URL. These are never additional video
+ * resources, so the flattening walk does not descend into them (a thumbnail
+ * must not become a second "video" candidate).
+ */
+const NON_VIDEO_PROP_RE =
+  /^(?:url|thumbnail|thumbnails|thumb|poster|preview|previewImage|cover|coverImage|image|images|imageUrl|avatar|pinner|author|board|music|audio|captions?|captionsUrls|contentType|mimeType|duration|width|height|size|format|__typename|id|name|title|description|text|seo\w*)$/i;
+
+function isVideoFieldKey(key: string): boolean {
+  return VIDEO_FIELD_RE.test(key);
+}
+
+/**
+ * Flatten every video rendition found on a payload or entity.
+ *
+ * Supported shapes include the classic `videos.video_list`, the multi-video
+ * `videos_extension[].video_list`, the modern v3 `videos.videoList` map and
+ * `videos.videoUrls` array, top-level/direct `video_list`, `videoList`,
+ * `video_url`, `videoUrl`, or `video` fields, and story/carousel
+ * `videoDataV2` quality maps. Arrays of video entities are traversed too.
+ * Only URLs are deduplicated; a richer rendition object wins over a bare URL
+ * string regardless of field order.
  */
 export function collectVideoRenditions(payload: Record<string, any>): RawVideoRendition[] {
   const out: RawVideoRendition[] = [];
-  const seen = new Set<string>();
-  const pushUrl = (url: unknown): void => {
-    if (typeof url !== "string" || seen.has(url)) return;
-    seen.add(url);
-    out.push({ url });
+  const indexByUrl = new Map<string, number>();
+
+  const richness = (r: RawVideoRendition): number => {
+    let score = 0;
+    if (r.width !== undefined && r.width !== null) score++;
+    if (r.height !== undefined && r.height !== null) score++;
+    if (r.duration !== undefined && r.duration !== null) score++;
+    if (typeof r.contentType === "string" && r.contentType.length > 0) score++;
+    return score;
   };
-  const pushMap = (map: unknown): void => {
-    if (!map || typeof map !== "object") return;
-    for (const rendition of Object.values(map as Record<string, unknown>)) {
-      if (!rendition || typeof rendition !== "object") continue;
-      const r = rendition as RawVideoRendition;
-      if (typeof r.url !== "string") continue;
-      if (seen.has(r.url)) continue;
-      seen.add(r.url);
-      out.push(r);
+  const add = (rendition: RawVideoRendition): void => {
+    if (typeof rendition.url !== "string" || !/^https?:\/\//i.test(rendition.url)) return;
+    const existing = indexByUrl.get(rendition.url);
+    if (existing === undefined) {
+      indexByUrl.set(rendition.url, out.length);
+      out.push(rendition);
+      return;
+    }
+    // A bare URL can be seen before the richer rendition object. Keep the
+    // richer metadata regardless of field order.
+    if (richness(rendition) > richness(out[existing])) out[existing] = rendition;
+  };
+
+  /**
+   * Once inside a recognized video field every descendant is a candidate
+   * rendition or a map keyed by quality name (v720P, vHLSV3MOBILE, ...).
+   * Metadata keys are skipped so a poster URL is never collected as a video.
+   */
+  const visitVideoValue = (value: unknown, depth: number): void => {
+    if (value === null || value === undefined || depth > 8) return;
+    if (typeof value === "string") {
+      add({ url: value });
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) visitVideoValue(item, depth + 1);
+      return;
+    }
+    if (typeof value !== "object") return;
+
+    const entity = value as Record<string, any>;
+    if (typeof entity.url === "string") add(entity as RawVideoRendition);
+    for (const [key, child] of Object.entries(entity)) {
+      if (NON_VIDEO_PROP_RE.test(key)) continue;
+      visitVideoValue(child, depth + 1);
     }
   };
-  if (payload.videos && typeof payload.videos === "object") {
-    const videos = payload.videos as Record<string, any>;
-    pushMap(videos.video_list);
-    pushMap(videos.videoList);
-    if (Array.isArray(videos.videos_extension)) {
-      for (const ext of videos.videos_extension) {
-        if (ext && typeof ext === "object") pushMap((ext as Record<string, any>).video_list);
-      }
-    }
-    if (Array.isArray(videos.videoUrls)) {
-      for (const url of videos.videoUrls) pushUrl(url);
-    }
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (isVideoFieldKey(key)) visitVideoValue(value, 0);
   }
   return out;
 }
@@ -236,17 +289,39 @@ export function collectVideoRenditions(payload: Record<string, any>): RawVideoRe
 /** HEVC/H.265 renditions play in few browsers — used only as a last resort. */
 const HEVC_RE = /hevc|h265/i;
 
+const IMAGE_EXTENSION_RE = /\.(jpe?g|png|webp|gif|avif|bmp|svg|ico)(?:$|\/)/i;
+const MANIFEST_EXTENSION_RE = /\.(m3u8|mpd|m4s|ts)(?:$|\/)/i;
+
+function urlPath(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url.replace(/[?#].*$/, "");
+  }
+}
+
 function isMp4Rendition(r: RawVideoRendition): boolean {
-  const url = typeof r.url === "string" ? r.url : "";
+  const url = typeof r.url === "string" ? r.url.trim() : "";
+  if (!url) return false;
   const ct = typeof r.contentType === "string" ? r.contentType.toLowerCase() : "";
-  if (ct.includes("mp4")) return true;
+  const path = urlPath(url).toLowerCase();
+
+  // A poster/thumbnail is never a video, even when a payload incorrectly
+  // lists it beside MP4 renditions. Reject image MIME types and image paths
+  // before any positive video check.
+  if (ct.startsWith("image/") || /(?:jpeg|png|webp|gif|avif)/.test(ct)) return false;
+  if (IMAGE_EXTENSION_RE.test(path) || /\/thumbnails?\//.test(path)) return false;
+  // Manifests are not downloadable files. Their segments must never be
+  // returned as the video either.
   if (ct.includes("m3u8") || ct.includes("dash") || ct.includes("json")) return false;
-  // Manifests are never downloadable files — reject the container extensions.
-  if (/\.(m3u8|mpd|m4s|ts)(\?|$)/i.test(url)) return false;
-  if (/\.mp4(\?|$)/i.test(url)) return true;
+  if (MANIFEST_EXTENSION_RE.test(path)) return false;
+  if (ct.includes("mp4")) return true;
+  if (/\.mp4$/i.test(path)) return true;
   // Legacy Pinterest progressive renditions (v_360p/v_720p) usually have no
-  // extension but also no manifest — accept non-manifest, non-HLS URLs.
-  return !/hls|dash|h265/i.test(url);
+  // extension. Accept them only on a real video route; an extensionless image
+  // URL must not become a fake video.
+  if (/hls|dash|h265/i.test(url)) return false;
+  return /\/videos?\//i.test(path);
 }
 
 /**
@@ -313,10 +388,10 @@ function imageFromEntity(entity: Record<string, any>): { url: string; width: num
 /** Progressive MP4s carried directly or nested on a carousel slide / story block. */
 function videosFromEntity(entity: Record<string, any>, thumbnail: string | null): MediaItem[] {
   const out: MediaItem[] = [];
-  const push = (url: unknown, width: unknown, height: unknown, duration: unknown): void => {
+  const push = (url: unknown, width: unknown, height: unknown, duration: unknown, contentType?: unknown): void => {
     const safe = safePinimgUrl(url);
     if (!safe || out.some((item) => item.url === safe)) return;
-    if (!isMp4Rendition({ url: safe })) return;
+    if (!isMp4Rendition({ url: safe, contentType })) return;
     out.push({
       url: safe,
       type: "video",
@@ -328,8 +403,19 @@ function videosFromEntity(entity: Record<string, any>, thumbnail: string | null)
       mimeType: "video/mp4",
     });
   };
-  for (const rendition of collectVideoRenditions({ videos: entity.videos ?? entity.video })) {
-    push(rendition.url, rendition.width, rendition.height, rendition.duration);
+  // The entity itself may carry `videos`, a top-level `video_list`/`videoList`,
+  // direct video URL fields (snake_case and camelCase), or — on story/carousel
+  // slides — nested block objects such as `videoDataV2`.
+  const sources: Record<string, any>[] = [entity];
+  if (Array.isArray(entity.blocks)) {
+    for (const block of entity.blocks) {
+      if (block && typeof block === "object") sources.push(block as Record<string, any>);
+    }
+  }
+  for (const source of sources) {
+    for (const rendition of collectVideoRenditions(source)) {
+      push(rendition.url, rendition.width, rendition.height, rendition.duration, rendition.contentType);
+    }
   }
   push(entity.video_url ?? entity.videoUrl, entity.video_width ?? entity.videoWidth, entity.video_height ?? entity.videoHeight, entity.duration);
   if (typeof entity.video === "string") {
@@ -435,13 +521,16 @@ export function extractPinMedia(payload: Record<string, any>): ExtractedPinPaylo
 
   // Progressive MP4 renditions, highest quality first. HLS/DASH-only pins
   // yield no downloadable mp4 — reported honestly as no-video, never a fake.
+  const rootVideoWidth = toNumber(payload.video_width ?? payload.videoWidth);
+  const rootVideoHeight = toNumber(payload.video_height ?? payload.videoHeight);
+  const rootDuration = normalizeDuration(payload.video_duration ?? payload.videoDuration ?? payload.duration);
   const renditions = collectVideoRenditions(payload)
     .filter(isMp4Rendition)
     .map((r) => ({
       url: safePinimgUrl(r.url),
-      width: toNumber(r.width),
-      height: toNumber(r.height),
-      duration: normalizeDuration(r.duration),
+      width: toNumber(r.width) ?? rootVideoWidth,
+      height: toNumber(r.height) ?? rootVideoHeight,
+      duration: normalizeDuration(r.duration) ?? rootDuration,
     }))
     .filter(
       (r): r is { url: string; width: number | null; height: number | null; duration: number | null } =>
@@ -500,6 +589,17 @@ export function extractPinMedia(payload: Record<string, any>): ExtractedPinPaylo
 export function parseLdJsonBlocks(html: string): Record<string, any>[] {
   const out: Record<string, any>[] = [];
   const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const push = (value: unknown): void => {
+    if (!value || typeof value !== "object") return;
+    const block = value as Record<string, any>;
+    // `@graph` wraps the interesting entities in an array; the wrapper itself
+    // carries no media, so flatten it instead of losing the pin data.
+    if (Array.isArray(block["@graph"])) {
+      for (const item of block["@graph"]) push(item);
+      return;
+    }
+    out.push(block);
+  };
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     const raw = m[1].trim();
@@ -507,9 +607,9 @@ export function parseLdJsonBlocks(html: string): Record<string, any>[] {
     try {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        for (const item of parsed) if (item && typeof item === "object") out.push(item);
-      } else if (parsed && typeof parsed === "object") {
-        out.push(parsed);
+        for (const item of parsed) push(item);
+      } else {
+        push(parsed);
       }
     } catch {
       /* one malformed block must never break extraction */
@@ -596,32 +696,52 @@ function tryParseJson(text: string): Record<string, any> | null {
  * (`window.__PWS_RELAY_REGISTER_COMPLETED_REQUEST__(... )`), anchored to the
  * requested pin's `entityId` so a recommended/related pin is never returned.
  */
+const RELAY_MEDIA_KEYS = new Set([
+  "images",
+  "videos",
+  "images_orig",
+  "carouselData",
+  "carousel_data",
+  "storyPinData",
+  "story_pin_data",
+  "aggregatedPinData",
+  "aggregated_pin_data",
+  "video_list",
+  "videoList",
+  "videoUrls",
+  "video_urls",
+  "video_url",
+  "videoUrl",
+  "video",
+]);
+
+/** True when the parsed object itself carries the pin's media fields. */
+function hasRelayMediaFields(value: Record<string, any>): boolean {
+  return Object.keys(value).some((key) => RELAY_MEDIA_KEYS.has(key) || isVideoFieldKey(key));
+}
+
 export function extractRelayPinPayload(html: string, pinId: string | null): Record<string, any> | null {
   if (!pinId) return null;
   const marker = "__PWS_RELAY_REGISTER_COMPLETED_REQUEST__(";
-  const needle = `"entityId":"${pinId}"`;
+  // Pinterest emits compact JSON, but accept whitespace and unquoted ids too
+  // so a serializer change does not silently disable relay extraction.
+  const escapedId = pinId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const needleRe = new RegExp(`"entityId"\\s*:\\s*"?${escapedId}"?(?=\\s*[,}])`);
   let searchFrom = 0;
   while (true) {
     const idx = html.indexOf(marker, searchFrom);
     if (idx === -1) return null;
     searchFrom = idx + marker.length;
     const segment = html.slice(idx + marker.length, Math.min(html.length, idx + marker.length + RELAY_SCAN_WINDOW));
-    const at = segment.indexOf(needle);
+    const match = needleRe.exec(segment);
+    const at = match ? match.index : -1;
     if (at === -1) continue;
     let brace = segment.lastIndexOf("{", at);
     while (brace !== -1) {
       const slice = sliceBalancedJson(segment, brace);
       if (slice && brace + slice.length > at) {
         const parsed = tryParseJson(slice);
-        if (
-          parsed &&
-          (parsed.images ||
-            parsed.videos ||
-            parsed.images_orig ||
-            parsed.carouselData ||
-            parsed.storyPinData ||
-            parsed.aggregatedPinData)
-        ) {
+        if (parsed && hasRelayMediaFields(parsed)) {
           return parsed;
         }
       }
@@ -687,6 +807,65 @@ function isPinLdBlock(block: Record<string, any>): boolean {
   return type === "" || !SITE_LD_TYPE_RE.test(type);
 }
 
+interface LdVideoSource {
+  url: string;
+  contentType: unknown;
+  width: unknown;
+  height: unknown;
+  duration: unknown;
+  thumbnail: unknown;
+}
+
+/**
+ * VideoObject content is normally `contentUrl`, but some Pinterest variants
+ * nest it under `video`/`media` or use `videoUrl`/`video_url`. Only explicit
+ * video/media properties are followed — a generic `url` on the outer
+ * SocialMediaPosting block is the pin page, not a media file.
+ */
+function collectLdVideoSources(block: Record<string, any>): LdVideoSource[] {
+  const out: LdVideoSource[] = [];
+  const seen = new Set<string>();
+  const add = (rawUrl: unknown, source: Record<string, any>): void => {
+    const url = safePinimgUrl(rawUrl);
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({
+      url,
+      contentType: source.contentType ?? block.contentType,
+      width: source.width ?? block.width,
+      height: source.height ?? block.height,
+      duration: source.duration ?? block.duration,
+      thumbnail: source.thumbnailUrl ?? block.thumbnailUrl,
+    });
+  };
+  const walk = (value: unknown, depth: number): void => {
+    if (value === null || value === undefined || depth > 3) return;
+    if (typeof value === "string") {
+      add(value, {});
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, depth + 1);
+      return;
+    }
+    if (typeof value !== "object") return;
+    const obj = value as Record<string, any>;
+    add(obj.contentUrl, obj);
+    add(obj.videoUrl, obj);
+    add(obj.video_url, obj);
+    // Nested media objects may use a plain `url`; the outer block's own
+    // `url` is deliberately not considered a media candidate.
+    if (depth > 0) add(obj.url, obj);
+    for (const key of ["video", "media", "encoding"]) walk(obj[key], depth + 1);
+  };
+
+  add(block.contentUrl, block);
+  add(block.videoUrl, block);
+  add(block.video_url, block);
+  for (const key of ["video", "media", "encoding"]) walk(block[key], 1);
+  return out;
+}
+
 function extractLdJsonMedia(blocks: Record<string, any>[]): LdJsonMedia {
   const videos: MediaItem[] = [];
   const images: MediaItem[] = [];
@@ -700,23 +879,25 @@ function extractLdJsonMedia(blocks: Record<string, any>[]): LdJsonMedia {
     title ??= cleanTitle(block.name) ?? cleanTitle(block.headline);
     author ??= authorFromLd(block.author) ?? authorFromLd(block.creator);
 
-    const contentUrl = safePinimgUrl(block.contentUrl);
     const thumb = safePinimgUrl(block.thumbnailUrl);
     if (thumb && !thumbnail) thumbnail = thumb;
-    // A `contentUrl` is only usable as a video when it is a progressive MP4.
-    // An HLS/DASH manifest (or any extension-less non-mp4) is NOT a
-    // downloadable file; returning it would mount a manifest into <video> and
-    // surface "Preview unavailable" for a pin that does have a real MP4
-    // rendition elsewhere in the payload. Apply the same rendition filter the
-    // relay path already uses.
-    if (contentUrl && isMp4Rendition({ url: contentUrl, contentType: block.contentType })) {
+    // Only progressive MP4s are usable. An HLS/DASH manifest (or any
+    // extension-less non-mp4) is NOT a downloadable file; returning it would
+    // mount a manifest into <video> and surface "Preview unavailable" for a
+    // pin that does have a real MP4 rendition elsewhere in the payload. Apply
+    // the same rendition filter the relay path already uses.
+    for (const source of collectLdVideoSources(block)) {
+      if (!isMp4Rendition({ url: source.url, contentType: source.contentType })) continue;
+      const videoThumb = safePinimgUrl(source.thumbnail) ?? thumb;
+      if (videoThumb && !thumbnail) thumbnail = videoThumb;
+      if (videos.some((item) => item.url === source.url)) continue;
       videos.push({
-        url: contentUrl,
+        url: source.url,
         type: "video",
-        width: parsePx(block.width),
-        height: parsePx(block.height),
-        duration: parseIsoDuration(block.duration),
-        thumbnail: thumb,
+        width: parsePx(source.width),
+        height: parsePx(source.height),
+        duration: parseIsoDuration(source.duration),
+        thumbnail: videoThumb,
         format: "mp4",
         mimeType: "video/mp4",
       });
@@ -775,8 +956,12 @@ function dedupeVideos(list: MediaItem[]): MediaItem[] {
  * payload (extra renditions/cover) + open-graph as a last-resort image.
  * `aggregated*` recommendation feeds are intentionally ignored here.
  */
-export function extractPinMediaFromHtml(html: string, pinId: string | null): ExtractedPinPayload {
-  const fromLd = extractLdJsonMedia(parseLdJsonBlocks(html));
+export function extractPinMediaFromHtml(
+  html: string,
+  pinId: string | null,
+  precomputedBlocks?: Record<string, any>[]
+): ExtractedPinPayload {
+  const fromLd = extractLdJsonMedia(precomputedBlocks ?? parseLdJsonBlocks(html));
   const relay = extractRelayPinPayload(html, pinId);
   const fromRelay = relay ? extractPinMedia(relay) : emptyExtraction();
   const og = parseOgMeta(html);
@@ -947,12 +1132,19 @@ interface PinPage {
  */
 async function fetchPinPage(url: string, externalSignal: AbortSignal | undefined, requestId?: string): Promise<PinPage> {
   let lastKind: "timeout" | "network" | "http" = "network";
+  let lastStatus: number | null = null;
+  const deadline = Date.now() + FETCH_BUDGET_MS;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      lastKind = "timeout";
+      break;
+    }
     const controller = new AbortController();
     const onExternal = (): void => controller.abort();
     if (externalSignal?.aborted) controller.abort();
     externalSignal?.addEventListener("abort", onExternal, { once: true });
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), Math.min(FETCH_TIMEOUT_MS, remaining));
     timer.unref?.();
     try {
       const { status, finalUrl, res } = await fetchHops(url, controller.signal);
@@ -960,8 +1152,9 @@ async function fetchPinPage(url: string, externalSignal: AbortSignal | undefined
         const retryAfter = parseRetryAfter(res.headers.get("retry-after"));
         drainBody(res);
         lastKind = "http";
+        lastStatus = status;
         if (attempt < MAX_ATTEMPTS) {
-          const wait = retryAfter ?? backoffMs(attempt);
+          const wait = Math.min(retryAfter ?? backoffMs(attempt), Math.max(0, deadline - Date.now()));
           logger.info("[PINTEREST] retrying after upstream error", { requestId, status, attempt, wait });
           clearTimeout(timer);
           externalSignal?.removeEventListener("abort", onExternal);
@@ -993,40 +1186,69 @@ async function fetchPinPage(url: string, externalSignal: AbortSignal | undefined
       }
       clearTimeout(timer);
       externalSignal?.removeEventListener("abort", onExternal);
-      await sleep(backoffMs(attempt), externalSignal);
+      const wait = Math.min(backoffMs(attempt), Math.max(0, deadline - Date.now()));
+      await sleep(wait, externalSignal);
     } finally {
       clearTimeout(timer);
       externalSignal?.removeEventListener("abort", onExternal);
     }
   }
-  throw createError(lastKind === "timeout" ? "PINTEREST_TIMEOUT" : "PINTEREST_UPSTREAM_ERROR");
+  if (lastKind === "timeout") throw createError("PINTEREST_TIMEOUT");
+  if (lastStatus === 429) throw createError("PINTEREST_RATE_LIMITED");
+  throw createError("PINTEREST_UPSTREAM_ERROR");
 }
 
 /**
- * Best-effort content-type check on a resolved media URL. Returns false ONLY
- * on positive proof the URL serves a web page/JSON (never media); network
- * errors, timeouts and non-2xx responses are inconclusive and never drop a
- * Pinterest-supplied URL.
+ * Best-effort HEAD content-type check on a resolved media URL (Range GET only
+ * when the CDN rejects HEAD). Returns false on positive proof the URL is not
+ * the expected media: a web page/JSON, a missing resource, or an image served
+ * where a video was promised (and vice versa). Network errors, timeouts and
+ * other non-2xx responses are inconclusive and never drop a Pinterest URL.
  */
-async function isLikelyMedia(url: string, signal?: AbortSignal): Promise<boolean> {
+async function isLikelyMedia(
+  url: string,
+  expected: MediaItem["type"],
+  signal?: AbortSignal
+): Promise<boolean> {
   const controller = new AbortController();
   const onExternal = (): void => controller.abort();
   if (signal?.aborted) controller.abort();
   signal?.addEventListener("abort", onExternal, { once: true });
-  const timer = setTimeout(() => controller.abort(), 3_000);
+  const timer = setTimeout(() => controller.abort(), 2_500);
   timer.unref?.();
+  const headers = { "user-agent": PIN_UA, referer: "https://www.pinterest.com/" };
   try {
-    const res = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      signal: controller.signal,
-      headers: { "user-agent": PIN_UA, range: "bytes=0-0", referer: "https://www.pinterest.com/" },
-    });
-    const conclusive = res.ok || res.status === 206;
+    let res: Response;
+    try {
+      res = await fetch(url, { method: "HEAD", redirect: "follow", signal: controller.signal, headers });
+    } catch {
+      return true;
+    }
+    if (res.status === 405 || res.status === 501) {
+      drainBody(res);
+      try {
+        res = await fetch(url, {
+          method: "GET",
+          redirect: "follow",
+          signal: controller.signal,
+          headers: { ...headers, range: "bytes=0-0" },
+        });
+      } catch {
+        return true;
+      }
+    }
+    const status = res.status;
     const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
     drainBody(res);
-    if (!conclusive) return true;
-    return !(contentType.startsWith("text/html") || contentType.includes("application/json"));
+    if (status === 404 || status === 410) return false;
+    if (status < 200 || status >= 300) return true;
+    if (contentType.startsWith("text/html") || contentType.includes("application/json")) return false;
+    if (contentType.includes("mpegurl") || contentType.includes("dash+xml")) return false;
+    if (expected === "video" && (contentType.startsWith("image/") || contentType.startsWith("audio/"))) {
+      return false;
+    }
+    if (expected === "image" && contentType.startsWith("video/")) return false;
+    return true;
   } catch {
     return true;
   } finally {
@@ -1040,7 +1262,7 @@ async function filterVerified(candidates: MediaItem[], signal?: AbortSignal): Pr
   let index = 0;
   const limit = Math.min(candidates.length, VERIFY_LIMIT);
   while (index < limit) {
-    if (await isLikelyMedia(candidates[index].url, signal)) break;
+    if (await isLikelyMedia(candidates[index].url, candidates[index].type, signal)) break;
     index++;
   }
   if (index >= limit) return [];
@@ -1109,7 +1331,9 @@ export async function resolvePinterestPin(
   }
 
   emit(55, "Extracting media");
-  const extracted = extractPinMediaFromHtml(page.body, pinId);
+  const extractStartedAt = Date.now();
+  const extracted = extractPinMediaFromHtml(page.body, pinId, blocks);
+  const extractMs = Date.now() - extractStartedAt;
   if (extracted.notFound) {
     logger.info("[PINTEREST] pin not found", { requestId, status: page.status });
     throw createError("PINTEREST_PIN_NOT_FOUND");
@@ -1123,12 +1347,13 @@ export async function resolvePinterestPin(
     // Every real pin page ships at least one ld+json block; Pinterest's
     // "no such pin" response is a content-free app shell with none. No
     // structured data at all therefore means the pin does not exist.
-    if (parseLdJsonBlocks(page.body).length === 0) throw createError("PINTEREST_PIN_NOT_FOUND");
+    if (blocks.length === 0) throw createError("PINTEREST_PIN_NOT_FOUND");
     logger.info("[PINTEREST] page carried no media", { requestId, status: page.status });
     throw createError("PINTEREST_PARSE_FAILED");
   }
 
   emit(80, "Verifying media link");
+  const verifyStartedAt = Date.now();
 
   let media: MediaItem[];
   let type: ResolverResult["type"];
@@ -1169,6 +1394,10 @@ export async function resolvePinterestPin(
     videoCount: extracted.videos.length,
     imageCount: extracted.images.length,
     selected: media.length,
+    fetchMs: duration,
+    extractMs,
+    verifyMs: Date.now() - verifyStartedAt,
+    totalMs: Date.now() - startedAt,
   });
 
   return {

@@ -246,6 +246,24 @@ async function main() {
   check("current item takes the fresh URL", swapped && swapped[0].url, "https://cdn/new-a?sig=9");
   check("fresh pairing follows the video", swapped && swapped[0].audioUrl, "https://cdn/new-audio?sig=9");
   check("sibling untouched", swapped && swapped[1].url, "https://cdn/old-b?sig=2");
+  check(
+    "a fresh image never replaces a video slot",
+    api.refreshMediaItemUrl(
+      staleItems,
+      [{ ...freshMedia[0], url: "https://cdn/new-a.jpg?sig=9", type: "image" }],
+      0
+    ),
+    null
+  );
+  check(
+    "a fresh video never replaces an image slot",
+    api.refreshMediaItemUrl(
+      staleItems,
+      [{ ...freshMedia[1], url: "https://cdn/new-b.mp4?sig=9", type: "video" }],
+      1
+    ),
+    null
+  );
   check("identical URL is a no-op", api.refreshMediaItemUrl(staleItems, staleItems, 0), null);
   check("empty fresh result is a no-op", api.refreshMediaItemUrl(staleItems, [], 0), null);
   check("null fresh result is a no-op", api.refreshMediaItemUrl(staleItems, null, 0), null);

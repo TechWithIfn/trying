@@ -811,6 +811,10 @@ export function refreshMediaItemUrl(
   if (!prev || !cand) return null;
   if (typeof cand.url !== "string" || cand.url.length === 0) return null;
   if (cand.url === prev.url) return null;
+  // Never let a recovery resolve turn a video slot into an image (or vice
+  // versa), even if the fresh list has the same index. Mismatched media is an
+  // honest unavailable state, not a playable result.
+  if (cand.type !== prev.type) return null;
   const next = items.slice();
   next[safe] = {
     ...prev,

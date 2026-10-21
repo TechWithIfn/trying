@@ -75,6 +75,33 @@ describe("collectVideoRenditions", () => {
     expect(collectVideoRenditions({ videos: {} })).toHaveLength(0);
     expect(collectVideoRenditions({ videos: { video_list: null } })).toHaveLength(0);
   });
+
+  it("flattens story/carousel videoDataV2 quality maps without collecting covers", () => {
+    const renditions = collectVideoRenditions({
+      videoDataV2: {
+        videoList720P: {
+          v720P: {
+            url: `${VID}/videos/iht/720p/story.mp4`,
+            width: 1080,
+            height: 1920,
+            thumbnail: { url: `${IMG}/videos/thumbnails/story.jpg` },
+          },
+        },
+        videoList: {
+          vHLSV3MOBILE: { url: `${VID}/videos/iht/hls/story.m3u8` },
+        },
+        videoListMobile: {
+          v720P: { url: `${VID}/videos/iht/720p/story-mobile.mp4` },
+        },
+      },
+    });
+    expect(renditions.map((r) => r.url)).toEqual([
+      `${VID}/videos/iht/720p/story.mp4`,
+      `${VID}/videos/iht/hls/story.m3u8`,
+      `${VID}/videos/iht/720p/story-mobile.mp4`,
+    ]);
+    expect(renditions[0].height).toBe(1920);
+  });
 });
 
 describe("extractPinMedia — video pin", () => {
@@ -182,6 +209,54 @@ describe("extractPinMedia — story pins", () => {
     expect(extracted.images).toHaveLength(1);
     expect(extracted.images[0].url).toBe(`${IMG}/originals/aa/story.jpg`);
   });
+
+  it("extracts a video from story block videoDataV2 when relay videos is null", () => {
+    const extracted = extractPinMedia({
+      videos: null,
+      storyPinData: {
+        pages: [
+          {
+            blocks: [
+              {
+                image: { url: `${IMG}/originals/aa/bb/cover.jpg`, width: 1080, height: 1920 },
+                videoDataV2: {
+                  videoList720P: {
+                    v720P: {
+                      url: `${VID}/videos/iht/720p/story.mp4`,
+                      width: 1080,
+                      height: 1920,
+                      duration: 6400,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(extracted.videos.map((v) => v.url)).toEqual([`${VID}/videos/iht/720p/story.mp4`]);
+    expect(extracted.videos[0].height).toBe(1920);
+    expect(extracted.videos[0].duration).toBe(6.4);
+    // The page still is the video cover, not a separate image slide.
+    expect(extracted.images).toHaveLength(0);
+  });
+
+  it("treats a carousel slide with videoDataV2 as a video, not a photo carousel", () => {
+    const extracted = extractPinMedia({
+      carouselData: {
+        slides: [
+          {
+            images_orig: { url: `${IMG}/originals/aa/bb/cover.jpg`, width: 1080, height: 1920 },
+            videoDataV2: {
+              videoList720P: { v720P: { url: `${VID}/videos/iht/720p/slide.mp4`, width: 1080, height: 1920 } },
+            },
+          },
+        ],
+      },
+    });
+    expect(extracted.videos.map((v) => v.url)).toEqual([`${VID}/videos/iht/720p/slide.mp4`]);
+  });
 });
 
 describe("extractPinMedia — safety & edge cases", () => {
@@ -255,6 +330,132 @@ describe("collectVideoRenditions — modern v3 shape", () => {
     expect(renditions.map((r) => r.url)).toEqual([
       `${VID}/videos/iht/720p/a.mp4`,
       `${VID}/videos/iht/hls/a.m3u8`,
+    ]);
+  });
+});
+
+describe("collectVideoRenditions - direct and top-level shapes", () => {
+  it("flattens top-level video_list and videoList maps", () => {
+    const renditions = collectVideoRenditions({
+      video_list: { v720P: { url: `${VID}/videos/mc/720p/one.mp4`, width: 720, height: 1280 } },
+      videoList: { v540P: { url: `${VID}/videos/mc/540p/two.mp4`, width: 540, height: 960 } },
+    });
+    expect(renditions.map((r) => r.url)).toEqual([
+      `${VID}/videos/mc/720p/one.mp4`,
+      `${VID}/videos/mc/540p/two.mp4`,
+    ]);
+  });
+
+  it("flattens direct video_url, videoUrls, and video entities", () => {
+    const renditions = collectVideoRenditions({
+      video_url: `${VID}/videos/mc/720p/direct.mp4`,
+      videoUrls: [`${VID}/videos/mc/540p/list.mp4`],
+      video: [{ url: `${VID}/videos/mc/360p/entity.mp4`, width: 360, height: 640 }],
+    });
+    expect(renditions.map((r) => r.url)).toEqual([
+      `${VID}/videos/mc/720p/direct.mp4`,
+      `${VID}/videos/mc/540p/list.mp4`,
+      `${VID}/videos/mc/360p/entity.mp4`,
+    ]);
+  });
+
+  it("reads a top-level camelCase videosExtension array", () => {
+    const renditions = collectVideoRenditions({
+      videosExtension: [
+        { video_list: { v720P: { url: `${VID}/videos/mc/720p/a.mp4` } } },
+        { videoList: { v540P: { url: `${VID}/videos/mc/540p/b.mp4` } } },
+      ],
+    });
+    expect(renditions.map((r) => r.url)).toEqual([
+      `${VID}/videos/mc/720p/a.mp4`,
+      `${VID}/videos/mc/540p/b.mp4`,
+    ]);
+  });
+
+  it("reads videos_extension arrays nested on an entity", () => {
+    const renditions = collectVideoRenditions({
+      videos: {
+        videos_extension: [
+          { video_list: { v720P: { url: `${VID}/videos/mc/720p/a.mp4` } } },
+          { videoList: { v540P: { url: `${VID}/videos/mc/540p/b.mp4` } } },
+        ],
+      },
+    });
+    expect(renditions.map((r) => r.url)).toEqual([
+      `${VID}/videos/mc/720p/a.mp4`,
+      `${VID}/videos/mc/540p/b.mp4`,
+    ]);
+  });
+});
+
+describe("extractPinMedia — video metadata variants and thumbnail safety", () => {
+  it("extracts a video from a top-level video_url field", () => {
+    const extracted = extractPinMedia({
+      video_url: `${VID}/videos/mc/720p/top-level.mp4`,
+      video_width: 720,
+      video_height: 1280,
+      duration: 12,
+    });
+    expect(extracted.videos).toHaveLength(1);
+    expect(extracted.videos[0].url).toBe(`${VID}/videos/mc/720p/top-level.mp4`);
+    expect(extracted.videos[0].width).toBe(720);
+    expect(extracted.videos[0].duration).toBe(12);
+  });
+
+  it("accepts an extensionless legacy video route", () => {
+    const extracted = extractPinMedia({
+      video_url: `${VID}/videos/mc/720p/legacy-rendition`,
+    });
+    expect(extracted.videos.map((v) => v.url)).toEqual([`${VID}/videos/mc/720p/legacy-rendition`]);
+  });
+
+  it("rejects an extensionless non-video path", () => {
+    const extracted = extractPinMedia({
+      video_url: `${IMG}/originals/aa/bb/not-a-video`,
+    });
+    expect(extracted.videos).toHaveLength(0);
+  });
+
+  it("never treats a poster/thumbnail as a video rendition", () => {
+    const extracted = extractPinMedia({
+      images_orig: { url: `${IMG}/originals/aa/bb/poster.jpg`, width: 1000, height: 1500 },
+      videos: {
+        videoUrls: [
+          `${IMG}/videos/thumbnails/originals/aa/bb/poster.0000000.jpg`,
+          `${VID}/videos/mc/720p/real.mp4`,
+        ],
+      },
+    });
+    expect(extracted.videos.map((v) => v.url)).toEqual([`${VID}/videos/mc/720p/real.mp4`]);
+    expect(extracted.images).toHaveLength(1);
+  });
+
+  it("rejects an image content type even on a video-shaped URL", () => {
+    const extracted = extractPinMedia({
+      videos: {
+        videoList: {
+          v720P: {
+            url: `${VID}/videos/mc/720p/preview`,
+            contentType: "image/jpeg",
+            width: 1080,
+            height: 1920,
+          },
+        },
+      },
+    });
+    expect(extracted.videos).toHaveLength(0);
+  });
+
+  it("extracts multiple video entities from a video array", () => {
+    const extracted = extractPinMedia({
+      video: [
+        { url: `${VID}/videos/mc/720p/a.mp4`, width: 720, height: 1280 },
+        { url: `${VID}/videos/mc/540p/b.mp4`, width: 540, height: 960 },
+      ],
+    });
+    expect(extracted.videos.map((v) => v.url)).toEqual([
+      `${VID}/videos/mc/720p/a.mp4`,
+      `${VID}/videos/mc/540p/b.mp4`,
     ]);
   });
 });
@@ -422,6 +623,33 @@ describe("extractRelayPinPayload", () => {
     expect(extractRelayPinPayload(html, "999")).toBeNull();
     expect(extractRelayPinPayload(html, null)).toBeNull();
   });
+
+  it("anchors on an entityId serialized with whitespace", () => {
+    const payload = `{
+      "entityId": "456",
+      "images_orig": { "url": "${IMG}/originals/aa/bb/poster.jpg" },
+      "storyPinData": { "pages": [{ "blocks": [{ "videoDataV2": { "videoList720P": { "v720P": { "url": "${VID}/videos/iht/720p/story.mp4" } } } }] }] }
+    }`;
+    const html = `<script>window.__PWS_RELAY_REGISTER_COMPLETED_REQUEST__("%7B%22queryID%22%3A%22x%22%7D", ${payload})</script>`;
+    expect(extractRelayPinPayload(html, "456")?.entityId).toBe("456");
+    expect(extractPinMediaFromHtml(html, "456").videos.map((v) => v.url)).toEqual([
+      `${VID}/videos/iht/720p/story.mp4`,
+    ]);
+  });
+
+  it("recognizes a relay payload whose only video field is top-level video_url", () => {
+    const payload = JSON.stringify({
+      entityId: "321",
+      images_orig: { url: `${IMG}/originals/aa/bb/poster.jpg` },
+      video_url: `${VID}/videos/mc/720p/direct.mp4`,
+    });
+    const html = `<script>window.__PWS_RELAY_REGISTER_COMPLETED_REQUEST__("%7B%22queryID%22%3A%22x%22%7D", ${payload})</script>`;
+    const relay = extractRelayPinPayload(html, "321");
+    expect(relay?.video_url).toBe(`${VID}/videos/mc/720p/direct.mp4`);
+    expect(extractPinMediaFromHtml(html, "321").videos.map((v) => v.url)).toEqual([
+      `${VID}/videos/mc/720p/direct.mp4`,
+    ]);
+  });
 });
 
 describe("extractPinMediaFromHtml", () => {
@@ -440,6 +668,25 @@ describe("extractPinMediaFromHtml", () => {
     expect(extracted.thumbnail).toBe(`${IMG}/videos/thumbnails/originals/13/00/77/a.0000000.jpg`);
     expect(extracted.title).toBe("Easy Video");
     expect(extracted.notFound).toBe(false);
+  });
+
+  it("reads a VideoObject whose contentUrl is nested under video/media", () => {
+    const html =
+      `<script type="application/ld+json">{"@type":"VideoObject","name":"Nested","video":{"contentUrl":"${VID}/videos/iht/720p/nested.mp4","width":1080,"height":1920}}</script>`;
+    const extracted = extractPinMediaFromHtml(html, "123");
+    expect(extracted.videos.map((v) => v.url)).toEqual([`${VID}/videos/iht/720p/nested.mp4`]);
+    expect(extracted.videos[0].height).toBe(1920);
+  });
+
+  it("flattens @graph ld+json wrappers", () => {
+    const html =
+      `<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"VideoObject","name":"Graph","contentUrl":"${VID}/videos/iht/720p/graph.mp4"}]}</script>`;
+    const blocks = parseLdJsonBlocks(html);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]["@type"]).toBe("VideoObject");
+    expect(extractPinMediaFromHtml(html, "123").videos.map((v) => v.url)).toEqual([
+      `${VID}/videos/iht/720p/graph.mp4`,
+    ]);
   });
 
   it("resolves an image-only pin from a Recipe ld+json block", () => {
