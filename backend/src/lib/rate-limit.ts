@@ -44,22 +44,25 @@ const ROUTE_MAX_DEFAULTS = {
   stream: 180,
   audio: 20,
   pinterest: 20,
+  // Resolve and download share this bucket. A long transfer is expensive and
+  // may spawn FFmpeg, so the default is deliberately tighter than Pinterest.
+  youtube: 12,
 } as const;
+
+const ROUTE_ENV_KEYS: Record<keyof typeof ROUTE_MAX_DEFAULTS, string> = {
+  download: "RATE_LIMIT_DOWNLOAD_MAX_REQUESTS",
+  stream: "RATE_LIMIT_STREAM_MAX_REQUESTS",
+  audio: "RATE_LIMIT_AUDIO_MAX_REQUESTS",
+  pinterest: "RATE_LIMIT_PINTEREST_MAX_REQUESTS",
+  youtube: "RATE_LIMIT_YOUTUBE_MAX_REQUESTS",
+};
 
 export function routeRateLimitConfig(
   kind: keyof typeof ROUTE_MAX_DEFAULTS
 ): RateLimitConfig {
-  const envKey =
-    kind === "download"
-      ? "RATE_LIMIT_DOWNLOAD_MAX_REQUESTS"
-      : kind === "stream"
-        ? "RATE_LIMIT_STREAM_MAX_REQUESTS"
-        : kind === "audio"
-          ? "RATE_LIMIT_AUDIO_MAX_REQUESTS"
-          : "RATE_LIMIT_PINTEREST_MAX_REQUESTS";
   return {
     windowMs: readPositiveInt("RATE_LIMIT_WINDOW_MS", 60_000),
-    maxRequests: readPositiveInt(envKey, ROUTE_MAX_DEFAULTS[kind]),
+    maxRequests: readPositiveInt(ROUTE_ENV_KEYS[kind], ROUTE_MAX_DEFAULTS[kind]),
   };
 }
 

@@ -1,6 +1,9 @@
 export const SITE_URL = "https://www.downloadit.pro";
 export const BRAND_NAME = "Downloadit";
-export const BRAND_TITLE = "Instagram Video Downloader \u2013 Reels, Videos & Carousels | Downloadit";
+// Homepage <title>. Deliberately "Instagram Downloader" (not "Instagram Video
+// Downloader") so it cannot compete with the dedicated
+// /instagram-video-downloader route for the same search intent.
+export const BRAND_TITLE = "Instagram Downloader – Reels, Videos, Carousels & Audio | Downloadit";
 export const BRAND_DESCRIPTION =
   "Free Instagram downloader. Download public Reels, videos, carousels, Stories and audio in HD — paste a link, preview, and save without creating an account.";
 export const HOME_OG_IMAGE_ALT =

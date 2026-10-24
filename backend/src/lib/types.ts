@@ -130,6 +130,12 @@ export interface ResolveDiagnostics {
   finalResolutionState?: ResolutionState;
   /** Number of DOM/script extraction passes performed (settle + 2nd attempt). */
   extractionAttempt?: number;
+  /** Public YouTube video id (no URL, no query, no secrets). */
+  youtubeVideoId?: string;
+  /** Heights (e.g. [720, 480, 360]) a YouTube video actually exposes. */
+  availableQualities?: number[];
+  /** YouTube stage where a failure occurred (e.g. "probe", "download", "merge"). */
+  youtubeStage?: string;
 }
 
 /**
@@ -233,7 +239,22 @@ export type ErrorCode =
   | "PINTEREST_PARSE_FAILED"
   | "PINTEREST_TIMEOUT"
   | "PINTEREST_RATE_LIMITED"
-  | "PINTEREST_UPSTREAM_ERROR";
+  | "PINTEREST_UPSTREAM_ERROR"
+  | "YOUTUBE_INVALID_URL"
+  | "YOUTUBE_VIDEO_NOT_FOUND"
+  | "YOUTUBE_VIDEO_UNAVAILABLE"
+  | "YOUTUBE_AGE_RESTRICTED"
+  | "YOUTUBE_LIVE_UNSUPPORTED"
+  | "YOUTUBE_BOT_CHECK"
+  | "YOUTUBE_QUALITY_UNAVAILABLE"
+  | "YOUTUBE_AUDIO_UNAVAILABLE"
+  | "YOUTUBE_CONVERSION_FAILED"
+  | "YOUTUBE_TIMEOUT"
+  | "YOUTUBE_RATE_LIMITED"
+  | "YOUTUBE_UPSTREAM_ERROR"
+  | "YOUTUBE_UNAVAILABLE"
+  | "YOUTUBE_TOO_LONG"
+  | "YOUTUBE_FILE_TOO_LARGE";
 
 export interface ResolverResult {
   type: InstagramContentType;

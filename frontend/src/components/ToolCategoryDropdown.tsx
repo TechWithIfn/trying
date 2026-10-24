@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2, Pin, ImagePlay } from "lucide-react";
+import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2, Pin, ImagePlay, Play } from "lucide-react";
 
 export type DropdownToolItem = {
   href: string;
@@ -58,9 +58,16 @@ export const DROPDOWN_TOOLS: DropdownToolItem[] = [
   },
   {
     href: "/pinterest-image-downloader",
-    label: "Pinterest Image and Carousel Downloader",
+    label: "Pinterest Image & Carousel Downloader",
     icon: ImagePlay,
     iconBg: "rgba(230, 0, 35, 0.10)",
+    iconColor: "var(--primary)",
+  },
+  {
+    href: "/youtube-video-downloader",
+    label: "YouTube Video Downloader",
+    icon: Play,
+    iconBg: "rgba(255, 0, 0, 0.09)",
     iconColor: "var(--primary)",
   },
 ];
@@ -76,10 +83,10 @@ export default function ToolCategoryDropdown() {
   const menuId = "downloadit-tool-menu";
 
   const isToolActive =
-    pathname === "/" ||
-    pathname === "/instagram-reels-downloader" ||
-    pathname === "/pinterest-video-downloader" ||
-    pathname === "/pinterest-image-downloader";
+    pathname === "/" || DROPDOWN_TOOLS.some((tool) => tool.href === pathname);
+  const activeTool = DROPDOWN_TOOLS.find((tool) => tool.href === pathname);
+  const triggerLabel =
+    activeTool?.label ?? (pathname === "/" ? "Downloaders" : "Tools");
 
   const close = useCallback((refocusToggle = false) => {
     setOpen(false);
@@ -165,8 +172,9 @@ export default function ToolCategoryDropdown() {
 
   return (
     <div ref={containerRef} className="relative inline-flex items-center">
-      {/* Single tool-menu trigger: label + chevron in one control (the menu
-          lists Instagram Reels Downloader first, then the other tools). */}
+      {/* Single tool-menu trigger: label + chevron in one control. The label
+          follows the current tool page, with the Instagram Reels downloader
+          as the homepage/default label. */}
       <button
         ref={toggleRef}
         type="button"
@@ -175,14 +183,14 @@ export default function ToolCategoryDropdown() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label="Instagram downloaders menu"
+        aria-label="Downloader tools menu"
         className={`inline-flex items-center gap-1 rounded-full border py-1.5 pl-3 pr-2 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
           isToolActive || open
             ? "bg-primary-light text-primary-strong border-primary/25 shadow-xs"
             : "border-transparent text-fg-muted hover:bg-primary-light hover:text-primary"
         }`}
       >
-        <span>Instagram Reels Downloader</span>
+        <span>{triggerLabel}</span>
         <ChevronDown
           className="h-4 w-4 shrink-0 transition-transform duration-200"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
@@ -200,7 +208,7 @@ export default function ToolCategoryDropdown() {
         ref={menuRef}
         id={menuId}
         role="menu"
-        aria-label="Instagram downloaders"
+        aria-label="Downloader tools"
         aria-hidden={!open}
         onKeyDown={onMenuKeyDown}
         className={`tool-category-menu absolute left-0 top-full z-50 rounded-2xl p-1 transition-all duration-200 ease-out ${

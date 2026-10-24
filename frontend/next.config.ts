@@ -123,7 +123,10 @@ const nextConfig: NextConfig = {
               // (/api/stream), so the backend origins below are first-party,
               // not remote allowances. No arbitrary remote hosts are listed:
               // Instagram bytes arrive via the proxy or the pinned CDN hosts.
-              "img-src 'self' data: blob: http://localhost:3001 http://127.0.0.1:3001 https://backend-chi-orpin-90.vercel.app https://*.cdninstagram.com https://cdninstagram.com https://*.fbcdn.net https://fbcdn.net https://*.googlesyndication.com https://googleads.g.doubleclick.net https://*.googleusercontent.com https://www.gstatic.com https://*.adtrafficquality.google",
+              // i.ytimg.com is pinned for YouTube result thumbnails (loaded
+              // directly with referrerPolicy="no-referrer"; no media is
+              // fetched from that host).
+              "img-src 'self' data: blob: http://localhost:3001 http://127.0.0.1:3001 https://backend-chi-orpin-90.vercel.app https://*.cdninstagram.com https://cdninstagram.com https://*.fbcdn.net https://fbcdn.net https://i.ytimg.com https://*.googlesyndication.com https://googleads.g.doubleclick.net https://*.googleusercontent.com https://www.gstatic.com https://*.adtrafficquality.google",
               // Production backend host + local dev origins (unreachable in
               // production). A custom NEXT_PUBLIC_API_BASE_URL needs its host
               // added here.

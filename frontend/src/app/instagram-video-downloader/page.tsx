@@ -1,33 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
 import ProseSection from "@/components/ProseSection";
-import ReadMore from "@/components/ReadMore";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 
-export const metadata: Metadata = {
-  title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
-  description: "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
-  alternates: { canonical: "/instagram-video-downloader" },
-  openGraph: {
-    title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
-    description: "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
-    url: `${SITE_URL}/instagram-video-downloader`,
-    type: "website",
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Video Downloader — Downloadit" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: { absolute: "Instagram Video Downloader – Save Videos as MP4 | Downloadit" },
-    description: "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
-
-const PAGE_NAME = "Instagram Video Downloader";
-const PAGE_PATH = "/instagram-video-downloader";
+const PAGE = TOOL_PAGES.instagramVideo;
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -61,12 +42,8 @@ export default function VideoDownloaderPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <ToolDownloader
-          initialTab="videos"
-          titleA="Paste a video link,"
-          titleB="keep it offline."
-          subtitle="Save public Instagram videos and long clips as MP4 for offline watching — preview the file first, no account needed."
-        />
+        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
+        <ToolDownloader page={PAGE} />
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
           <Link
             href="/"
@@ -74,7 +51,7 @@ export default function VideoDownloaderPage() {
           >
             ← Back to Instagram Downloader
           </Link>
-          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Video Downloader</h1>
+          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">What the Video downloader does</h2>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
             Some things on Instagram cannot be squeezed into a short reel. A coach walking through a full drill, a musician explaining a technique for eight minutes, a founder telling the story of a product, a recorded talk someone posted to their grid. These longer videos are closer to small lessons than throwaway clips — and lessons are worth keeping where you can replay them properly. This page turns the link to a public video post into an MP4 file you can store, rewatch and study at your own pace.
           </p>
@@ -83,7 +60,6 @@ export default function VideoDownloaderPage() {
           </p>
 
           <ProseSection>
-          <ReadMore label="video guide">
           <h2>Who saves longer Instagram videos, and why</h2>
           <p>
             Students are the most natural fit. A revision clip, a worked example, a demonstration you want to slow down and follow step by step. A saved MP4 lets you scrub back and forth and watch on a train with no signal, instead of re-streaming the same ten minutes over and over.
@@ -145,11 +121,20 @@ export default function VideoDownloaderPage() {
             </div>
           </div>
 
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Devices and browsers this page works on</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            The video downloader runs in your browser without requiring software downloads, browser extensions, or account sign-in. It is fully tested on Chrome, Safari, Firefox, Edge, and Samsung Internet on Android; Safari and Chrome on iOS (iPhone &amp; iPad); and all modern web browsers on macOS, Windows, Linux, and ChromeOS. On iOS devices, downloads save to the Files app under Downloads. On Android and desktop devices, videos download directly to your default Downloads folder or Photos/Gallery app.
+          </p>
+
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Your privacy on this page</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            Nothing you paste is tied to you. Downloadit never asks for an Instagram username or password and never asks you to connect an account — you submit a public post link and the file is resolved from it. No login exists to be breached, and the link alone identifies nothing about who requested it. See the <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> for the full details of what is processed.
+          </p>
+
           <h2 className="mt-10 text-[20px] font-bold text-fg">A note on using other people&apos;s videos</h2>
           <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
             Long videos often represent real work — a filmed class, an edited interview, a paid production. Keep your own posts freely, save other people&apos;s work for private study, and get written permission before re-uploading or using anyone else&apos;s video in your own channel or ads. If you hold the rights to a video, the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link> describe how to ask for a review. Only download content you own or have permission to reuse.
           </p>
-          </ReadMore>
           </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
@@ -159,7 +144,10 @@ export default function VideoDownloaderPage() {
               { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels to your gallery" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
-              { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
+              { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
+              { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images & carousels" },
+              { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
+              { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
                 <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
@@ -214,19 +202,6 @@ export default function VideoDownloaderPage() {
               name: item.q,
               acceptedAnswer: { "@type": "Answer", text: item.a },
             })),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
-            ],
           }),
         }}
       />

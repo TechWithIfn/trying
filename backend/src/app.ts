@@ -5,6 +5,7 @@ import downloadRouter from "./routes/download.js";
 import streamRouter from "./routes/stream.js";
 import audioRouter from "./routes/audio.js";
 import pinterestRouter from "./routes/pinterest.js";
+import youtubeRouter from "./routes/youtube.js";
 import healthRouter from "./routes/health.js";
 import storyDebugRouter from "./routes/story-debug.js";
 import { logger } from "./lib/logger.js";
@@ -208,6 +209,7 @@ app.use("/api/download", downloadRouter);
 app.use("/api/stream", streamRouter);
 app.use("/api/audio", audioRouter);
 app.use("/api/pinterest", pinterestRouter);
+app.use("/api/youtube", youtubeRouter);
 // Protected dev-only Story diagnostics (404 in production unless
 // ALLOW_STORY_DEBUG=true, DEBUG_SECRET-gated). Never cached, never leaks
 // credentials — see the route module.

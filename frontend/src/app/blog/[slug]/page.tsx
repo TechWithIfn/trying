@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import { renderArticleBlocks } from "@/components/BlogArticle";
 import ProseSection from "@/components/ProseSection";
 import ReadMore from "@/components/ReadMore";
@@ -68,16 +69,15 @@ export default async function BlogPostPage({
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12 pt-8 sm:pt-12">
-          <nav className="flex min-h-[44px] flex-wrap items-center gap-1 text-[14px] font-semibold text-fg-muted" aria-label="Breadcrumb">
-            <Link href="/" className="transition-colors hover:text-primary">
-              Home
-            </Link>
-            <span aria-hidden="true">/</span>
-            <Link href="/blog" className="transition-colors hover:text-primary">
-              Blog
-            </Link>
-          </nav>
+        <Breadcrumb
+          items={[
+            { name: "Home", path: "/" },
+            { name: "Blog", path: "/blog" },
+            { name: post.title, path: `/blog/${post.slug}` },
+          ]}
+          containerClassName="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pt-4"
+        />
+        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12 pt-2 sm:pt-4">
           <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">
             {post.title}
           </h1>
@@ -178,20 +178,6 @@ export default async function BlogPostPage({
           }}
         />
       )}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
-              { "@type": "ListItem", position: 3, name: post.title, item: `${SITE_URL}/blog/${post.slug}` },
-            ],
-          }),
-        }}
-      />
     </>
   );
 }

@@ -1,33 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
 import ProseSection from "@/components/ProseSection";
-import ReadMore from "@/components/ReadMore";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 
-export const metadata: Metadata = {
-  title: { absolute: "Instagram Photo Downloader – Save Carousels | Downloadit" },
-  description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
-  alternates: { canonical: "/instagram-photo-downloader" },
-  openGraph: {
-    title: { absolute: "Instagram Photo Downloader – Save Carousels | Downloadit" },
-    description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
-    url: `${SITE_URL}/instagram-photo-downloader`,
-    type: "website",
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Photo & Carousel Downloader — Downloadit" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: { absolute: "Instagram Photo Downloader – Save Carousels | Downloadit" },
-    description: "Save public Instagram photos and full carousels at original quality. Download a single image or every slide at once — free, no login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
-
-const PAGE_NAME = "Instagram Photo & Carousel Downloader";
-const PAGE_PATH = "/instagram-photo-downloader";
+const PAGE = TOOL_PAGES.instagramPhoto;
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -61,12 +42,8 @@ export default function CarouselDownloaderPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <ToolDownloader
-          initialTab="photos"
-          titleA="Paste a carousel link,"
-          titleB="save every slide."
-          subtitle="Download public Instagram carousels at original resolution — flip through the slides, save the ones you want."
-        />
+        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
+        <ToolDownloader page={PAGE} />
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
           <Link
             href="/"
@@ -74,7 +51,7 @@ export default function CarouselDownloaderPage() {
           >
             ← Back to Instagram Downloader
           </Link>
-          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Photo &amp; Carousel Downloader</h1>
+          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">What the Photo &amp; Carousel downloader does</h2>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
             A carousel is Instagram&apos;s swipeable photo post — up to ten stills in one place, the kind photographers use for a series, shops use for product angles, and teachers use for step-by-step diagrams. Single photos work here too. The frustration is familiar: you find an image you need, but Instagram offers no way to keep the actual file, so people screenshot it and end up with a dull copy of a copy. This page takes the opposite path. Paste the link to a public post and you receive Instagram&apos;s stored image, slide by slide, at the sharpness it was uploaded in.
           </p>
@@ -83,7 +60,6 @@ export default function CarouselDownloaderPage() {
           </p>
 
           <ProseSection>
-          <ReadMore label="photo guide">
           <h2>What saved photos are actually good for</h2>
           <p>
             Designers and makers keep images they own or are allowed to use as reference boards — colour palettes, packaging angles, lettering styles. The full file survives zooming and cropping far better than a screenshot, so you can inspect a corner or sample a colour cleanly.
@@ -145,11 +121,20 @@ export default function CarouselDownloaderPage() {
             </div>
           </div>
 
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Devices and browsers this page works on</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            The photo and carousel downloader works entirely in your browser without apps or accounts. It is compatible with all modern mobile and desktop browsers: Safari, Chrome, Firefox, Edge, and Samsung Internet on Android; Safari and Chrome on iOS (iPhone &amp; iPad); and Chrome, Firefox, Edge, and Safari on Windows, Mac, and Linux. Downloaded images save as standalone files directly into your device&apos;s standard download storage — the Files app on iOS, and the Downloads folder or Photos app on Android and computer operating systems.
+          </p>
+
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Your privacy on this page</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            The only thing you submit is the public post link. Downloadit takes no Instagram username or password and offers no account connection — there is nothing to sign into and nothing personal travelling with the request. The link identifies the post, not you. The <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> explains exactly what is processed and what is not stored.
+          </p>
+
           <h2 className="mt-10 text-[20px] font-bold text-fg">Respect the photographer</h2>
           <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
             Photos carry visible authorship — someone composed, lit and edited that frame. Save your own work freely, keep other people&apos;s images for private reference, and ask written permission before reposting or using anyone&apos;s photo in your feed, shop or ads. Never strip watermarks or crop out credit. Rights holders can raise concerns via the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link>. Only download content you own or have permission to reuse.
           </p>
-          </ReadMore>
           </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
@@ -159,7 +144,10 @@ export default function CarouselDownloaderPage() {
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
-              { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
+              { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images & carousels" },
+              { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
+              { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
+              { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
                 <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
@@ -214,19 +202,6 @@ export default function CarouselDownloaderPage() {
               name: item.q,
               acceptedAnswer: { "@type": "Answer", text: item.a },
             })),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
-            ],
           }),
         }}
       />

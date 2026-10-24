@@ -430,6 +430,91 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     status: 502,
     retryable: true,
   },
+  /**
+   * YouTube verdicts. yt-dlp failures are classified into these codes so the
+   * page can explain the real cause (private, age-gated, live, bot check,
+   * missing quality, conversion failure) instead of a generic error.
+   */
+  YOUTUBE_INVALID_URL: {
+    message:
+      "That does not look like a YouTube video link. Paste a youtube.com/watch?v=…, youtu.be/…, youtube.com/shorts/… or youtube.com/embed/… URL.",
+    status: 400,
+    retryable: false,
+  },
+  YOUTUBE_VIDEO_NOT_FOUND: {
+    message: "That YouTube video could not be found. It may have been removed or the link may be incorrect.",
+    status: 404,
+    retryable: false,
+  },
+  YOUTUBE_VIDEO_UNAVAILABLE: {
+    message:
+      "This YouTube video is not available to download. It may be private, members-only, premium, blocked in this region, or otherwise restricted.",
+    status: 403,
+    retryable: false,
+  },
+  YOUTUBE_AGE_RESTRICTED: {
+    message:
+      "YouTube requires a signed-in account to confirm the viewer's age for this video, so it cannot be downloaded anonymously.",
+    status: 403,
+    retryable: false,
+  },
+  YOUTUBE_LIVE_UNSUPPORTED: {
+    message: "Live YouTube streams cannot be downloaded until the broadcast has ended and the final video is available.",
+    status: 400,
+    retryable: false,
+  },
+  YOUTUBE_BOT_CHECK: {
+    message:
+      "YouTube asked this server to confirm it is not a bot. Please try again in a few minutes.",
+    status: 503,
+    retryable: true,
+  },
+  YOUTUBE_QUALITY_UNAVAILABLE: {
+    message: "That video quality is not available for this YouTube video. Please choose one of the available qualities.",
+    status: 404,
+    retryable: false,
+  },
+  YOUTUBE_AUDIO_UNAVAILABLE: {
+    message: "This YouTube video does not expose a downloadable audio track.",
+    status: 404,
+    retryable: false,
+  },
+  YOUTUBE_CONVERSION_FAILED: {
+    message: "The video was downloaded but could not be converted to the requested file. Please try again.",
+    status: 502,
+    retryable: true,
+  },
+  YOUTUBE_TIMEOUT: {
+    message: "YouTube took too long to respond or the file took too long to prepare. Please try again.",
+    status: 504,
+    retryable: true,
+  },
+  YOUTUBE_RATE_LIMITED: {
+    message: "YouTube is temporarily rate-limiting requests from this server. Please try again in a few minutes.",
+    status: 429,
+    retryable: true,
+  },
+  YOUTUBE_UPSTREAM_ERROR: {
+    message: "YouTube returned an unexpected error. Please try again in a few seconds.",
+    status: 502,
+    retryable: true,
+  },
+  YOUTUBE_UNAVAILABLE: {
+    message:
+      "YouTube downloading is not available on this server because its media engine is not installed or could not be started.",
+    status: 503,
+    retryable: false,
+  },
+  YOUTUBE_TOO_LONG: {
+    message: "This YouTube video is longer than this server's download limit.",
+    status: 413,
+    retryable: false,
+  },
+  YOUTUBE_FILE_TOO_LARGE: {
+    message: "The prepared YouTube file is larger than this server's download limit.",
+    status: 413,
+    retryable: false,
+  },
 };
 
 /**

@@ -127,7 +127,14 @@ export default function HomeClient() {
     <>
       <Header activeDownloaderTab={activeTab} onDownloaderTabChange={handleDownloaderTabChange} />
       <main id="main-content" className="flex-1">
-        <HeroDownloader activeTab={activeTab} onActiveTabChange={setActiveTab} />
+        <HeroDownloader
+          activeTab={activeTab}
+          onActiveTabChange={setActiveTab}
+          titleA={t.hero.titleA}
+          titleB={t.hero.titleB}
+          subtitle={t.hero.subtitle}
+          placeholder={activeTab === "audio" ? t.hero.audioPlaceholder : t.hero.placeholder}
+        />
 
         {/* ── Benefit strip: 4 equal compact cards ── */}
         <ScrollReveal>

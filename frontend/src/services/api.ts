@@ -86,7 +86,9 @@ export type ApiRequestType =
   | "media-download"
   | "audio-post"
   | "pinterest-resolve"
-  | "pinterest-sse";
+  | "pinterest-sse"
+  | "youtube-resolve"
+  | "youtube-download";
 
 export type ApiFailureCategory =
   | "network"
@@ -606,6 +608,299 @@ export async function resolvePinterestUrl(
     return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
   }
   return body;
+}
+
+/* -------------------------------------------------------------------------- */
+/* YouTube                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export type YouTubeFormat = "mp4" | "mp3" | "m4a";
+
+export type YouTubeAudioFormat = "mp3" | "m4a";
+
+export interface YouTubeAudioOption {
+  format: YouTubeAudioFormat;
+  bitrateKbps: number;
+  label: string;
+}
+
+export interface YouTubeQuality {
+  height: number;
+  label: string;
+  fps: number | null;
+}
+
+export interface YouTubeResolveData {
+  type: "VIDEO";
+  videoId: string;
+  sourceUrl: string;
+  title: string;
+  author: Author | null;
+  thumbnail: string;
+  duration: number | null;
+  qualities: YouTubeQuality[];
+  audioAvailable: boolean;
+  /** Only options the backend can actually encode are returned. */
+  audioOptions?: YouTubeAudioOption[];
+}
+
+export interface YouTubeResolveSuccess {
+  success: true;
+  data: YouTubeResolveData;
+}
+
+export interface YouTubeError {
+  code: string;
+  message: string;
+  retryable?: boolean;
+  diagnostics?: { availableQualities?: number[] };
+}
+
+export type YouTubeResolveResponse =
+  | YouTubeResolveSuccess
+  | { success: false; error: YouTubeError };
+
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+const YOUTUBE_HOSTS = new Set([
+  "youtube.com",
+  "www.youtube.com",
+  "m.youtube.com",
+  "youtu.be",
+  "www.youtu.be",
+]);
+
+/**
+ * Client-side mirror of the backend validator. Instant feedback only — the
+ * backend re-validates every URL before any yt-dlp work starts.
+ */
+export function isValidYouTubeUrl(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  if (/^(javascript|data|blob|vbscript|file|ftp):/i.test(trimmed)) return false;
+  let parsed: URL;
+  try {
+    parsed =
+      /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? new URL(trimmed) : new URL(`https://${trimmed}`);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+  if (parsed.username || parsed.password || parsed.port) return false;
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  if (!YOUTUBE_HOSTS.has(host)) return false;
+
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  if (host === "youtu.be" || host === "www.youtu.be") {
+    return segments.length === 1 && YOUTUBE_VIDEO_ID_RE.test(segments[0]);
+  }
+  if (segments.length === 1 && segments[0].toLowerCase() === "watch") {
+    const id = parsed.searchParams.get("v");
+    return Boolean(id && YOUTUBE_VIDEO_ID_RE.test(id));
+  }
+  return (
+    segments.length === 2 &&
+    (segments[0].toLowerCase() === "shorts" || segments[0].toLowerCase() === "embed") &&
+    YOUTUBE_VIDEO_ID_RE.test(segments[1])
+  );
+}
+
+function isYouTubeErrorBody(value: unknown): value is { success: false; error: YouTubeError } {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as { success?: unknown; error?: unknown };
+  if (candidate.success !== false) return false;
+  const error = candidate.error as { code?: unknown; message?: unknown } | null;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    typeof error.code === "string" &&
+    typeof error.message === "string"
+  );
+}
+
+function isYouTubeResolveSuccess(value: unknown): value is YouTubeResolveSuccess {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as { success?: unknown; data?: unknown };
+  if (candidate.success !== true) return false;
+  const data = candidate.data as { type?: unknown; videoId?: unknown; qualities?: unknown } | null;
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    data.type === "VIDEO" &&
+    typeof data.videoId === "string" &&
+    Array.isArray(data.qualities)
+  );
+}
+
+export async function resolveYouTubeUrl(
+  url: string,
+  signal?: AbortSignal
+): Promise<YouTubeResolveResponse> {
+  const requestUrl = `${getApiBase()}/api/youtube/resolve`;
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      cache: "no-store",
+      signal,
+    });
+  } catch (error) {
+    logApiFailure({ requestType: "youtube-resolve", requestUrl, status: null, error });
+    throw error;
+  }
+
+  const body = await response.json().catch(() => null);
+  if (isYouTubeResolveSuccess(body)) return body;
+  if (isYouTubeErrorBody(body)) {
+    logApiFailure({
+      requestType: "youtube-resolve",
+      requestUrl,
+      status: response.status,
+      error: new Error(`youtube-resolve-${body.error.code}`),
+    });
+    return body;
+  }
+
+  logApiFailure({
+    requestType: "youtube-resolve",
+    requestUrl,
+    status: response.status,
+    error: new Error("youtube-resolve-malformed-response"),
+    category: "malformed-response",
+  });
+  return {
+    success: false,
+    error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." },
+  };
+}
+
+export function getYouTubeDownloadUrl(
+  url: string,
+  format: YouTubeFormat,
+  quality?: number,
+  bitrateKbps?: number
+): string {
+  const params = new URLSearchParams({ url, format });
+  if (format === "mp4" && quality) params.set("quality", String(quality));
+  if (format !== "mp4" && bitrateKbps) params.set("bitrate", String(bitrateKbps));
+  return `${getApiBase()}/api/youtube/download?${params.toString()}`;
+}
+
+export interface YouTubeDownloadProgress {
+  loaded: number;
+  total: number | null;
+}
+
+export type YouTubeDownloadResult =
+  | { ok: true; blob: Blob }
+  | { ok: false; error: YouTubeError };
+
+/**
+ * Download the prepared file through fetch so the UI can show REAL byte
+ * progress and only claim success after the complete file has arrived. The
+ * backend prepares (downloads, merges, converts) before sending the body, so a
+ * non-2xx response is always an honest JSON error.
+ */
+export async function downloadYouTubeFile(options: {
+  url: string;
+  format: YouTubeFormat;
+  quality?: number;
+  bitrateKbps?: number;
+  signal?: AbortSignal;
+  onProgress?: (progress: YouTubeDownloadProgress) => void;
+}): Promise<YouTubeDownloadResult> {
+  const requestUrl = getYouTubeDownloadUrl(
+    options.url,
+    options.format,
+    options.quality,
+    options.bitrateKbps
+  );
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, { cache: "no-store", signal: options.signal });
+  } catch (error) {
+    logApiFailure({ requestType: "youtube-download", requestUrl, status: null, error });
+    throw error;
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    if (isYouTubeErrorBody(body)) {
+      logApiFailure({
+        requestType: "youtube-download",
+        requestUrl,
+        status: response.status,
+        error: new Error(`youtube-download-${body.error.code}`),
+      });
+      return { ok: false, error: body.error };
+    }
+    logApiFailure({
+      requestType: "youtube-download",
+      requestUrl,
+      status: response.status,
+      error: new Error("youtube-download-malformed-response"),
+      category: "malformed-response",
+    });
+    return {
+      ok: false,
+      error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." },
+    };
+  }
+
+  const header = Number(response.headers.get("content-length"));
+  const total = Number.isFinite(header) && header > 0 ? header : null;
+  const type =
+    response.headers.get("content-type") ||
+    (options.format === "m4a" ? "audio/mp4" : options.format === "mp3" ? "audio/mpeg" : "video/mp4");
+
+  if (!response.body) {
+    const blob = await response.blob();
+    options.onProgress?.({ loaded: blob.size, total: total ?? blob.size });
+    return { ok: true, blob };
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        loaded += value.byteLength;
+        options.onProgress?.({ loaded, total });
+      }
+    }
+  } catch (error) {
+    try {
+      await reader.cancel();
+    } catch {
+      /* already cancelled */
+    }
+    logApiFailure({ requestType: "youtube-download", requestUrl, status: 200, error });
+    throw error;
+  }
+
+  if (total !== null && loaded !== total) {
+    logApiFailure({
+      requestType: "youtube-download",
+      requestUrl,
+      status: 200,
+      error: new Error("youtube-download-truncated"),
+    });
+    return {
+      ok: false,
+      error: {
+        code: "TEMPORARY_ERROR",
+        message: "The download ended before the whole file arrived. Please try again.",
+      },
+    };
+  }
+
+  options.onProgress?.({ loaded, total: total ?? loaded });
+  return { ok: true, blob: new Blob(chunks as BlobPart[], { type }) };
 }
 
 export function getStreamUrl(mediaUrl: string, sourceUrl?: string): string {

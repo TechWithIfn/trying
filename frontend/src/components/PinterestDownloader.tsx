@@ -150,6 +150,20 @@ interface PinterestDownloaderProps {
   subtitle: string;
   /** Eyebrow badge copy above the headline. Falls back to the shared hero badge. */
   badge?: string;
+  /**
+   * Media controls this route exposes. Auto Detect is always listed first so
+   * classification stays automatic; a route only offers the types it actually
+   * serves — the video page never offers Carousel, the image page never
+   * offers Video. Omitted = all three.
+   */
+  modes?: PinterestKind[];
+  /** Trust indicator labels under the input. Plain strings: pages are server
+   *  components and cannot pass component references as props. */
+  benefits?: string[];
+  /** URL field placeholder — defaults to the generic Pinterest pin copy. */
+  placeholder?: string;
+  /** Primary button label. */
+  buttonLabel?: string;
 }
 
 /**
@@ -184,7 +198,16 @@ const BENEFITS: { icon: LucideIcon; label: string }[] = [
  * Video / Carousel controls state the expected media type so the backend can
  * still answer honestly when the pin lacks it.
  */
-export default function PinterestDownloader({ titleA, titleB, subtitle, badge }: PinterestDownloaderProps) {
+export default function PinterestDownloader({
+  titleA,
+  titleB,
+  subtitle,
+  badge,
+  modes,
+  benefits,
+  placeholder = "Paste a Pinterest pin link here...",
+  buttonLabel,
+}: PinterestDownloaderProps) {
   const { t } = useLanguage();
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
@@ -213,9 +236,16 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
   const mediaLabel = mode === "video" ? "video" : mode === "image" ? "image" : "media";
-  const placeholder = "Paste a Pinterest pin link here...";
   const inputId = "downloadit-pinterest-url-input";
   const badgeText = badge ?? t.hero.badge;
+  /** Media controls offered by this route (auto detection stays available). */
+  const availableModes = modes
+    ? MODE_OPTIONS.filter((opt) => modes.includes(opt.value))
+    : MODE_OPTIONS;
+  /** Trust labels; icons follow the default list's order. */
+  const benefitItems = (benefits && benefits.length > 0 ? benefits : BENEFITS.map((b) => b.label))
+    .slice(0, BENEFITS.length)
+    .map((label, i) => ({ icon: BENEFITS[i].icon, label }));
 
   /** Supersede any in-flight job and mint a new request sequence. */
   const invalidate = useCallback((): number => {
@@ -570,7 +600,7 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
   return (
     <section
       id="hero"
-      className="hero-section relative overflow-hidden scroll-mt-24 pt-6 sm:pt-8 lg:pt-10 pb-12 sm:pb-20 lg:pb-24"
+      className="hero-section relative overflow-hidden scroll-mt-24 pt-6 sm:pt-8 lg:pt-10 pb-8 sm:pb-12 lg:pb-14"
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         <div
@@ -582,9 +612,9 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
         />
       </div>
 
-      <div className="mx-auto w-full max-w-[1200px] min-w-0 px-0 sm:px-6 lg:px-[76px]">
+      <div className="mx-auto w-full max-w-[1240px] min-w-0 px-4 sm:px-6 lg:px-8 xl:px-12">
         {/* Centered hero composition: badge → headline → copy → card → benefits */}
-        <div className="mx-auto flex w-full max-w-[760px] min-w-0 flex-col items-center text-center">
+        <div className="mx-auto flex w-full max-w-[800px] min-w-0 flex-col items-center text-center">
           <div
             className="mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide text-fg-muted sm:mb-5 sm:gap-2 sm:px-4 sm:text-xs"
             style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}
@@ -631,13 +661,15 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
                 >
                   {/* Media selector: Auto Detect / Video / Carousel. Auto
                       (the default) lets the backend classify the pin from its
-                      real media; the manual buttons state the type wanted. */}
-                  <div
-                    className="mb-2.5 flex items-center justify-center border-b px-1 pb-2.5"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <div role="tablist" aria-label={t.pinterest.groupLabel} className="flex items-center gap-1.5">
-                      {MODE_OPTIONS.map((opt) => {
+                      real media; the manual buttons state the type wanted and
+                      only appear when this route actually serves that type. */}
+                  {availableModes.length > 1 && (
+                    <div
+                      className="mb-2.5 flex items-center justify-center border-b px-1 pb-2.5"
+                      style={{ borderColor: "var(--border)" }}
+                    >
+                      <div role="tablist" aria-label={t.pinterest.groupLabel} className="flex flex-wrap items-center justify-center gap-1.5">
+                        {availableModes.map((opt) => {
                         const active = mode === opt.value;
                         const Icon = opt.icon;
                         return (
@@ -666,8 +698,9 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
                           </button>
                         );
                       })}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Desktop: horizontal */}
                   <div className="hidden sm:flex sm:flex-row sm:gap-2">
@@ -726,7 +759,7 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
                       ) : (
                         <>
                           <DownloadIcon className="h-5 w-5" />
-                          <span>{t.common.getMedia}</span>
+                          <span>{buttonLabel || t.common.getMedia}</span>
                         </>
                       )}
                     </button>
@@ -789,7 +822,7 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
                         ) : (
                           <>
                             <DownloadIcon className="h-5 w-5 shrink-0" />
-                            <span className="btn-label truncate">{t.common.getMedia}</span>
+                            <span className="btn-label truncate">{buttonLabel || t.common.getMedia}</span>
                           </>
                         )}
                       </button>
@@ -800,7 +833,7 @@ export default function PinterestDownloader({ titleA, titleB, subtitle, badge }:
 
               {/* Honest, factual reassurances — replaces the plain trust dots */}
               <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-1">
-                {BENEFITS.map(({ icon: Icon, label }) => (
+                {benefitItems.map(({ icon: Icon, label }) => (
                   <li key={label} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted">
                     <Icon size={15} strokeWidth={2.2} className="shrink-0" style={{ color: "var(--primary-strong)" }} />
                     {label}

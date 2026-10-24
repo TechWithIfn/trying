@@ -6,7 +6,6 @@ import {
   Clipboard,
   Link as LinkIcon,
   AlertCircle,
-  Play,
   Image as ImageIcon,
   Sparkles,
   X,
@@ -14,11 +13,6 @@ import {
   Video,
   Clock,
   Music,
-  Heart,
-  MessageCircle,
-  Send,
-  Bookmark,
-  Volume2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
@@ -47,7 +41,12 @@ const MediaResult = dynamic(() => import("./ResultPanel").then((m) => m.MediaRes
 type UIState = "IDLE" | "PREPARING" | "SUCCESS" | "ERROR";
 
 
-export type DownloaderTab = "reels" | "videos" | "photos" | "carousel" | "stories" | "audio";
+/**
+ * Media mode ids accepted by the hero. "carousel" was deliberately removed:
+ * carousels resolve to "photos", the tab that has always represented
+ * photo/carousel posts, so the active state can never disappear.
+ */
+export type DownloaderTab = "reels" | "videos" | "photos" | "stories" | "audio";
 
 const HERO_CATEGORIES = [
   {
@@ -68,8 +67,8 @@ const HERO_CATEGORIES = [
   },
   {
     id: "photos" as const,
-    title: "Carousels",
-    subtitle: "Get Carousels",
+    title: "Photos",
+    subtitle: "Photos & Carousels",
     icon: ImageIcon,
     iconBg: "rgba(245, 142, 91, 0.14)",
     iconColor: "#f58e5b",
@@ -100,10 +99,12 @@ function resolveTabFromResultType(type: string): DownloaderTab | null {
       return "reels";
     case "VIDEO":
       return "videos";
-    case "CAROUSEL":
-      return "carousel";
     case "POST":
     case "PHOTO":
+    case "CAROUSEL":
+      // Carousels and single photos share ONE tab id ("photos"). Returning a
+      // separate "carousel" id here used to deselect every tab after a
+      // carousel resolved, because no category is registered under it.
       return "photos";
     case "STORY":
     case "STORY_PROFILE":
@@ -229,10 +230,30 @@ interface HeroDownloaderProps {
   titleB?: string;
   subtitle?: string;
   /**
-   * Tool pages render the hero heading as a styled <p> so each page keeps a
-   * single <h1>. Default "h1" preserves the homepage exactly.
+   * Tag used for the hero heading. Default "h1" — every tool route keeps its
+   * single, page-specific H1 at the very top of the page, directly above the
+   * download box. Only pass "p" when the page renders its own <h1> elsewhere.
    */
   titleAs?: "h1" | "p";
+  /** URL field placeholder. Tool pages pass route-specific copy. */
+  placeholder?: string;
+  /** Eyebrow badge text. Tool pages pass route-specific copy. */
+  badge?: string;
+  /** Primary button label. */
+  buttonLabel?: string;
+  /**
+   * Which media shortcuts this route offers. Omitted = all five (homepage).
+   * Tool pages pass only their own media type so a Story page never shows a
+   * Carousels control, an Audio page never shows a Stories control, etc.
+   */
+  tabs?: DownloaderTab[];
+  /**
+   * Supporting note shown next to the media chip when `tabs` has a single
+   * entry (a lone button would read as a broken tab bar).
+   */
+  mediaNote?: string;
+  /** Trust indicators under the input. Omitted = the shared three. */
+  trust?: string[];
 }
 
 const DEFAULT_SUBTITLE =
@@ -245,6 +266,12 @@ export default function HeroDownloader({
   titleB = "Downloader",
   subtitle = DEFAULT_SUBTITLE,
   titleAs = "h1",
+  placeholder = "Paste Instagram link here...",
+  badge,
+  buttonLabel,
+  tabs,
+  mediaNote,
+  trust,
 }: HeroDownloaderProps) {
   const { t } = useLanguage();
   const [url, setUrl] = useState("");
@@ -641,10 +668,19 @@ export default function HeroDownloader({
 
   const TitleTag = titleAs as "h1" | "p";
 
+  // Media controls this route offers: all five on the homepage, only the
+  // page's own type on a tool route (rendered as one informational chip).
+  const mediaCategories = tabs
+    ? HERO_CATEGORIES.filter((cat) => tabs.includes(cat.id))
+    : HERO_CATEGORIES;
+  const singleMedia = mediaCategories.length === 1 ? mediaCategories[0] : null;
+  const trustItems =
+    trust && trust.length > 0 ? trust : [t.hero.foot1, t.hero.foot2, t.hero.foot3];
+
   return (
     <section
       id="hero"
-      className="hero-section relative overflow-hidden scroll-mt-24 pt-6 sm:pt-8 lg:pt-10 pb-12 sm:pb-20 lg:pb-24"
+      className="hero-section relative overflow-hidden scroll-mt-24 pt-6 sm:pt-8 lg:pt-10 pb-8 sm:pb-12 lg:pb-14"
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         {/* Static radial wash instead of a filter-blurred layer: a 160px
@@ -660,59 +696,61 @@ export default function HeroDownloader({
       </div>
 
       <div className="mx-auto w-full max-w-[1240px] min-w-0 px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
-          {/* Left Content Column */}
-          <div className="lg:col-span-7 min-w-0 flex flex-col text-left">
-            {/* Above-the-fold hero content renders immediately: no entrance
-                animation or delay here — animating the LCP element (or holding
-                it at opacity 0 during a delay) directly inflates LCP. */}
-            <div
-              className="mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-fg-muted sm:mb-5 sm:gap-2 sm:px-4 sm:text-xs self-start"
-              style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}
+        {/* Centered downloader column: badge → heading → description →
+            media shortcuts → URL input → trust badges. */}
+        <div className="mx-auto flex w-full max-w-[840px] min-w-0 flex-col items-center text-center">
+          {/* Above-the-fold hero content renders immediately: no entrance
+              animation or delay here — animating the LCP element (or holding
+              it at opacity 0 during a delay) directly inflates LCP. */}
+          <div
+            className="mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-fg-muted sm:mb-5 sm:gap-2 sm:px-4 sm:text-xs"
+            style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}
+          >
+            <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-accent" />
+            <Sparkles size={14} color="var(--accent)" strokeWidth={2} className="shrink-0" />
+            <span className="truncate">{badge || t.hero.badge}</span>
+          </div>
+
+          <TitleTag className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
+            <span
+              className="hero-title-a block text-balance break-words text-[32px] sm:text-[42px] font-extrabold text-fg tracking-tight"
+              style={{ fontFamily: "var(--font-sans)" }}
             >
-              <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-accent" />
-              <Sparkles size={14} color="var(--accent)" strokeWidth={2} className="shrink-0" />
-              <span className="truncate">{t.hero.badge}</span>
-            </div>
+              {titleA}
+            </span>
+            <span
+              className="hero-title-b block text-balance break-words text-[28px] sm:text-[38px] font-semibold italic"
+              style={{
+                fontFamily: "var(--font-accent)",
+                background: "var(--brand-gradient-text)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              {titleB}
+            </span>
+          </TitleTag>
 
-            <TitleTag className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
-              <span
-                className="hero-title-a block text-balance break-words text-[32px] sm:text-[42px] xl:text-[48px] font-extrabold text-fg tracking-tight"
-                style={{ fontFamily: "var(--font-sans)" }}
-              >
-                {titleA}
-              </span>
-              <span
-                className="hero-title-b block text-balance break-words text-[28px] sm:text-[38px] xl:text-[44px] font-semibold italic"
-                style={{
-                  fontFamily: "var(--font-accent)",
-                  background: "var(--brand-gradient-text)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
-                {titleB}
-              </span>
-            </TitleTag>
+          <p className="hero-subtitle mt-4 text-[16px] leading-[1.65] text-fg-muted mx-auto max-w-2xl">
+            {subtitle}
+          </p>
 
-            <p className="hero-subtitle mt-4 text-[16px] sm:text-[16px] leading-[1.65] text-fg-muted max-w-xl">
-              {subtitle}
-            </p>
-
-            {/* Hero Category Row — 5 types: Reels, Videos, Photos, Stories, Audio.
-                Mobile order (reference layout): the search/download box must
-                render directly below the description and ABOVE these cards, so
-                below the lg breakpoint this block is ordered last within the
-                flex column. Desktop (lg+) keeps the existing DOM order.
-                No duplication: same nodes, same tablist semantics. */}
-            <div className="mt-6 w-full max-lg:order-last">
+          {/* Supported media controls. The homepage (no `tabs`) offers all
+              five types as mode-select tabs feeding the input. A tool route
+              passes only its own type, which renders as one informational
+              chip — a single-button tab bar would look broken, and listing
+              another route's media here is exactly how pages ended up with
+              controls that did not match them. */}
+          {mediaCategories.length > 1 && (
+            <div className="mt-6 w-full">
               <div
                 role="tablist"
                 aria-label="Supported downloaders"
-                className="grid grid-cols-2 sm:grid-cols-5 gap-2"
+                className="mx-auto grid w-full max-w-[700px] gap-1.5 sm:gap-2"
+                style={{ gridTemplateColumns: `repeat(${mediaCategories.length}, minmax(0, 1fr))` }}
               >
-                {HERO_CATEGORIES.map((cat) => {
+                {mediaCategories.map((cat) => {
                   const active = activeTab === cat.id;
                   const Icon = cat.icon;
                   return (
@@ -722,24 +760,24 @@ export default function HeroDownloader({
                       role="tab"
                       aria-selected={active}
                       onClick={() => onActiveTabChange(cat.id)}
-                      className={`group flex flex-col items-start p-2.5 xl:p-3 rounded-xl transition-all duration-200 text-left cursor-pointer border-2 ${
+                      className={`group flex min-w-0 flex-col items-center gap-1 rounded-xl border-2 px-0.5 py-1.5 sm:px-1.5 sm:py-2 transition-all duration-200 text-center cursor-pointer ${
                         active
                           ? "bg-primary-light border-primary/50 shadow-xs ring-2 ring-primary/15"
                           : "bg-card border-transparent hover:border-primary/30 hover:bg-primary-light/40"
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1.5">
-                        <span className={`text-[12px] font-bold transition-colors ${active ? "text-primary-strong" : "text-fg group-hover:text-primary"}`}>
-                          {cat.title}
-                        </span>
-                        <span
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                          style={{ background: cat.iconBg, color: cat.iconColor }}
-                        >
-                          <Icon size={12} strokeWidth={2.2} />
-                        </span>
-                      </div>
-                      <span className="text-[10px] leading-tight text-fg-subtle truncate max-w-full">
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full sm:h-6 sm:w-6"
+                        style={{ background: cat.iconBg, color: cat.iconColor }}
+                      >
+                        <Icon size={12} strokeWidth={2.2} />
+                      </span>
+                      <span
+                        className={`min-w-0 truncate text-[11px] sm:text-[12px] font-bold leading-none transition-colors ${active ? "text-primary-strong" : "text-fg group-hover:text-primary"}`}
+                      >
+                        {cat.title}
+                      </span>
+                      <span className="hidden min-w-0 truncate text-[10.5px] leading-none text-fg-subtle sm:block">
                         {cat.subtitle}
                       </span>
                     </button>
@@ -747,344 +785,198 @@ export default function HeroDownloader({
                 })}
               </div>
             </div>
+          )}
 
-            {/* Input Bar */}
-            <div className="mt-5 w-full">
-              <form onSubmit={handleSubmit} className="relative min-w-0" noValidate>
-                <div
-                  className="url-card rounded-[20px] p-2.5 transition-shadow"
-                  style={{
-                    background: "var(--card)",
-                    boxShadow: "var(--shadow-card), 0 0 40px rgba(124,77,245,0.06)",
-                    border: "1px solid var(--border)",
-                  }}
+          {singleMedia && (
+            <div className="mt-6 flex w-full justify-center">
+              <div
+                className="inline-flex max-w-full items-center gap-2.5 rounded-xl border px-3.5 py-2"
+                style={{ background: "var(--card)", borderColor: "var(--border)" }}
+              >
+                <span
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: singleMedia.iconBg, color: singleMedia.iconColor }}
+                  aria-hidden="true"
                 >
-                  {/* Desktop: horizontal */}
-                  <div className="hidden sm:flex sm:flex-row sm:gap-2">
-                    <div className="relative min-w-0 flex-1">
-                      <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
-                      <input
-                        id="downloadit-url-input"
-                        name="instagram-url"
-                        type="text"
-                        value={url}
-                        onChange={(e) => {
-                          setUrl(e.target.value);
-                          if (error) setError("");
-                        }}
-                        placeholder="Paste Instagram link here..."
-                        className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-12 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
-                        style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
-                        aria-label={t.hero.inputLabel}
-                        aria-invalid={error ? true : undefined}
-                        aria-describedby={error ? "downloadit-url-error" : undefined}
-                        autoComplete="off"
-                        spellCheck={false}
-                        disabled={state === "PREPARING"}
-                      />
-                      {url && state !== "PREPARING" && (
-                        <button
-                          type="button"
-                          onClick={handleClear}
-                          className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-primary-light hover:text-primary"
-                          aria-label={t.common.clear}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
+                  <singleMedia.icon size={14} strokeWidth={2.2} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[12px] font-bold leading-tight text-fg">
+                    {singleMedia.title}
+                  </span>
+                  {mediaNote && (
+                    <span className="block text-[11px] leading-tight text-fg-subtle">
+                      {mediaNote}
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
 
+          {/* Input Bar */}
+          <div className="mt-5 w-full">
+            <form onSubmit={handleSubmit} className="relative min-w-0" noValidate>
+              <div
+                className="url-card rounded-[20px] p-2.5 transition-shadow"
+                style={{
+                  background: "var(--card)",
+                  boxShadow: "var(--shadow-card), 0 0 40px rgba(124,77,245,0.06)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {/* Desktop: horizontal */}
+                <div className="hidden sm:flex sm:flex-row sm:gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
+                    <input
+                      id="downloadit-url-input"
+                      name="instagram-url"
+                      type="text"
+                      value={url}
+                      onChange={(e) => {
+                        setUrl(e.target.value);
+                        if (error) setError("");
+                      }}
+                      placeholder={placeholder}
+                      className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-12 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
+                      style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
+                      aria-label={t.hero.inputLabel}
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? "downloadit-url-error" : undefined}
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={state === "PREPARING"}
+                    />
+                    {url && state !== "PREPARING" && (
+                      <button
+                        type="button"
+                        onClick={handleClear}
+                        className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-primary-light hover:text-primary"
+                        aria-label={t.common.clear}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePaste}
+                    disabled={state === "PREPARING"}
+                    className="flex h-13 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
+                    style={{ background: "var(--bg)" }}
+                    aria-label={t.common.paste}
+                  >
+                    <Clipboard className="h-3.5 w-3.5" />
+                    {t.common.paste}
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={state === "PREPARING"}
+                    className="gradient-btn h-13 shrink-0 px-7 text-[16px]"
+                  >
+                    {state === "PREPARING" ? (
+                      <>
+                        <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                          <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+                        </svg>
+                        {t.common.resolving}
+                      </>
+                    ) : (
+                      <>
+                        <DownloadIcon className="h-5 w-5" />
+                        <span>{buttonLabel || t.common.getMedia}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Mobile: stacked */}
+                <div className="flex flex-col gap-2 sm:hidden">
+                  <div className="relative">
+                    <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
+                    <input
+                      id="downloadit-url-input-mobile"
+                      name="instagram-url"
+                      type="text"
+                      value={url}
+                      onChange={(e) => {
+                        setUrl(e.target.value);
+                        if (error) setError("");
+                      }}
+                      placeholder={placeholder}
+                      className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-20 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
+                      style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
+                      aria-label={t.hero.inputLabel}
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? "downloadit-url-error" : undefined}
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={state === "PREPARING"}
+                    />
+                    {url && state !== "PREPARING" && (
+                      <button
+                        type="button"
+                        onClick={handleClear}
+                        className="absolute right-3 top-1/2 flex h-8 -translate-y-1/2 items-center gap-1 rounded-xl border border-border px-2.5 text-xs font-medium text-fg-muted"
+                        style={{ background: "var(--bg)" }}
+                        aria-label={t.common.clear}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="url-actions flex min-w-0 flex-col gap-2">
                     <button
                       type="button"
                       onClick={handlePaste}
                       disabled={state === "PREPARING"}
-                      className="flex h-13 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
+                      className="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
                       style={{ background: "var(--bg)" }}
                       aria-label={t.common.paste}
                     >
-                      <Clipboard className="h-3.5 w-3.5" />
-                      {t.common.paste}
+                      <Clipboard className="h-4 w-4 shrink-0" />
+                      <span className="btn-label truncate">{t.common.paste}</span>
                     </button>
-
                     <button
                       type="submit"
                       disabled={state === "PREPARING"}
-                      className="gradient-btn h-13 shrink-0 px-7 text-[16px]"
+                      className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-3 text-[16px]"
                     >
                       {state === "PREPARING" ? (
                         <>
-                          <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <svg className="h-5 w-5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
                             <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
                           </svg>
-                          {t.common.resolving}
+                          <span className="btn-label truncate">{t.common.resolving}</span>
                         </>
                       ) : (
                         <>
-                          <DownloadIcon className="h-5 w-5" />
-                          <span>Download</span>
+                          <DownloadIcon className="h-5 w-5 shrink-0" />
+                          <span className="btn-label truncate">{buttonLabel || t.common.getMedia}</span>
                         </>
                       )}
                     </button>
                   </div>
-
-                  {/* Mobile: stacked */}
-                  <div className="flex flex-col gap-2 sm:hidden">
-                    <div className="relative">
-                      <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
-                      <input
-                        id="downloadit-url-input-mobile"
-                        name="instagram-url"
-                        type="text"
-                        value={url}
-                        onChange={(e) => {
-                          setUrl(e.target.value);
-                          if (error) setError("");
-                        }}
-                        placeholder="Paste Instagram link here..."
-                        className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-20 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
-                        style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
-                        aria-label={t.hero.inputLabel}
-                        aria-invalid={error ? true : undefined}
-                        aria-describedby={error ? "downloadit-url-error" : undefined}
-                        autoComplete="off"
-                        spellCheck={false}
-                        disabled={state === "PREPARING"}
-                      />
-                      {url && state !== "PREPARING" && (
-                        <button
-                          type="button"
-                          onClick={handleClear}
-                          className="absolute right-3 top-1/2 flex h-8 -translate-y-1/2 items-center gap-1 rounded-xl border border-border px-2.5 text-xs font-medium text-fg-muted"
-                          style={{ background: "var(--bg)" }}
-                          aria-label={t.common.clear}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="url-actions flex min-w-0 flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={handlePaste}
-                        disabled={state === "PREPARING"}
-                        className="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
-                        style={{ background: "var(--bg)" }}
-                        aria-label={t.common.paste}
-                      >
-                        <Clipboard className="h-4 w-4 shrink-0" />
-                        <span className="btn-label truncate">{t.common.paste}</span>
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={state === "PREPARING"}
-                        className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-3 text-[16px]"
-                      >
-                        {state === "PREPARING" ? (
-                          <>
-                            <svg className="h-5 w-5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                              <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
-                            </svg>
-                            <span className="btn-label truncate">{t.common.resolving}</span>
-                          </>
-                        ) : (
-                          <>
-                            <DownloadIcon className="h-5 w-5 shrink-0" />
-                            <span className="btn-label truncate">Download</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
                 </div>
-              </form>
+              </div>
+            </form>
 
-              {/* Trust Badges */}
-              <div className="mt-3 flex flex-wrap items-center justify-start gap-x-4 gap-y-1.5 px-1 text-[12px] text-fg-subtle sm:mt-4 sm:gap-x-5 sm:text-[14px]">
-                <span className="flex items-center gap-1.5">
+            {/* Trust indicators */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 text-[12px] text-fg-subtle sm:mt-4 sm:gap-x-5 sm:text-[14px]">
+              {trustItems.map((item) => (
+                <span key={item} className="flex items-center gap-1.5">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-                  {t.hero.foot1}
+                  {item}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-                  {t.hero.foot2}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-                  {t.hero.foot3}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Visual Column (Phone + 4 Floating Cards: Reels, Photos, Stories, Audio - NO highlights) */}
-          {/* Purely decorative marketing mockup: hidden from assistive tech so
-              screen readers skip the illustrated post and timestamps. No
-              engagement counts or statistics are shown — the mockup depicts
-              interface only, never fabricated numbers. */}
-          <div className="hidden lg:flex lg:col-span-5 min-w-0 items-center justify-center relative py-6" aria-hidden="true">
-            <div className="relative w-full max-w-[320px] xl:max-w-[340px] flex items-center justify-center">
-              {/* Phone Mockup Frame */}
-              <div
-                className="relative w-[275px] xl:w-[290px] h-[510px] xl:h-[530px] rounded-[28px] p-2 shadow-2xl select-none"
-                style={{
-                  background: "#0b0c16",
-                  border: "8px solid #1c1d2e",
-                  boxShadow: "0 25px 60px -12px rgba(124, 77, 245, 0.25), 0 12px 30px rgba(0, 0, 0, 0.4)",
-                }}
-              >
-                {/* Dynamic Island */}
-                <div className="mx-auto h-4 w-20 rounded-full bg-black mb-2" />
-
-                {/* Mock Phone Screen */}
-                <div className="h-[calc(100%-24px)] rounded-[24px] bg-slate-900 overflow-hidden flex flex-col justify-between text-white p-3 border border-white/5">
-                  {/* Mock IG Header */}
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <span className="text-[14px] font-bold italic tracking-wide" style={{ background: "var(--brand-gradient-text)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                      Instagram
-                    </span>
-                    <div className="flex items-center gap-2 text-white/60">
-                      <Heart size={14} />
-                      <Send size={14} />
-                    </div>
-                  </div>
-
-                  {/* Mock Post Account */}
-                  <div className="flex items-center justify-between py-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full p-[1.5px]" style={{ background: "var(--brand-gradient)" }}>
-                        <div className="h-full w-full rounded-full bg-slate-950 flex items-center justify-center text-[10px] font-bold text-accent">
-                          D
-                        </div>
-                      </div>
-                      <span className="text-[12px] font-semibold text-white">downloadit.pro</span>
-                    </div>
-                    <span className="text-white/60 text-[12px]">•••</span>
-                  </div>
-
-                  {/* Mock Video / Reel Area */}
-                  <div className="relative aspect-[4/5] rounded-2xl overflow-hidden flex flex-col justify-between p-3" style={{ background: "linear-gradient(135deg, #4c1d95 0%, #831843 50%, #9a3412 100%)" }}>
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-medium backdrop-blur-md">
-                        <Film size={10} /> Reels
-                      </span>
-                      <span className="rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-medium backdrop-blur-md">
-                        0:45
-                      </span>
-                    </div>
-
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-md shadow-lg border border-white/30">
-                      <Play size={20} className="ml-1 text-white fill-white" />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[12px] text-white">
-                      <span className="truncate flex items-center gap-1">
-                        <Music size={11} /> Preview
-                      </span>
-                      <Volume2 size={13} />
-                    </div>
-                  </div>
-
-                  {/* Mock Post Actions */}
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-3 text-white text-[12px]">
-                      <Heart size={14} className="text-accent fill-accent" />
-                      <MessageCircle size={14} />
-                      <Send size={14} />
-                    </div>
-                    <Bookmark size={14} className="text-white" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating Card 1: Reels (Top-Left) */}
-              <div
-                className="animate-float-1 absolute -left-4 xl:-left-8 top-10 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 backdrop-blur-xl transition-transform hover:scale-105"
-                style={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 14px 30px rgba(236, 95, 168, 0.15), var(--shadow-card)",
-                }}
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: "linear-gradient(135deg, #7c4df5, #ec5fa8)" }}>
-                  <Film size={18} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-bold text-fg">Reels</span>
-                    <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-pink-500/10">MP4</span>
-                  </div>
-                  <span className="block text-[12px] font-medium text-fg-subtle">Download Reels</span>
-                </div>
-              </div>
-
-              {/* Floating Card 2: Stories (Top-Right) */}
-              <div
-                className="animate-float-2 absolute -right-4 xl:-right-8 top-20 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 backdrop-blur-xl transition-transform hover:scale-105"
-                style={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 14px 30px rgba(14, 165, 233, 0.15), var(--shadow-card)",
-                }}
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: "linear-gradient(135deg, #0ea5e9, #38bdf8)" }}>
-                  <Clock size={18} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-bold text-fg">Stories</span>
-                    <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-sky-500/10">24h</span>
-                  </div>
-                  <span className="block text-[12px] font-medium text-fg-subtle">Save Stories</span>
-                </div>
-              </div>
-
-              {/* Floating Card 3: Audio (Bottom-Left) */}
-              <div
-                className="animate-float-2 absolute -left-4 xl:-left-8 bottom-16 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 backdrop-blur-xl transition-transform hover:scale-105"
-                style={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 14px 30px rgba(16, 185, 129, 0.15), var(--shadow-card)",
-                }}
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}>
-                  <Music size={18} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-bold text-fg">Audio</span>
-                    <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-emerald-500/10">MP3</span>
-                  </div>
-                  <span className="block text-[12px] font-medium text-fg-subtle">Extract Audio</span>
-                </div>
-              </div>
-
-              {/* Floating Card 4: Photos (Bottom-Right) */}
-              <div
-                className="animate-float-1 absolute -right-4 xl:-right-8 bottom-8 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 backdrop-blur-xl transition-transform hover:scale-105"
-                style={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  boxShadow: "0 14px 30px rgba(245, 142, 91, 0.15), var(--shadow-card)",
-                }}
-              >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: "linear-gradient(135deg, #f58e5b, #fb923c)" }}>
-                  <ImageIcon size={18} strokeWidth={2.2} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[14px] font-bold text-fg">Carousels</span>
-                    <span className="rounded-full px-1.5 py-0.2 text-[10px] font-bold text-fg-muted bg-amber-500/10">Original</span>
-                  </div>
-                  <span className="block text-[12px] font-medium text-fg-subtle">Get Carousels</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
-
         {/* Result / Error Area */}
         <div ref={resultAnchorRef} aria-live="polite" aria-atomic="true" className="scroll-mt-[calc(80px+env(safe-area-inset-top,0px))]">
           {state === "PREPARING" && (

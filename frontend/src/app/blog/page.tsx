@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { getAllPosts } from "@/lib/blog";
 
@@ -33,7 +34,14 @@ export default function BlogIndexPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12 pt-8 sm:pt-12">
+        <Breadcrumb
+          items={[
+            { name: "Home", path: "/" },
+            { name: "Blog", path: "/blog" },
+          ]}
+          containerClassName="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pt-4"
+        />
+        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12 pt-4 sm:pt-6">
           <Link
             href="/"
             className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
@@ -89,19 +97,6 @@ export default function BlogIndexPage() {
               url: `${SITE_URL}/blog/${p.slug}`,
               inLanguage: "en",
             })),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: "Blog", item: `${SITE_URL}/blog` },
-            ],
           }),
         }}
       />

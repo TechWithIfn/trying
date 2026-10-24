@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ProseSection from "@/components/ProseSection";
-import { SUPPORT_EMAIL, supportMailto, SITE_URL } from "@/config/site";
+import { SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
 export default function LegalPage({
   title,
@@ -17,40 +18,24 @@ export default function LegalPage({
   /** Canonical path of this page (e.g. "/privacy") for BreadcrumbList markup. */
   crumbPath: string;
 }) {
-  const breadcrumbJson = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: `${SITE_URL}/`,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: title,
-        item: `${SITE_URL}${crumbPath}`,
-      },
-    ],
-  });
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
-      <script
-        id={`breadcrumb-${crumbPath.replace(/\//g, "") || "home"}`}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: breadcrumbJson }}
-      />
-      <Link
-        href="/"
-        className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
-      >
-        ← Back to home
-      </Link>
+        <Breadcrumb
+          items={[
+            { name: "Home", path: "/" },
+            { name: title, path: crumbPath },
+          ]}
+          containerClassName="mx-auto w-full max-w-[720px] px-4 pt-4 sm:px-6"
+        />
+        <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-2 sm:px-6 sm:pt-4">
+          <Link
+            href="/"
+            className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
+          >
+            ← Back to home
+          </Link>
       <h1 className="mt-4 text-[clamp(26px,4vw,40px)] font-bold tracking-[-0.02em] text-fg">
         {title}
       </h1>

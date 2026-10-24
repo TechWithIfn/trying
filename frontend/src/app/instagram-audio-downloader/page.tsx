@@ -1,33 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
 import ProseSection from "@/components/ProseSection";
-import ReadMore from "@/components/ReadMore";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 
-export const metadata: Metadata = {
-  title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
-  description: "Extract music and sound from public Reels and videos as MP3. Paste a link and download the audio track with Downloadit — free, no login required.",
-  alternates: { canonical: "/instagram-audio-downloader" },
-  openGraph: {
-    title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
-    description: "Extract music and sound from public Reels and videos as MP3. Paste a link and download the audio track with Downloadit — free, no login required.",
-    url: `${SITE_URL}/instagram-audio-downloader`,
-    type: "website",
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Audio Downloader — Downloadit" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: { absolute: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit" },
-    description: "Extract music and sound from public Reels and videos as MP3. Paste a link and download the audio track with Downloadit — free, no login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
-
-const PAGE_NAME = "Instagram Audio Downloader";
-const PAGE_PATH = "/instagram-audio-downloader";
+const PAGE = TOOL_PAGES.instagramAudio;
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -47,7 +28,7 @@ const FAQS = [
     a: "No — it mirrors the source exactly. Extraction moves the clip's own audio into an MP3 without improving it. A crisp recording gives a crisp MP3; a windy, distant or muffled original stays that way in the file.",
   },
   {
-    q: "What does temporarily unavailable mean on the audio tab?",
+    q: "What does temporarily unavailable mean here?",
     a: "The server-side audio queue is full at that moment. It is a capacity notice, not a broken link — wait a while and retry the same post link. If you need something immediately, save the MP4 through the video downloader first so you at least hold the file.",
   },
   {
@@ -61,12 +42,8 @@ export default function AudioDownloaderPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <ToolDownloader
-          initialTab="audio"
-          titleA="Paste a video link,"
-          titleB="take the MP3."
-          subtitle="Extract the audio from a public Reel or video and save it as MP3 — Audio mode is preselected below."
-        />
+        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
+        <ToolDownloader page={PAGE} />
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
           <Link
             href="/"
@@ -74,7 +51,7 @@ export default function AudioDownloaderPage() {
           >
             ← Back to Instagram Downloader
           </Link>
-          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Audio Downloader</h1>
+          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">What the Audio downloader does</h2>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
             Sometimes the picture is beside the point. A voice explaining an idea you want to replay on a walk, a demo of your own song, a spoken quote worth quoting back accurately, a sleepy lullaby playing behind a reel. Instagram stores sound and picture together, with no button for the sound alone. This page separates the two: paste the link to a public reel or video and take home just the audio as an MP3 you can listen to anywhere.
           </p>
@@ -83,7 +60,6 @@ export default function AudioDownloaderPage() {
           </p>
 
           <ProseSection>
-          <ReadMore label="audio guide">
           <h2>When saving the sound beats saving the video</h2>
           <p>
             Musicians and voice artists keep their own demos and takes — comparing versions, sending a quick draft to a collaborator, checking a mix on different speakers. Students lean on spoken material the same way: a pronunciation example, a speech to transcribe, replayed with the screen off on a commute.
@@ -97,21 +73,21 @@ export default function AudioDownloaderPage() {
             <h3 className="text-[16px] font-bold text-fg">On Android</h3>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li>Open the public reel or video whose sound you want and copy its link with Share and Copy link.</li>
-              <li>Open this page in your mobile browser. The Audio tab is already selected.</li>
+              <li>Open this page in your mobile browser and paste the link — this page always asks for audio, so no format choice is needed.</li>
               <li>Paste the link, tap Get Media, and leave the tab open while the server works. Short reels take a little while; long videos take proportionally longer.</li>
               <li>When the MP3 is ready, tap Download. It lands in Downloads and opens in any music app.</li>
             </ol>
             <h3 className="text-[16px] font-bold text-fg">On iPhone</h3>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li>Copy the reel or video link from the Instagram app the usual way.</li>
-              <li>Paste it into the downloader above in Safari, with the Audio tab selected, and tap Get Media.</li>
+              <li>Paste it into the downloader above in Safari and tap Get Media. This page always extracts audio from the clip you paste.</li>
               <li>Keep Safari open on this tab. Closing it or letting the phone sleep mid-job abandons that attempt.</li>
               <li>Tap Download once processing finishes. The MP3 sits in Files under Downloads — move it into your music app or share it onward from there.</li>
             </ol>
             <h3 className="text-[16px] font-bold text-fg">On desktop</h3>
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li>Copy the address of the public reel or video post from your browser.</li>
-              <li>Paste it into the box at the top of this page and click Get Media with Audio selected.</li>
+              <li>Paste it into the box at the top of this page and click Get Media — the request extracts the audio track.</li>
               <li>Wait for processing to complete — this is the one page where patience is part of the flow.</li>
               <li>Click Download. The MP3 goes to your downloads folder and plays in any desktop player or editor.</li>
             </ol>
@@ -143,11 +119,20 @@ export default function AudioDownloaderPage() {
             </div>
           </div>
 
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Devices and browsers this page works on</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            The audio extractor runs on any standard web browser on your phone, tablet, or computer without installing third-party apps or signing into an account. Supported browsers include Safari and Chrome on iOS; Chrome, Samsung Internet, and Firefox on Android; and Chrome, Safari, Firefox, and Edge on macOS, Windows, Linux, and ChromeOS. Extracted MP3 files download straight to your browser&apos;s default folder — Files under Downloads on iPhone and iPad, or the Downloads/Audio folder on Android and PCs.
+          </p>
+
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Your privacy on this page</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            Only the public post link is submitted. Downloadit never asks for an Instagram username or password and never asks you to connect an account, so nothing personal rides along with the request — there is no login session to expose because no login exists. The <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> describes precisely what is processed when you extract audio.
+          </p>
+
           <h2 className="mt-10 text-[20px] font-bold text-fg">Music belongs to someone — handle it with care</h2>
           <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
             This warning matters more for audio than anywhere else, because songs and voice recordings carry the strictest rights. Keep your own recordings freely, save other audio for private listening, and never re-upload, remix or sample someone else&apos;s music or voice without written permission. A trending sound is not a free sound. Rights holders can request a review via the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link>. Only download content you own or have permission to reuse.
           </p>
-          </ReadMore>
           </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
@@ -157,7 +142,10 @@ export default function AudioDownloaderPage() {
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
               { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
-              { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
+              { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
+              { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images & carousels" },
+              { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
+              { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
                 <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
@@ -212,19 +200,6 @@ export default function AudioDownloaderPage() {
               name: item.q,
               acceptedAnswer: { "@type": "Answer", text: item.a },
             })),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
-            ],
           }),
         }}
       />

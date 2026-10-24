@@ -39,7 +39,9 @@ export type WorkloadName =
   | "ffmpeg"
   | "stream"
   | "download"
-  | "probe";
+  | "probe"
+  | "youtubeResolve"
+  | "youtube";
 
 interface Waiter {
   resolve: () => void;
@@ -92,6 +94,12 @@ const WORKLOAD_DEFAULTS: Record<WorkloadName, WorkloadDefaults> = {
   download: { limit: 64, maxQueueMs: 2_000, staleMs: 300_000 },
   // Metadata probes (HEAD + ranged GET) issued during media enrichment.
   probe: { limit: 12, maxQueueMs: 3_000, staleMs: 30_000 },
+  // YouTube metadata probes. Kept separate from downloads so a queue of long
+  // media transfers can never block the initial "Get Media" step.
+  youtubeResolve: { limit: 4, maxQueueMs: 8_000, staleMs: 90_000 },
+  // yt-dlp downloads/merges. Each job writes a real temp file and may spawn
+  // FFmpeg, so the global budget is deliberately small.
+  youtube: { limit: 2, maxQueueMs: 10_000, staleMs: 900_000 },
 };
 
 /**
@@ -108,6 +116,16 @@ const WORKLOAD_ENV: Record<WorkloadName, { limit: string; queue: string; stale: 
   stream: { limit: "MAX_CONCURRENT_STREAMS", queue: "STREAM_QUEUE_WAIT_MS", stale: "STREAM_STALE_MS" },
   download: { limit: "MAX_CONCURRENT_DOWNLOADS", queue: "DOWNLOAD_QUEUE_WAIT_MS", stale: "DOWNLOAD_STALE_MS" },
   probe: { limit: "MAX_CONCURRENT_PROBES", queue: "PROBE_QUEUE_WAIT_MS", stale: "PROBE_STALE_MS" },
+  youtubeResolve: {
+    limit: "MAX_CONCURRENT_YOUTUBE_RESOLVES",
+    queue: "YOUTUBE_RESOLVE_QUEUE_WAIT_MS",
+    stale: "YOUTUBE_RESOLVE_STALE_MS",
+  },
+  youtube: {
+    limit: "MAX_CONCURRENT_YOUTUBE_DOWNLOADS",
+    queue: "YOUTUBE_QUEUE_WAIT_MS",
+    stale: "YOUTUBE_STALE_MS",
+  },
 };
 
 function defaultsFor(name: string): WorkloadDefaults {
@@ -463,6 +481,8 @@ export const WORKLOAD_NAMES: readonly WorkloadName[] = [
   "stream",
   "download",
   "probe",
+  "youtubeResolve",
+  "youtube",
 ] as const;
 
 function memoryUsage(): CapacitySnapshot["memory"] {

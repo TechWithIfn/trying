@@ -1,33 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
 import ProseSection from "@/components/ProseSection";
-import ReadMore from "@/components/ReadMore";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 
-export const metadata: Metadata = {
-  title: { absolute: "Instagram Story Downloader – Save Stories | Downloadit" },
-  description: "Save public Instagram Stories before they expire. Paste the Story link and download the image or video in HD — free, no login required.",
-  alternates: { canonical: "/instagram-story-downloader" },
-  openGraph: {
-    title: { absolute: "Instagram Story Downloader – Save Stories | Downloadit" },
-    description: "Save public Instagram Stories before they expire. Paste the Story link and download the image or video in HD — free, no login required.",
-    url: `${SITE_URL}/instagram-story-downloader`,
-    type: "website",
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Story Downloader — Downloadit" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: { absolute: "Instagram Story Downloader – Save Stories | Downloadit" },
-    description: "Save public Instagram Stories before they expire. Paste the Story link and download the image or video in HD — free, no login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
-
-const PAGE_NAME = "Instagram Story Downloader";
-const PAGE_PATH = "/instagram-story-downloader";
+const PAGE = TOOL_PAGES.instagramStory;
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -61,12 +42,8 @@ export default function StoryDownloaderPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <ToolDownloader
-          initialTab="stories"
-          titleA="Paste a story link,"
-          titleB="before it expires."
-          subtitle="Save a public Instagram story as image or MP4 while it's still live — after 24 hours the link goes dead."
-        />
+        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
+        <ToolDownloader page={PAGE} />
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
           <Link
             href="/"
@@ -74,7 +51,7 @@ export default function StoryDownloaderPage() {
           >
             ← Back to Instagram Downloader
           </Link>
-          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">Instagram Story Downloader</h1>
+          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">What the Story downloader does</h2>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
             A story is Instagram&apos;s disappearing post — a photo or short clip that lives at the top of the app for one day and then vanishes. Announcements, behind-the-scenes moments, flash sales, match-day clips: things meant to be seen today, not next month. Screenshotting a story mid-watch is awkward, and recording your screen for a fifteen-second clip is worse. This page is built for the narrow window while a public story is still alive — you paste its link and keep the original file before the clock runs out.
           </p>
@@ -83,7 +60,6 @@ export default function StoryDownloaderPage() {
           </p>
 
           <ProseSection>
-          <ReadMore label="story guide">
           <h2>Why people rush to save stories</h2>
           <p>
             Small businesses archive their own story output — daily offers, menus, opening hours from a public account — so a finished promotion can be reused next season and there is always proof of what was advertised and when.
@@ -143,11 +119,20 @@ export default function StoryDownloaderPage() {
             </div>
           </div>
 
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Devices and browsers this page works on</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            The Story downloader works across any mobile or desktop browser without software installations or user accounts. You can paste public Story links in Safari or Chrome on iPhone and iPad; Chrome, Firefox, or Samsung Internet on Android; and any modern web browser on Mac, Windows, Linux, and Chromebooks. Downloaded image stories save as JPG files and video stories as MP4 files directly to your device storage — the Files app under Downloads on iOS, or the Downloads/Gallery folder on Android and computers.
+          </p>
+
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Your privacy on this page</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            A story link is all this page ever receives. Downloadit asks for no Instagram login, no username and no password, and there is no account to connect — the request carries the public link and nothing that identifies you. That is also why Close Friends and private stories stay out of reach: the page works the way a stranger with no account would, and so it never sees anything a stranger could not. The <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> covers the details.
+          </p>
+
           <h2 className="mt-10 text-[20px] font-bold text-fg">Save stories that are yours to keep</h2>
           <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
             Stories feel casual, but the same authorship applies: the frame belongs to whoever posted it. Archive your own stories freely, keep other people&apos;s public stories for personal reference only, and get explicit permission before reposting or running anyone else&apos;s story in your own account or campaign. Rights holders can request a review via the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link>. Only download content you own or have permission to reuse.
           </p>
-          </ReadMore>
           </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
@@ -157,7 +142,10 @@ export default function StoryDownloaderPage() {
               { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels as JPG" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save videos as MP4" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
-              { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
+              { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
+              { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images & carousels" },
+              { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
+              { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
                 <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
@@ -212,19 +200,6 @@ export default function StoryDownloaderPage() {
               name: item.q,
               acceptedAnswer: { "@type": "Answer", text: item.a },
             })),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
-            ],
           }),
         }}
       />

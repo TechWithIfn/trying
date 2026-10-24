@@ -103,6 +103,10 @@ npm run dev:backend    # http://localhost:3001
 | `RESOLVER_TIMEOUT_MS` | Provider request timeout | `15000` |
 | `INSTAGRAM_COOKIE` | Full Instagram cookie string (`sessionid=...; csrftoken=...; ...`) — optional | - |
 | `INSTAGRAM_SESSIONID` | Bare Instagram session ID (wrapped automatically) — optional, alternative to `INSTAGRAM_COOKIE` | - |
+| `YTDLP_PATH` | Override the bundled yt-dlp executable (YouTube) — optional | bundled |
+| `YOUTUBE_MAX_DURATION_SECONDS` | Longest public YouTube video accepted | `3600` |
+| `YOUTUBE_MAX_OUTPUT_BYTES` | Largest prepared YouTube file served | `536870912` |
+| `RATE_LIMIT_YOUTUBE_MAX_REQUESTS` | Shared YouTube resolve/download budget per IP/window | `12` |
 
 The Instagram session is **optional**. When configured, Story resolution tries it
 first and automatically falls back to anonymous/public resolution if Instagram
@@ -133,6 +137,8 @@ set the variables in Project Settings → Environment Variables and redeploy.
 |--------|----------|-------------|
 | POST | `/api/resolve` | Resolve an Instagram URL to downloadable media |
 | GET | `/api/download/:id/:mediaIndex` | Download a specific media item by resolved ID |
+| POST | `/api/youtube/resolve` | Validate a public YouTube URL and return real available qualities |
+| GET | `/api/youtube/download?url=…&format=mp4\|mp3&quality=1080` | Prepare and stream a YouTube MP4 or MP3 |
 | GET | `/api/health` | Health check |
 
 ## Production Deployment
@@ -194,6 +200,15 @@ Validated Media
   ↓
 User Download
 ```
+
+### YouTube downloads
+
+The YouTube downloader runs yt-dlp and FFmpeg as child processes and writes a
+temporary file per request. It needs a **long-running Node process**, a writable
+temp directory, and an executable bundled binary (or `YTDLP_PATH`). It is not
+supported on Vercel's 60-second serverless functions, and datacenter IPs may be
+challenged by YouTube's bot checks. Use a container/VM host (Railway, Render,
+Fly.io) with a generous request timeout, or an external download provider.
 
 ### CORS
 

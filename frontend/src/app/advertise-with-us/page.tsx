@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
 const ADVERTISE_TITLE = "Advertise With Us | Downloadit";
@@ -37,7 +38,14 @@ export default function AdvertiseWithUsPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
+        <Breadcrumb
+          items={[
+            { name: "Home", path: "/" },
+            { name: "Advertise With Us", path: "/advertise-with-us" },
+          ]}
+          containerClassName="mx-auto w-full max-w-[720px] px-4 pt-4 sm:px-6"
+        />
+        <section className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-2 sm:px-6 sm:pt-4">
           <Link
             href="/"
             className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"

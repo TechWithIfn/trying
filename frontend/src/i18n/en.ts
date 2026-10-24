@@ -37,7 +37,10 @@ export const en: Strings = {
   },
   hero: {
     badge: "Fast · Free · No login required",
-    titleA: "Instagram Downloader",
+    // Trailing space keeps the concatenated <h1> text readable for assistive
+    // tech and crawlers ("Instagram Downloader Reels, ..." — the two spans are
+    // separate blocks, so the space would otherwise vanish).
+    titleA: "Instagram Downloader ",
     titleB: "Reels, Videos, Carousels & Audio",
     subtitle: "Download public Instagram Reels, videos, carousels and audio with Downloadit. Preview media and save it to your device quickly, no login required.",
     cardTitle: "Paste an Instagram Link",

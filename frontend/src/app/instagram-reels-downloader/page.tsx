@@ -1,33 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SITE_URL } from "@/config/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
 import ProseSection from "@/components/ProseSection";
-import ReadMore from "@/components/ReadMore";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 
-export const metadata: Metadata = {
-  title: { absolute: "Instagram Reels Downloader – Save Reels as MP4 | Downloadit" },
-  description: "Save public Instagram Reels as MP4 with Downloadit. Paste a link, preview in HD and download with original audio — free, no login required.",
-  alternates: { canonical: "/instagram-reels-downloader" },
-  openGraph: {
-    title: { absolute: "Instagram Reels Downloader – Save Reels as MP4 | Downloadit" },
-    description: "Save public Instagram Reels as MP4 with Downloadit. Paste a link, preview in HD and download with original audio — free, no login required.",
-    url: `${SITE_URL}/instagram-reels-downloader`,
-    type: "website",
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Instagram Reels Downloader — Downloadit" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: { absolute: "Instagram Reels Downloader – Save Reels as MP4 | Downloadit" },
-    description: "Save public Instagram Reels as MP4 with Downloadit. Paste a link, preview in HD and download with original audio — free, no login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
-
-const PAGE_NAME = "Instagram Reels Downloader";
-const PAGE_PATH = "/instagram-reels-downloader";
+const PAGE = TOOL_PAGES.instagramReels;
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -61,12 +42,8 @@ export default function ReelsDownloaderPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <ToolDownloader
-          initialTab="reels"
-          titleA="Paste a Reels link,"
-          titleB="save the MP4."
-          subtitle="Drop a public Instagram Reels link into the downloader and save the original MP4 — preview it first, no login, nothing to install."
-        />
+        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
+        <ToolDownloader page={PAGE} />
         <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
           <Link
             href="/"
@@ -74,9 +51,9 @@ export default function ReelsDownloaderPage() {
           >
             ← Back to Instagram Downloader
           </Link>
-          <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">
-            Instagram Reels Downloader
-          </h1>
+          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
+            What the Reels downloader does
+          </h2>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
             A reel is Instagram&apos;s short vertical clip — usually under a couple of minutes, made to be watched on a phone and passed around. A joke your friend sends you at midnight, a 40-second recipe you want to try on Sunday, a quick fix for something broken in the house. Reels are built for the moment, and Instagram gives you no button to keep them. This page exists for that one gap: you paste the link to a public reel and keep the MP4 file on your own device.
           </p>
@@ -85,7 +62,6 @@ export default function ReelsDownloaderPage() {
           </p>
 
           <ProseSection>
-          <ReadMore label="reel guide">
           <h2>What people actually use reel downloads for</h2>
           <p>
             Creators use it as a backup drawer. If you post reels from your own public account, keeping the MP4 on your laptop means a lost draft or an app glitch never costs you the finished edit. Small-shop owners save their own product reels so they can repost a clip later or send it directly to a customer over chat.
@@ -147,11 +123,20 @@ export default function ReelsDownloaderPage() {
             </div>
           </div>
 
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Devices and browsers this page works on</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            Downloadit needs nothing installed and requires no account. The Reels downloader runs directly in any modern mobile or desktop browser: Safari, Chrome, Firefox, Edge, or Samsung Internet on Android; Safari or Chrome on iPhone and iPad; and Chrome, Firefox, Safari, or Edge on Windows, Mac, Linux, and ChromeOS. Downloaded Reels go to your browser&apos;s standard destination — the Files app under Downloads on iOS, the Downloads folder or Gallery on Android, and your chosen downloads folder on a desktop computer.
+          </p>
+
+          <h2 className="mt-10 text-[20px] font-bold text-fg">Your privacy on this page</h2>
+          <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
+            Paste a link and nothing about you travels with it. Downloadit never asks for your Instagram username or password, never asks you to connect an account, and processes only the public link you submitted. The URL is used to resolve the file and is not attached to an identity — there is no login to leak because there is no login at all. The full <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> spells out what is and is not kept.
+          </p>
+
           <h2 className="mt-10 text-[20px] font-bold text-fg">Please download reels fairly</h2>
           <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
             A reel belongs to the person who made it. Save copies of your own reels freely, and keep other people&apos;s reels for personal offline viewing. Do not repost someone else&apos;s reel as your own or use their work in ads without permission — the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link> explain how rights holders can report misuse. Only download content you own or have permission to reuse.
           </p>
-          </ReadMore>
           </ProseSection>
 
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
@@ -161,7 +146,10 @@ export default function ReelsDownloaderPage() {
               { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels as JPG" },
               { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
               { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 audio from Reels" },
-              { href: "/", label: "Instagram Downloader Home", desc: "All-in-one media downloader" },
+              { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
+              { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images & carousels" },
+              { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
+              { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
                 <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
@@ -216,19 +204,6 @@ export default function ReelsDownloaderPage() {
               name: item.q,
               acceptedAnswer: { "@type": "Answer", text: item.a },
             })),
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-              { "@type": "ListItem", position: 2, name: PAGE_NAME, item: `${SITE_URL}${PAGE_PATH}` },
-            ],
           }),
         }}
       />

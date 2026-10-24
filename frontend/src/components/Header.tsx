@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, HelpCircle, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Shield, FileText, ChevronDown, Info, Scale, ScrollText, Newspaper, Pin, ImagePlay } from "lucide-react";
+import { Globe, HelpCircle, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Shield, FileText, ChevronDown, Info, Scale, ScrollText, Newspaper, Pin, ImagePlay, Play } from "lucide-react";
 import { useLanguage, LANGUAGES } from "@/i18n";
 import type { DownloaderTab } from "@/components/HeroDownloader";
 import ToolCategoryDropdown from "@/components/ToolCategoryDropdown";
@@ -244,7 +244,8 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             ["/instagram-story-downloader", "Instagram Story Downloader", Clock, "bg-sky-500/10"] as const,
             ["/instagram-audio-downloader", "Instagram Audio Downloader", Music2, "bg-emerald-500/10"] as const,
             ["/pinterest-video-downloader", "Pinterest Video Downloader", Pin, "bg-rose-500/10"] as const,
-            ["/pinterest-image-downloader", "Pinterest Image and Carousel Downloader", ImagePlay, "bg-rose-500/10"] as const,
+            ["/pinterest-image-downloader", "Pinterest Image & Carousel Downloader", ImagePlay, "bg-rose-500/10"] as const,
+            ["/youtube-video-downloader", "YouTube Video Downloader", Play, "bg-red-500/10"] as const,
           ]).map(([href, label, Icon, bg]) => {
             const active = pathname === href;
             return (

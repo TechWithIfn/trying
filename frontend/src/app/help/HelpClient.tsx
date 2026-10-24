@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Breadcrumb from "@/components/Breadcrumb";
 import ProseSection from "@/components/ProseSection";
 import ReadMore from "@/components/ReadMore";
 import { useLanguage } from "@/i18n";
@@ -66,7 +67,14 @@ export default function HelpClient() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <section className="relative overflow-hidden pb-8 pt-8 sm:pt-12">
+        <Breadcrumb
+          items={[
+            { name: "Home", path: "/" },
+            { name: "Help & FAQ", path: "/help" },
+          ]}
+          containerClassName="mx-auto max-w-[800px] px-4 pt-4 sm:px-6"
+        />
+        <section className="relative overflow-hidden pb-8 pt-4 sm:pt-6">
           <div className="absolute inset-0 -z-10">
             {/* Static gradient wash (no filter blur — see hero note). */}
             <div
