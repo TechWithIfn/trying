@@ -80,7 +80,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Reels Downloader · Free & Fast",
     description:
       "Drop a public Instagram Reels link into the downloader and save the original MP4 — preview it first, no login, nothing to install.",
-    placeholder: "Paste an Instagram Reel link here...",
+    placeholder: "Paste URL",
     buttonLabel: "Download Reel",
     initialTab: "reels",
     mediaNote: "Public Reels · MP4 with original audio",
@@ -98,7 +98,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Video Downloader · Free & Fast",
     description:
       "Save public Instagram videos and long clips as MP4 for offline watching — preview the file first, no account needed.",
-    placeholder: "Paste an Instagram video link here...",
+    placeholder: "Paste URL",
     buttonLabel: "Download Video",
     initialTab: "videos",
     mediaNote: "Public video posts · MP4 in original quality",
@@ -116,7 +116,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Photo Downloader · Free & Fast",
     description:
       "Download public Instagram photos and full carousels at original resolution — flip through the slides and save the ones you want.",
-    placeholder: "Paste a photo or carousel link here...",
+    placeholder: "Paste URL",
     buttonLabel: "Download Photo",
     initialTab: "photos",
     mediaNote: "Single photos and multi-slide carousels · JPG, PNG or WebP",
@@ -134,7 +134,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Story Downloader · Free & Fast",
     description:
       "Save a public Instagram story as image or MP4 while it's still live — after 24 hours the link goes dead.",
-    placeholder: "Paste an Instagram Story link here...",
+    placeholder: "Paste URL",
     buttonLabel: "Download Story",
     initialTab: "stories",
     mediaNote: "Live public Stories · JPG or MP4",
@@ -152,7 +152,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Audio Downloader · Free & Fast",
     description:
       "Extract the sound from a public Reel or video and save it as one full-length MP3 — Audio mode is preselected for you.",
-    placeholder: "Paste a Reel or video link here...",
+    placeholder: "Paste URL",
     buttonLabel: "Extract Audio",
     initialTab: "audio",
     mediaNote: "Audio from public Reels and videos · MP3",
@@ -170,7 +170,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Video Downloader · Free & Easy",
     description:
       "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste a URL here...",
+    placeholder: "Paste URL",
     buttonLabel: "Download Pin",
     modes: ["any", "video"],
     trust: [
@@ -192,7 +192,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Image Downloader · Free & Easy",
     description:
       "Paste a public Pinterest image pin link, preview the available media, and download the pictures in their original format. The same pin link also works as a Pinterest carousel downloader — no account needed.",
-    placeholder: "Paste a URL here...",
+    placeholder: "Paste URL",
     buttonLabel: "Download Pin",
     modes: ["any", "image"],
     trust: [
@@ -214,7 +214,7 @@ export const TOOL_PAGES = {
     badge: "YouTube Video Downloader · Free & Easy",
     description:
       "Paste a public YouTube video link, choose an available quality up to 1080p, and download MP4 — or extract the audio as MP3 or M4A. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste a YouTube video link here...",
+    placeholder: "Paste URL",
     buttonLabel: "Get Video",
     trust: [
       "Free to use",

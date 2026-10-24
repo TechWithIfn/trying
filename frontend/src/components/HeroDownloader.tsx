@@ -266,7 +266,7 @@ export default function HeroDownloader({
   titleB = "Downloader",
   subtitle = DEFAULT_SUBTITLE,
   titleAs = "h1",
-  placeholder = "Paste Instagram link here...",
+  placeholder = "Paste URL",
   badge,
   buttonLabel,
   tabs,
@@ -680,7 +680,7 @@ export default function HeroDownloader({
   return (
     <section
       id="hero"
-      className="hero-section relative overflow-hidden scroll-mt-24 pt-6 sm:pt-8 lg:pt-10 pb-8 sm:pb-12 lg:pb-14"
+      className="hero-section relative mb-12 overflow-hidden scroll-mt-24 pt-6 pb-16 sm:mb-16 sm:pt-8 sm:pb-20 lg:mb-20 lg:pt-10 lg:pb-24"
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         {/* Static radial wash instead of a filter-blurred layer: a 160px

@@ -42,7 +42,7 @@ export const hi: Strings = {
     cardTitle: "Paste an Instagram Link",
     subtitle:
       "किसी भी Instagram पोस्ट, रील या वीडियो का सार्वजनिक लिंक पेस्ट करें। उसका प्रीव्यू देखें और मूल मीडिया को सेकंडों में अपने डिवाइस में सहेजें — बेहतरीन क्वालिटी में।",
-    placeholder: "यहां Instagram लिंक पेस्ट करें...",
+    placeholder: "Paste URL",
     audioPlaceholder: "ऑडियो निकालने के लिए रील/वीडियो लिंक पेस्ट करें...",
     inputLabel: "Instagram URL इनपुट",
     foot1: "बिना अकाउंट",
@@ -365,4 +365,3 @@ export const hi: Strings = {
     supportBtn: "ईमेल सहायता",
   },
 };
-

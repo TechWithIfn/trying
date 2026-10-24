@@ -44,8 +44,8 @@ export const en: Strings = {
     titleB: "Reels, Videos, Carousels & Audio",
     subtitle: "Download public Instagram Reels, videos, carousels and audio with Downloadit. Preview media and save it to your device quickly, no login required.",
     cardTitle: "Paste an Instagram Link",
-    placeholder: "Paste an Instagram link here...",
-    audioPlaceholder: "Paste a Reel or video link here...",
+    placeholder: "Paste URL",
+    audioPlaceholder: "Paste URL",
     inputLabel: "Instagram URL input",
     foot1: "No account required",
     foot2: "Public content only",
@@ -367,4 +367,3 @@ export const en: Strings = {
     supportBtn: "Email Support",
   },
 };
-

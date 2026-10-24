@@ -43,31 +43,12 @@ export default function AboutPage() {
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#webapplication` },
   });
-  // TODO(owner): replace "[NAME]" below with your real name (same value as
-  // the "Who runs Downloadit" section), then delete this comment.
-  const ownerJson = JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: "[NAME]",
-    url: `${SITE_URL}/about`,
-    jobTitle: "Creator and maintainer of Downloadit",
-    worksFor: {
-      "@type": "Organization",
-      name: "Downloadit",
-      url: SITE_URL,
-    },
-  });
   return (
     <>
       <script
         id="aboutpage-structured-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: aboutJson }}
-      />
-      <script
-        id="owner-structured-data"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: ownerJson }}
       />
     <LegalPage title="About Downloadit" updated="October 2026" crumbPath="/about">
       <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
@@ -87,28 +68,20 @@ export default function AboutPage() {
         up for.
       </p>
       <h2 className="text-[20px] font-bold text-fg">Who runs Downloadit</h2>
-      {/* TODO(owner): replace the bracketed placeholders below with real
-          details, then delete this comment. Photo: drop your avatar file at
-          public/owner-avatar.png and uncomment the Image block beneath. */}
-      {/* TODO(owner): avatar — uncomment after adding public/owner-avatar.png
-      <Image
-        src="/owner-avatar.png"
-        alt="[NAME], creator of Downloadit"
-        width={96}
-        height={96}
-        className="rounded-full"
-      />
-      */}
       <p>
-        I&apos;m [NAME], based in [CITY, STATE]. My background is [BACKGROUND].
-        I built Downloadit because [REASON].
+        Downloadit is maintained as an independent web project. The service is
+        kept deliberately small: there is no public team profile or office
+        claim to add here, and support is handled through the{" "}
+        <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">
+          Contact page
+        </Link>
+        .
       </p>
       <p>
-        There is no team, no company, and no investors behind this site — just
-        me, maintaining it in my own time. I read every support email myself,
-        fix what breaks, and say no to anything that would compromise the
-        privacy rules below. If something breaks or you have a concern, you
-        are talking directly to the person who wrote the code.
+        The project focuses on a clear public-content workflow, honest error
+        messages, and practical support. If something breaks or you have a
+        concern, email the support address listed on the Contact page rather
+        than sending credentials or private account details.
       </p>
       <h2 className="text-[20px] font-bold text-fg">How it works, in simple words</h2>
       <p>
