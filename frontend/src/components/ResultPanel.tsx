@@ -1264,6 +1264,37 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     [streamSrc, result.sourceUrl]
   );
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development" || !currentMedia) return;
+    let sourceHost: string | null = null;
+    let sourceValid = false;
+    try {
+      const parsed = new URL(currentMedia.url);
+      sourceHost = parsed.hostname;
+      sourceValid = parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      // The media URL is reported as invalid below without logging its value.
+    }
+    console.debug("[Downloadit Preview]", {
+      resultType: result.type,
+      mediaIndex: safeIndex,
+      mediaCount: items.length,
+      mediaType: currentMedia.type,
+      sourceHost,
+      sourceValid,
+      hasQuery: (() => {
+        try {
+          return new URL(currentMedia.url).search.length > 0;
+        } catch {
+          return false;
+        }
+      })(),
+      hasThumbnail: Boolean(currentMedia.thumbnail || result.thumbnail),
+      streamHost: streamSrc ? new URL(streamSrc).hostname : null,
+      proxyVideoReady: Boolean(proxyVideoSrc),
+    });
+  }, [currentMedia, items.length, proxyVideoSrc, result.thumbnail, result.type, safeIndex, streamSrc]);
+
   // Image preview: retry once with a cache-buster, then the single
   // fresh-resolve recovery (same policy as video), then a direct CDN URL
   // fallback (CSP img-src allows Instagram CDN hosts), then the honest
@@ -2103,4 +2134,3 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     </div>
   );
 }
-

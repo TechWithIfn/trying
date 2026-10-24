@@ -267,6 +267,27 @@ describe("fetchMetadata embedded video scan", () => {
     expect(meta.ogVideo).toBeNull();
     expect(meta.ogImage).toContain("img.jpg");
   });
+
+  it("decodes percent-encoded Unicode separators in signed CDN URLs", async () => {
+    stubHtml(
+      `<html><head>` +
+        `<meta property="og:image" content="https://scontent.cdninstagram.com/img.jpg?sig=abc%5Cu0026token=xyz%5Cu00253D%5Cu00253D" />` +
+        `</head><body></body></html>`
+    );
+    const meta = await fetchMetadata("https://www.instagram.com/p/Test123/");
+    expect(meta.ogImage).toBe(
+      "https://scontent.cdninstagram.com/img.jpg?sig=abc&token=xyz%3D%3D"
+    );
+  });
+
+  it("extracts signed media from the current bootstrap-only embed shell", () => {
+    const candidates = collectEmbedCandidates(
+      `<script>{"media":"https://instagram.fdel11-4.fna.fbcdn.net/v/t51.82787-15/post.heic?sig=abc&amp;token=xyz"}</script>`
+    );
+    expect(candidates.items).toHaveLength(1);
+    expect(candidates.items[0].type).toBe("image");
+    expect(candidates.items[0].url).toContain("?sig=abc&token=xyz");
+  });
 });
 
 describe("sortVideoFirst", () => {

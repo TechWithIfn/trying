@@ -1102,11 +1102,14 @@ export function refreshMediaItemUrl(
   if (!Array.isArray(freshMedia) || freshMedia.length === 0) return null;
   const safe = Math.max(0, Math.min(index, items.length - 1));
   const prev = items[safe];
-  const candidates = freshMedia.filter((item) => item && item.type === prev?.type);
-  if (candidates.length === 0) return null;
-  const freshSafe = Math.max(0, Math.min(index, candidates.length - 1));
-  const cand = candidates[freshSafe];
-  if (!prev || !cand) return null;
+  if (!prev) return null;
+  const indexed = freshMedia[index];
+  const sameType = freshMedia.filter((item) => item && item.type === prev.type);
+  const cand =
+    indexed?.type === prev.type
+      ? indexed
+      : sameType[Math.min(index, sameType.length - 1)];
+  if (!cand) return null;
   if (typeof cand.url !== "string" || cand.url.length === 0) return null;
   if (cand.url === prev.url) return null;
   // Never let a recovery resolve turn a video slot into an image (or vice

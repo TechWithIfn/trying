@@ -274,7 +274,22 @@ function hostnameOf(raw: string): string | null {
 
 function unescapeInstagramString(s: string): string {
   const out = s
+    // Depending on whether the value came from HTML, JSON, or a nested
+    // encoded response, the same escaped separator can arrive as `\u0026`,
+    // `%5Cu0026`, or `%5C%75%30%30%32%36`. Normalize all forms before the
+    // URL is validated or sent to the media proxy.
+    .replace(/%5C(?:%75|u)0026/gi, "&")
+    .replace(/%5C(?:%75|u)0025/gi, "%")
+    .replace(/%5C%75%30%30%32%36/gi, "&")
+    .replace(/%5C%75%30%30%32%35/gi, "%")
+    // Some Instagram JSON responses percent-encode the backslash from
+    // escaped Unicode separators (for example `%5Cu0026`). Decode those
+    // separators before URL parsing, otherwise the signed query is returned
+    // as a malformed, effectively unsigned media URL.
+    .replace(/%5Cu0026/gi, "&")
+    .replace(/%5Cu0025/gi, "%")
     .replace(/\\u0026/g, "&")
+    .replace(/\\u0025/gi, "%")
     .replace(/\\u003C/g, "<")
     .replace(/\\u003E/g, ">")
     .replace(/\\u0022/g, '"')
@@ -2346,6 +2361,38 @@ export function collectEmbedCandidates(embedHtml: string): EmbedCandidates {
   const scraped = extractMediaFromHtml(embedHtml).filter(
     (item) => item.type === "video" || !isLikelyPostThumbnailUrl(item.url)
   );
+  if (scraped.length > 0) {
+    return { items: scraped, hasMore: false, endCursor: null, structured: false };
+  }
+
+  // Instagram's current embed shell can place the signed media URLs in
+  // bootstrap JSON without `gql_data`, `display_url`, or an <img>/<video>
+  // attribute. Keep this fallback deliberately narrow: only trusted CDN
+  // hosts and real media extensions are accepted, and profile/static chrome
+  // is excluded before the URL reaches the resolver.
+  const seen = new Set<string>();
+  const bootstrap: ExtractedMedia[] = [];
+  const urlPattern =
+    /https:\/\/[^"'\\\s<]*(?:cdninstagram\.com|fbcdn\.net)[^"'\\\s<]*(?:\.(?:jpe?g|png|webp|gif|heic|mp4))(?:\?[^"'\\\s<]*)?/gi;
+  for (const match of embedHtml.matchAll(urlPattern)) {
+    const raw = unescapeInstagramString(match[0]);
+    if (!isTrustedCdnUrl(raw)) continue;
+    let parsed: URL;
+    try {
+      parsed = new URL(raw);
+    } catch {
+      continue;
+    }
+    const type = /\.(?:mp4)(?:$|\?)/i.test(parsed.pathname + parsed.search) ? "video" : "image";
+    if (type === "image" && isLikelyPostThumbnailUrl(raw)) continue;
+    const key = `${type}:${parsed.href}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    bootstrap.push({ url: raw, type, width: null, height: null, source: "embed-html" });
+  }
+  if (bootstrap.length > 0) {
+    return { items: bootstrap, hasMore: false, endCursor: null, structured: false };
+  }
   return { items: scraped, hasMore: false, endCursor: null, structured: false };
 }
 
