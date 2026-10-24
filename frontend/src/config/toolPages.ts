@@ -170,7 +170,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Video Downloader · Free & Easy",
     description:
       "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste a Pinterest pin link here...",
+    placeholder: "Paste a URL here...",
     buttonLabel: "Download Pin",
     modes: ["any", "video"],
     trust: [
@@ -192,7 +192,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Image Downloader · Free & Easy",
     description:
       "Paste a public Pinterest image pin link, preview the available media, and download the pictures in their original format. The same pin link also works as a Pinterest carousel downloader — no account needed.",
-    placeholder: "Paste a Pinterest pin link here...",
+    placeholder: "Paste a URL here...",
     buttonLabel: "Download Pin",
     modes: ["any", "image"],
     trust: [

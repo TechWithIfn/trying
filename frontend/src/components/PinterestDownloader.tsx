@@ -160,7 +160,7 @@ interface PinterestDownloaderProps {
   /** Trust indicator labels under the input. Plain strings: pages are server
    *  components and cannot pass component references as props. */
   benefits?: string[];
-  /** URL field placeholder — defaults to the generic Pinterest pin copy. */
+  /** URL field placeholder — defaults to generic URL copy. */
   placeholder?: string;
   /** Primary button label. */
   buttonLabel?: string;
@@ -205,7 +205,7 @@ export default function PinterestDownloader({
   badge,
   modes,
   benefits,
-  placeholder = "Paste a Pinterest pin link here...",
+  placeholder = "Paste a URL here...",
   buttonLabel,
 }: PinterestDownloaderProps) {
   const { t } = useLanguage();
