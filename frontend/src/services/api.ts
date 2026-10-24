@@ -1101,9 +1101,11 @@ export function refreshMediaItemUrl(
   if (!Array.isArray(items) || items.length === 0) return null;
   if (!Array.isArray(freshMedia) || freshMedia.length === 0) return null;
   const safe = Math.max(0, Math.min(index, items.length - 1));
-  const freshSafe = Math.max(0, Math.min(index, freshMedia.length - 1));
   const prev = items[safe];
-  const cand = freshMedia[freshSafe];
+  const candidates = freshMedia.filter((item) => item && item.type === prev?.type);
+  if (candidates.length === 0) return null;
+  const freshSafe = Math.max(0, Math.min(index, candidates.length - 1));
+  const cand = candidates[freshSafe];
   if (!prev || !cand) return null;
   if (typeof cand.url !== "string" || cand.url.length === 0) return null;
   if (cand.url === prev.url) return null;

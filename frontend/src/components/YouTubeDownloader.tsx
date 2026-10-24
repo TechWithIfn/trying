@@ -110,11 +110,29 @@ function truncateTitleToWords(title: string, maxWords = MAX_TITLE_WORDS): string
   return title;
 }
 
-function scrollIntoView(el: HTMLElement | null): void {
+function scrollIntoView(el: HTMLElement | null, center = false): void {
   if (!el || typeof window === "undefined") return;
   const reduced =
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (center) {
+    const header = document.querySelector("header");
+    const headerHeight = header?.getBoundingClientRect().height ?? 72;
+    const topGap = headerHeight + 12;
+    const bottomGap = 16;
+    const available = Math.max(0, window.innerHeight - topGap - bottomGap);
+    const rect = el.getBoundingClientRect();
+    const top =
+      rect.height <= available
+        ? window.scrollY + rect.top - topGap - (available - rect.height) / 2
+        : window.scrollY + rect.top - topGap;
+    try {
+      window.scrollTo({ top: Math.max(0, Math.round(top)), behavior: reduced ? "auto" : "smooth" });
+    } catch {
+      window.scrollTo(0, Math.max(0, Math.round(top)));
+    }
+    return;
+  }
   try {
     el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   } catch {
@@ -214,7 +232,7 @@ export default function YouTubeDownloader({
         setQuality(response.data.qualities[0]?.height ?? null);
         setTitleExpanded(false);
         setState("READY");
-        window.requestAnimationFrame(() => scrollIntoView(resultRef.current));
+        window.requestAnimationFrame(() => scrollIntoView(resultRef.current, true));
       } else {
         setError(response.error.message || "This YouTube video could not be read.");
         setState("ERROR");
