@@ -823,6 +823,10 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
   // preview frame matches the photo and stays centered (no forced 4:5 crop).
   const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
   const imgRetriedRef = useRef(false);
+  // Direct CDN fallback for images whose proxy URL failed and whose stale-URL
+  // recovery also failed: the raw CDN URL is tried once directly (the page
+  // Content-Security-Policy already allows Instagram CDN hosts in img-src).
+  const imgDirectFallbackRef = useRef(false);
   // Stable fallback message for the audio fetch below: reading it from a ref
   // keeps the fetch effect from re-running on language switches.
   const audioFallbackRef = useRef(t.result.audioErrorFallback);
@@ -941,6 +945,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     setImgFailed(false);
     setImgNatural(null);
     imgRetriedRef.current = false;
+    imgDirectFallbackRef.current = false;
     setRealDuration(null);
     setRealResolution(null);
     setVideoPlaying(false);
@@ -1260,32 +1265,53 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
   );
 
   // Image preview: retry once with a cache-buster, then the single
-  // fresh-resolve recovery (same policy as video), then the honest error
-  // state. (The backend already retried with a freshly resolved URL when
-  // possible.)
+  // fresh-resolve recovery (same policy as video), then a direct CDN URL
+  // fallback (CSP img-src allows Instagram CDN hosts), then the honest
+  // "Preview unavailable" state.
   const handleImgError = useCallback(() => {
     logPreviewDiag(currentMedia?.type);
+    // Step 1: proxy cache-buster retry.
     if (!imgRetriedRef.current) {
       imgRetriedRef.current = true;
       const bust = streamSrc.includes("?") ? "&" : "?";
       setImgSrc(`${streamSrc}${bust}_retry=${Date.now()}`);
       return;
     }
+    // Step 2: stale-URL recovery (at most once per unique proxy URL).
     const failed = imgSrc ?? streamSrc;
     const base = stripStreamRetryParam(failed);
-    if (!base || recoveryAttemptedRef.current.has(base)) {
-      setImgFailed(true);
+    if (base && !recoveryAttemptedRef.current.has(base)) {
+      recoverStaleMedia(failed).then(
+        (ok) => {
+          if (!ok) {
+            // Step 3: direct CDN URL after recovery fails.
+            if (!imgDirectFallbackRef.current && currentMedia?.url) {
+              imgDirectFallbackRef.current = true;
+              setImgSrc(currentMedia.url);
+            } else {
+              setImgFailed(true);
+            }
+          }
+          // On success, freshItems swaps in the fresh URL automatically.
+        },
+        () => {
+          if (!imgDirectFallbackRef.current && currentMedia?.url) {
+            imgDirectFallbackRef.current = true;
+            setImgSrc(currentMedia.url);
+          } else {
+            setImgFailed(true);
+          }
+        }
+      );
       return;
     }
-    recoverStaleMedia(failed).then(
-      (ok) => {
-        if (!ok) setImgFailed(true);
-        // On success freshItems swaps in the fresh URL (and setImgSrc(null)
-        // above drops the stale retry URL), so the <img> remounts on fresh
-        // bytes with no further action here.
-      },
-      () => setImgFailed(true)
-    );
+    // Step 3: direct CDN URL when recovery was already tried.
+    if (!imgDirectFallbackRef.current && currentMedia?.url) {
+      imgDirectFallbackRef.current = true;
+      setImgSrc(currentMedia.url);
+      return;
+    }
+    setImgFailed(true);
   }, [currentMedia, streamSrc, imgSrc, logPreviewDiag, recoverStaleMedia]);
 
   const goPrev = useCallback(() => {

@@ -12,10 +12,6 @@ import ProseSection from "@/components/ProseSection";
 import ReadMore from "@/components/ReadMore";
 import { useLanguage } from "@/i18n";
 import {
-  Globe,
-  Smartphone,
-  Eye,
-  LayoutGrid,
   ShieldCheck,
   Film,
   Video,
@@ -25,9 +21,9 @@ import {
   Link2,
   Search,
   Download,
+  Eye,
 } from "lucide-react";
 
-const QUICK_ICONS = [Globe, Smartphone, Eye, LayoutGrid];
 
 const MEDIA_ROWS = [
   { href: "/instagram-reels-downloader", label: "Reels", note: "Supported video downloads", Icon: Film },
@@ -135,34 +131,6 @@ export default function HomeClient() {
           subtitle={t.hero.subtitle}
           placeholder={activeTab === "audio" ? t.hero.audioPlaceholder : t.hero.placeholder}
         />
-
-        {/* ── Benefit strip: 4 equal compact cards ── */}
-        <ScrollReveal>
-          <section className="mx-auto max-w-[1100px] px-5 sm:px-6 lg:px-12 pb-16 sm:pb-20">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
-              {t.quick.items.map((f, i) => {
-                const Icon = QUICK_ICONS[i];
-                return (
-                  <ScrollReveal key={i} delay={i * 60} className="h-full">
-                    <div
-                      className="lift-card flex h-full flex-col rounded-[20px] p-6 shadow-[var(--shadow-card)]"
-                      style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-                    >
-                      <div
-                        className="lift-icon mb-3 flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-xl"
-                        style={{ background: "var(--accent-tint-purple)", border: "1px solid var(--accent-tint-purple-border)" }}
-                      >
-                        <Icon size={20} color="var(--primary)" strokeWidth={2} />
-                      </div>
-                      <p className="text-[18px] font-bold text-fg">{f.title}</p>
-                      <p className="mt-1.5 text-[14px] leading-[1.5] text-fg-muted">{f.desc}</p>
-                    </div>
-                  </ScrollReveal>
-                );
-              })}
-            </div>
-          </section>
-        </ScrollReveal>
 
         {/* ── Supported content (6 equal numbered cards) ── */}
         <ScrollReveal><Features /></ScrollReveal>
