@@ -257,7 +257,7 @@ export const hi: Strings = {
     disclaimer:
       "Downloadit Instagram या Meta से संबद्ध नहीं है। केवल वही कंटेंट डाउनलोड करें जिसका अधिकार आपके पास है।",
     rights: "सर्वाधिकार सुरक्षित।",
-    madeWith: "सरल वेब के लिए ♥ के साथ बनाया गया।",
+    madeWith: "Downloadit के लिए ♥ के साथ बनाया गया।",
     homeLabel: "Downloadit होम",
   },
   help: {

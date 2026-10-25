@@ -259,7 +259,7 @@ export const en: Strings = {
     disclaimer:
       "Downloadit is not affiliated with Instagram or Meta. Only download content you have the right to save.",
     rights: "All rights reserved.",
-    madeWith: "Made with ♥ for a simpler web.",
+    madeWith: "Made with ♥ for Downloadit.",
     homeLabel: "Downloadit home",
   },
   help: {

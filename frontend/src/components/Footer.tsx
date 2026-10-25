@@ -118,12 +118,6 @@ export default function Footer() {
           <LinkColumn title={t.footer.legal} links={LEGAL_LINKS} />
         </div>
 
-        <p className="mt-10 text-[12px] text-fg-subtle">
-          Downloadit is an independent service and is not affiliated with,
-          endorsed by, or sponsored by Instagram, Meta, Pinterest or
-          YouTube/Google. Only download content you have the right to save.
-        </p>
-
         <div className="mt-4 flex flex-col gap-2 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[14px] text-fg-muted">&copy;{year !== null ? ` ${year}` : ""} Downloadit. {t.footer.rights}</p>
           <p className="text-[14px] text-fg-subtle">{t.footer.madeWith}</p>
