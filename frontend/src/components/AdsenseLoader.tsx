@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 const ADSENSE_SRC =
-  "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8543183124286362";
+  "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX";
 const IDLE_TIMEOUT_MS = 3000;
 
 /**

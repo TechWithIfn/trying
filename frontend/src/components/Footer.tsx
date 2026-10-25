@@ -119,7 +119,9 @@ export default function Footer() {
         </div>
 
         <p className="mt-10 text-[12px] text-fg-subtle">
-          {t.footer.disclaimer}
+          Downloadit is an independent service and is not affiliated with,
+          endorsed by, or sponsored by Instagram, Meta, Pinterest or
+          YouTube/Google. Only download content you have the right to save.
         </p>
 
         <div className="mt-4 flex flex-col gap-2 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">

@@ -1,22 +1,11 @@
 export const SITE_URL = "https://www.downloadit.pro";
 export const BRAND_NAME = "Downloadit";
-// Homepage <title>. Deliberately "Instagram Downloader" (not "Instagram Video
-// Downloader") so it cannot compete with the dedicated
-// /instagram-video-downloader route for the same search intent.
-export const BRAND_TITLE = "Instagram Downloader – Reels, Videos, Carousels & Audio | Downloadit";
+export const BRAND_TITLE = "Instagram, Pinterest & YouTube Downloader | Downloadit";
 export const BRAND_DESCRIPTION =
-  "Free Instagram downloader. Download public Reels, videos, carousels, Stories and audio in HD — paste a link, preview, and save without creating an account.";
+  "Downloadit is a free public-media downloader for Instagram, Pinterest and YouTube. Paste a link, preview the available media, and save it without an account.";
 export const HOME_OG_IMAGE_ALT =
-  "Downloadit \u2014 Instagram video downloader for public Reels, videos and carousels";
-export const HOME_KEYWORDS = [
-  "instagram video downloader",
-  "instagram reels downloader",
-  "download instagram reels",
-  "download instagram videos",
-  "instagram carousel downloader",
-  "instagram downloader",
-];
-export const SUPPORT_EMAIL = "supportdownloadit.pro@gmail.com";
+  "Downloadit \u2014 public-media downloader for Instagram, Pinterest and YouTube";
+export const SUPPORT_EMAIL = "support@downloadit.pro";
 // Default subject for general support mail. Always build mailto links with
 // supportMailto() below — never hardcode a mailto: or Gmail compose URL.
 export const SUPPORT_MAILTO_SUBJECT = "Downloadit Support Query";

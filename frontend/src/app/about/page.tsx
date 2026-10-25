@@ -3,9 +3,9 @@ import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const ABOUT_TITLE = "About Downloadit – Free Instagram Downloader";
+const ABOUT_TITLE = "About Downloadit – Independent Public-Media Downloader";
 const ABOUT_DESCRIPTION =
-  "Downloadit is a free, no-login tool for saving public Instagram media. Learn what it does, its limits, and who runs it.";
+  "Learn who runs Downloadit, how its independent Instagram, Pinterest and YouTube downloader works, and what it does not access.";
 
 export const metadata: Metadata = {
   title: { absolute: ABOUT_TITLE },
@@ -53,7 +53,8 @@ export default function AboutPage() {
     <LegalPage title="About Downloadit" updated="October 2026" crumbPath="/about">
       <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
       <p>
-        Downloadit is a free tool for saving media from public Instagram links.
+        Downloadit is a free tool for saving media from public Instagram,
+        Pinterest and YouTube links.
         Paste a link, preview what is found, and download it to your phone,
         tablet or desktop. No account, no app install, no login — that is the
         whole idea.
@@ -69,9 +70,9 @@ export default function AboutPage() {
       </p>
       <h2 className="text-[20px] font-bold text-fg">Who runs Downloadit</h2>
       <p>
-        Downloadit is maintained as an independent web project. The service is
-        kept deliberately small: there is no public team profile or office
-        claim to add here, and support is handled through the{" "}
+        Downloadit is maintained by [MY NAME], an independent web developer who
+        started the project in 2026 to make public-media saving clearer. The
+        service is kept deliberately small, and support is handled through the{" "}
         <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">
           Contact page
         </Link>
@@ -85,8 +86,9 @@ export default function AboutPage() {
       </p>
       <h2 className="text-[20px] font-bold text-fg">How it works, in simple words</h2>
       <p>
-        Think of it like this: every public Instagram post is a page anyone
-        can open, with photos and videos sitting on it. When you paste a link,
+        Think of it like this: every public Instagram post, Pinterest pin or
+        YouTube video is a page anyone can open, with media sitting on it. When
+        you paste a link,
         Downloadit opens that same public page — exactly as a logged-out
         stranger would see it — finds the media files on it, and shows them
         back to you as a preview. You check the preview and save the file you
@@ -102,7 +104,7 @@ export default function AboutPage() {
       <h2 className="text-[20px] font-bold text-fg">What it does and does not do</h2>
       <p>What Downloadit does:</p>
       <ul className="list-disc space-y-1 pl-6">
-        <li>Saves photos, videos, reels, stories, and audio from links that are already public.</li>
+        <li>Saves supported public photos, videos, reels, stories, pins, and audio.</li>
         <li>Shows you a preview of the exact file before anything is downloaded.</li>
         <li>Works in the browser with no account, no app, and no login.</li>
       </ul>
@@ -121,7 +123,10 @@ export default function AboutPage() {
         <Link href="/instagram-story-downloader" className="font-semibold text-fg transition-colors hover:text-primary">stories</Link>, and{" "}
         <Link href="/instagram-audio-downloader" className="font-semibold text-fg transition-colors hover:text-primary">audio extracted as MP3</Link>.
         Videos save as MP4, images keep their original JPG, PNG or WebP, and
-        stories keep whatever image or video format they were posted in. The{" "}
+        stories keep whatever image or video format they were posted in. Downloadit also supports{" "}
+        <Link href="/pinterest-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest videos</Link>,{" "}
+        <Link href="/pinterest-image-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest images</Link> and{" "}
+        <Link href="/youtube-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public YouTube videos</Link>. The{" "}
         <Link href="/help" className="font-semibold text-fg transition-colors hover:text-primary">Help page</Link>{" "}
         walks through each of these with troubleshooting for the common
         failures.

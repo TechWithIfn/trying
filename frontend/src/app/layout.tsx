@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/i18n";
 import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/BackToTop";
 import AdsenseLoader from "@/components/AdsenseLoader";
+import CookieConsent from "@/components/CookieConsent";
 import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
@@ -116,9 +117,11 @@ export default function RootLayout({
             AdsenseLoader after first interaction/idle — no preconnect, which
             would open idle sockets and cost radio/battery on mobile). */}
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
-        {/* Google AdSense is loaded by <AdsenseLoader /> after first paint
-            (first scroll/pointer/key or ~3s idle) — never blocking. There is
-            intentionally no adsbygoogle snippet here. */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+          crossOrigin="anonymous"
+        />
 
         {/* Website Structured Data. Plain <script> tags so the JSON-LD is
             server-rendered for crawlers — next/script only injects it after
@@ -183,6 +186,7 @@ export default function RootLayout({
           {children}
           <BackToTop />
           <AdsenseLoader />
+          <CookieConsent />
         </LanguageProvider>
       </body>
     </html>

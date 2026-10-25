@@ -48,6 +48,8 @@ const TOOL_LABELS: Record<string, string> = {
   "/instagram-photo-downloader": "Instagram Photo & Carousel Downloader",
   "/instagram-story-downloader": "Instagram Story Downloader",
   "/instagram-audio-downloader": "Instagram Audio Downloader",
+  "/pinterest-video-downloader": "Pinterest Video Downloader",
+  "/pinterest-image-downloader": "Pinterest Image Downloader",
 };
 
 export default async function BlogPostPage({
@@ -159,6 +161,7 @@ export default async function BlogPostPage({
             author: { "@type": "Organization", name: post.author, url: SITE_URL },
             publisher: { "@type": "Organization", name: "Downloadit", url: SITE_URL },
             ...(post.date ? { datePublished: post.date } : {}),
+            ...(post.date ? { dateModified: post.date } : {}),
           }),
         }}
       />

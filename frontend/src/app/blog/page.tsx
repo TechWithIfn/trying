@@ -7,14 +7,14 @@ import { SITE_URL } from "@/config/site";
 import { getAllPosts } from "@/lib/blog";
 
 export const metadata: Metadata = {
-  title: { absolute: "Blog – Instagram Saving Guides & Copyright Help | Downloadit" },
+  title: { absolute: "Downloadit Blog – Instagram, Pinterest & YouTube Guides" },
   description:
-    "Practical guides from Downloadit: save your own Instagram content, back up reels, fix common issues, and understand copyright and permission basics.",
+    "Practical guides from Downloadit for saving public Instagram, Pinterest and YouTube media, fixing common issues, and understanding copyright.",
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: { absolute: "Blog – Instagram Saving Guides & Copyright Help | Downloadit" },
+    title: { absolute: "Downloadit Blog – Instagram, Pinterest & YouTube Guides" },
     description:
-      "Practical guides from Downloadit: save your own Instagram content, back up reels, fix common issues, and understand copyright and permission basics.",
+      "Practical guides from Downloadit for saving public Instagram, Pinterest and YouTube media, fixing common issues, and understanding copyright.",
     url: `${SITE_URL}/blog`,
     type: "website",
     images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Downloadit Blog" }],
@@ -46,14 +46,15 @@ export default function BlogIndexPage() {
             href="/"
             className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
           >
-            ← Back to Instagram Downloader
+            ← Back to Downloadit
           </Link>
           <h1 className="mt-4 text-[32px] font-extrabold tracking-[-0.02em] text-fg sm:text-[42px] leading-[1.1]">
             Downloadit Blog
           </h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Practical guides to saving public Instagram media, fixing what goes
-            wrong, and using other people&apos;s work the right way. No filler —
+            Practical guides to saving public Instagram, Pinterest and YouTube
+            media, fixing what goes wrong, and using other people&apos;s work
+            the right way. No filler —
             every article answers its question first.
           </p>
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
@@ -87,7 +88,7 @@ export default function BlogIndexPage() {
             url: `${SITE_URL}/blog`,
             name: "Downloadit Blog",
             description:
-              "Practical guides to saving public Instagram media and using it responsibly.",
+              "Practical guides to saving public Instagram, Pinterest and YouTube media responsibly.",
             inLanguage: "en",
             isPartOf: { "@id": `${SITE_URL}/#website` },
             blogPost: posts.map((p) => ({

@@ -4,7 +4,7 @@ import { SITE_URL } from "@/config/site";
 
 const DISCLAIMER_TITLE = "Disclaimer | Downloadit";
 const DISCLAIMER_DESCRIPTION =
-  "Read the Downloadit disclaimer covering third-party content, Instagram links and responsible use of the service.";
+  "Read the Downloadit disclaimer covering third-party content, Instagram, Pinterest and YouTube links, and responsible use.";
 
 export const metadata: Metadata = {
   title: { absolute: DISCLAIMER_TITLE },
@@ -29,14 +29,17 @@ export const metadata: Metadata = {
 export default function DisclaimerPage() {
   return (
     <LegalPage title="Disclaimer" updated="October 2026" crumbPath="/disclaimer">
-      <p>Downloadit is not affiliated with Instagram or Meta.</p>
+      <p>
+        Downloadit is an independent service and is not affiliated with,
+        endorsed by, or sponsored by Instagram, Meta, Pinterest or YouTube/Google.
+      </p>
       <p>
         The tool only works with publicly available content and does not bypass logins,
         private profiles, or platform access controls. You are responsible for ensuring you
         have the right to download and use any media you save.
       </p>
       <p>
-        The service depends on Instagram&apos;s own availability and behavior, which change
+        The service depends on Instagram, Pinterest and YouTube&apos;s own availability and behavior, which change
         without notice. Availability, results and accuracy are therefore not guaranteed, and
         the service may be interrupted or modified at any time. The service is provided
         as-is, without warranties of any kind.

@@ -4,7 +4,7 @@ import { SITE_URL } from "@/config/site";
 
 const PRIVACY_TITLE = "Privacy Policy | Downloadit";
 const PRIVACY_DESCRIPTION =
-  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram downloader.";
+  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram, Pinterest or YouTube downloader.";
 
 export const metadata: Metadata = {
   title: { absolute: PRIVACY_TITLE },
@@ -30,7 +30,8 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="October 2026" crumbPath="/privacy">
       <p>
-        Downloadit does not require an account, sign-up, or login. We do not keep a download
+        Downloadit does not require an account, sign-up, or login for Instagram, Pinterest or
+        YouTube links. We do not keep a download
         history in your browser.
       </p>
       <p>
@@ -44,9 +45,9 @@ export default function PrivacyPage() {
         your device and is not used to identify you.
       </p>
       <p>
-        Advertising on this site is served through Google AdSense. Google and its partners
-        may use cookies to serve ads based on your visits to this and other sites. You can
-        opt out of personalized advertising in your Google account&apos;s ad settings.
+        If advertising is enabled, Google AdSense and its partners may use cookies or similar
+        technologies to measure delivery and personalize ads, subject to your consent where
+        required. You can manage personalized advertising in your Google account&apos;s ad settings.
       </p>
       <p>
         We do not sell personal information. If you have any privacy questions, contact us

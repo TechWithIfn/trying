@@ -617,7 +617,18 @@ export default function HomeClient() {
 
               <ProseSection>
               <ReadMore label="Instagram saving guide">
-              <h3 className="mt-12 text-[24px] font-bold text-fg">What the tool actually does</h3>
+              <h3 className="mt-12 text-[24px] font-bold text-fg">One downloader for three public platforms</h3>
+              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
+                Instagram is the main focus of this page, and Downloadit also supports public Pinterest
+                pins and public YouTube links. Use the{" "}
+                <Link href="/pinterest-video-downloader" className="font-bold text-primary-strong hover:underline">Pinterest Video Downloader</Link>,{" "}
+                <Link href="/pinterest-image-downloader" className="font-bold text-primary-strong hover:underline">Pinterest Image Downloader</Link>{" "}
+                or{" "}
+                <Link href="/youtube-video-downloader" className="font-bold text-primary-strong hover:underline">YouTube Video Downloader</Link>{" "}
+                when that is the source you want to save. Each page explains its public-access limits before you submit a link.
+              </p>
+
+              <h3 className="mt-12 text-[24px] font-bold text-fg">What the Instagram tool actually does</h3>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Every post on Instagram is a file sitting on a server — a video file, an image file, or a
                 sound track wrapped inside a video. When you paste a link into the box at the top of this

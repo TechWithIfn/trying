@@ -172,14 +172,14 @@ export const TOOL_PAGES = {
       "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
     placeholder: "Paste URL",
     buttonLabel: "Download Pin",
-    modes: ["any", "video"],
+    modes: ["any"],
     trust: [
       "Free to use",
       "No account required",
       "Public pins only",
       "Preview before downloading",
     ],
-    seoTitle: "Pinterest Video Downloader – Save Pinterest Videos MP4 Free",
+    seoTitle: "Pinterest Video Downloader – Save MP4 Free | Downloadit",
     seoDescription:
       "Free Pinterest video downloader. Paste a public pin link and save Pinterest videos as MP4 in original quality. No login, no watermark, no app needed.",
   },
@@ -194,14 +194,14 @@ export const TOOL_PAGES = {
       "Paste a public Pinterest image pin link, preview the available media, and download the pictures in their original format. The same pin link also works as a Pinterest carousel downloader — no account needed.",
     placeholder: "Paste URL",
     buttonLabel: "Download Pin",
-    modes: ["any", "image"],
+    modes: ["any"],
     trust: [
       "Free to use",
       "No account required",
       "Public pins only",
       "Original image quality",
     ],
-    seoTitle: "Pinterest Image Downloader – Save Pinterest Photos HD Free",
+    seoTitle: "Pinterest Image Downloader – Save Photos Free | Downloadit",
     seoDescription:
       "Free Pinterest image downloader. Paste a pin link and download Pinterest photos & carousel images in original HD quality. No login, no watermark.",
   },

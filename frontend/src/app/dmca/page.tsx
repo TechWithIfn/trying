@@ -36,7 +36,7 @@ export default function DmcaPage() {
       <p>
         Downloadit respects the intellectual property rights of others.
         Downloadit only processes publicly available links: paste a link, and
-        the service resolves the media Instagram already serves publicly. It
+        the service resolves media that Instagram, Pinterest or YouTube already serves publicly. It
         does not host any media files, does not store copies of
         anyone&apos;s content, and does not bypass logins, private profiles,
         or platform access controls.
@@ -157,7 +157,7 @@ export default function DmcaPage() {
       <h2 className="text-[20px] font-bold text-fg">A final note</h2>
       <p>
         Downloadit is an independent service and is not affiliated with,
-        endorsed by, or sponsored by Instagram or Meta. Users must only
+        endorsed by, or sponsored by Instagram, Meta, Pinterest or YouTube/Google. Users must only
         download content they own or have permission to reuse — see the{" "}
         <Link href="/terms" className="font-semibold text-fg transition-colors hover:text-primary">Terms</Link>{" "}
         and{" "}

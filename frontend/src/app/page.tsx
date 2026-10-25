@@ -4,7 +4,6 @@ import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
   BRAND_TITLE,
-  HOME_KEYWORDS,
   HOME_OG_IMAGE_ALT,
   SITE_URL,
   SUPPORT_EMAIL,
@@ -13,7 +12,6 @@ import {
 export const metadata: Metadata = {
   title: { absolute: BRAND_TITLE },
   description: BRAND_DESCRIPTION,
-  keywords: HOME_KEYWORDS,
   alternates: { canonical: "/" },
   openGraph: {
     title: { absolute: BRAND_TITLE },

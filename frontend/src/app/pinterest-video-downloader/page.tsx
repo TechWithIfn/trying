@@ -28,6 +28,15 @@ const FAQS = [
     q: "Can I download private Pinterest content?",
     a: "No. Only publicly accessible pins can be resolved. Private boards, secret pins, and anything behind a login cannot be downloaded, and the tool reports the real reason instead of returning an unrelated file.",
   },
+  { q: "Does the downloader add a watermark?", a: "No. Downloadit does not add a watermark. It returns the best available public media file exposed by the pin." },
+  { q: "Can I use the downloader on an iPhone?", a: "Yes. Open this page in Safari, copy a public pin link, paste it, and use Get Media. The saved MP4 appears in the Files app." },
+  { q: "Can I use it on Android?", a: "Yes. Use a current browser such as Chrome, paste the public pin URL, and find the downloaded MP4 in the browser Downloads folder." },
+  { q: "Does it work on Windows and Mac?", a: "Yes. It works in a current desktop browser on Windows or Mac and saves the file to the browser's normal download folder." },
+  { q: "What does Auto Detect do?", a: "Auto Detect finds the media by default. It reads the public pin and selects the supported media it exposes without requiring a media type choice." },
+  { q: "Why is the preview unavailable?", a: "The pin may have expired, been deleted, become restricted, or returned a media URL that is no longer fresh. Open the pin and submit its link again." },
+  { q: "Is a Pinterest login required?", a: "No. Downloadit does not request a Pinterest login. The pin must be viewable publicly without signing in." },
+  { q: "Can I download any Pinterest video?", a: "Only public videos that Pinterest exposes as a downloadable progressive media file can be fetched. Streaming-only, private, deleted, or restricted pins may not work." },
+  { q: "Where is my downloaded video saved?", a: "It is saved by your browser in its normal Downloads location. On iPhone, check the Files app; on Android, check Downloads." },
 ];
 
 export default function PinterestVideoDownloaderPage() {
@@ -72,7 +81,7 @@ export default function PinterestVideoDownloaderPage() {
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li>Open the video pin you want to keep — tap it so it fills the screen, not the board grid.</li>
               <li>Use the share icon and choose Copy link (desktop users can copy the address bar).</li>
-              <li>Paste the link into the box at the top of this page and select Get Media. Auto Detect identifies the pin by default; you can also tap Video to state the type you expect.</li>
+              <li>Paste the link into the box at the top of this page and select Get Media. Auto Detect finds the media by default.</li>
               <li>Check that the preview is the correct video.</li>
               <li>Select Download and let the transfer finish. The MP4 lands in your Downloads folder.</li>
             </ol>
@@ -123,6 +132,9 @@ export default function PinterestVideoDownloaderPage() {
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
+              { href: "/blog/download-pinterest-videos-iphone-android", label: "Pinterest videos on iPhone and Android", desc: "Mobile steps for saving a public pin" },
+              { href: "/blog/pinterest-video-not-downloading", label: "Pinterest video troubleshooting", desc: "Diagnose failed previews and downloads" },
+              { href: "/blog/pinterest-video-download-kaise-kare", label: "Pinterest video download kaise kare", desc: "Simple Hinglish walkthrough" },
               { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images and carousels" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save Instagram videos as MP4" },
               { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
@@ -177,6 +189,15 @@ export default function PinterestVideoDownloaderPage() {
           }),
         }}
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "Pinterest Video Downloader",
+        url: "https://www.downloadit.pro/pinterest-video-downloader",
+        applicationCategory: "MultimediaApplication",
+        operatingSystem: "Web",
+        description: PAGE.description,
+      }) }} />
     </>
   );
 }

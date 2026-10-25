@@ -58,17 +58,16 @@ export default function AdvertiseWithUsPage() {
           <p className="mt-2 text-[14px] text-fg-subtle">Last updated: September 2026</p>
           <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
             <p>
-              Downloadit is a free tool people use to save public Instagram Reels, videos,
-              carousels, stories and audio. If your product or service fits that audience,
+              Downloadit is a free tool people use to save public media from Instagram,
+              Pinterest and YouTube. If your product or service fits that audience,
               advertising on Downloadit puts your message in front of them while they
               download.
             </p>
             <h2 className="text-[20px] font-bold text-fg">How advertising works here</h2>
             <p>
-              Display advertising on Downloadit is served through Google AdSense,
-              including automatic placements across the site. Availability, formats and
-              pricing for any direct arrangement depend on current inventory, so every
-              request starts with a short conversation.
+              Downloadit is open to sponsorship enquiries. Availability, formats and
+              pricing for any direct arrangement depend on the site and the proposal,
+              so every request starts with a short conversation.
             </p>
             <h2 className="text-[20px] font-bold text-fg">What we do not accept</h2>
             <p>

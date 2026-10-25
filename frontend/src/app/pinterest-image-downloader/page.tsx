@@ -40,6 +40,16 @@ const FAQS = [
     q: "Is there a watermark or quality loss?",
     a: "No. The file is the original Pinterest image served by the public page; Downloadit does not re-encode it or add any branding.",
   },
+  { q: "Can I use this on an iPhone?", a: "Yes. Open Safari, copy a public pin link, paste it into Downloadit, and save the result to the Files app." },
+  { q: "Can I use this on Android?", a: "Yes. Use a current browser, paste the public pin URL, and find the saved image in Downloads or your file manager." },
+  { q: "Does it work on Windows and Mac?", a: "Yes. A current browser on Windows or Mac can resolve public pins and save the image to its normal download folder." },
+  { q: "What does Auto Detect do?", a: "Auto Detect finds the media by default. It reads the public pin and selects the supported image or carousel media it exposes." },
+  { q: "Can I download a private board?", a: "No. Downloadit only handles public pins that can be viewed without signing in. Private boards and secret pins are not fetched." },
+  { q: "Why does the image preview fail?", a: "The pin may be deleted, restricted, login-walled, or its signed media URL may have expired. Open the pin again and submit its current public link." },
+  { q: "Does the tool change the original image?", a: "No. It does not add a watermark or intentionally re-encode the file. It returns the best available format exposed by the public pin." },
+  { q: "How many carousel images can I save?", a: "The result includes the image items the public pin exposes. Each available item can be previewed and downloaded individually." },
+  { q: "Can this page download Pinterest videos?", a: "No. Use the Pinterest Video Downloader for public video pins. This page is for image and carousel media." },
+  { q: "Where are saved images stored?", a: "Your browser chooses the location. Check Files on iPhone, Downloads on Android, or the browser download folder on Windows and Mac." },
 ];
 
 export default function PinterestImageDownloaderPage() {
@@ -84,7 +94,7 @@ export default function PinterestImageDownloaderPage() {
             <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
               <li>Open the image pin you want to keep — tap it so it opens on its own.</li>
               <li>Use the share icon and choose Copy link (desktop users can copy the address bar).</li>
-              <li>Paste the link into the box at the top of this page. Auto Detect finds the images by default — no option needs choosing.</li>
+              <li>Paste the link into the box at the top of this page. Auto Detect finds the media by default.</li>
               <li>Select Get Media, then confirm the preview is the correct image.</li>
               <li>Select Download and the picture is saved in its original format.</li>
             </ol>
@@ -139,6 +149,9 @@ export default function PinterestImageDownloaderPage() {
           <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {[
+              { href: "/blog/save-pinterest-images-original-quality", label: "Save Pinterest images in original quality", desc: "Avoid screenshots and blurry copies" },
+              { href: "/blog/save-every-pinterest-carousel-image", label: "Save every carousel image", desc: "Keep carousel slides in order" },
+              { href: "/blog/pinterest-copyright-basics", label: "Pinterest copyright basics", desc: "Understand permission and responsible reuse" },
               { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
               { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save Instagram photos and carousels" },
               { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save Instagram videos as MP4" },
@@ -194,6 +207,15 @@ export default function PinterestImageDownloaderPage() {
           }),
         }}
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "Pinterest Image Downloader",
+        url: "https://www.downloadit.pro/pinterest-image-downloader",
+        applicationCategory: "MultimediaApplication",
+        operatingSystem: "Web",
+        description: PAGE.description,
+      }) }} />
     </>
   );
 }
