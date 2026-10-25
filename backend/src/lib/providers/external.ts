@@ -244,10 +244,14 @@ export class ExternalProvider extends BaseProvider {
         // Provider dialects vary: accept url, video_url, image_url,
         // media_url, and the first usable video_versions / image_versions2
         // candidate. Every candidate URL still passes validateMediaUrl.
-        const itemUrl = this.pickMediaUrl(item);
+        const mediaType =
+          item.type === "video" || item.type === "audio"
+            ? item.type
+            : item.video_url || Array.isArray(item.video_versions)
+              ? "video"
+              : "image";
+        const itemUrl = this.pickMediaUrl(item, mediaType);
         if (!itemUrl) continue;
-
-        const mediaType = item.type === "video" || item.type === "audio" ? item.type : "image";
 
         media.push({
           url: itemUrl,
@@ -290,26 +294,38 @@ export class ExternalProvider extends BaseProvider {
    * validateMediaUrl (protocol/host checks) — an unparsable or unsafe value
    * degrades to the next variant, never to a thrown error or a fake URL.
    */
-  private pickMediaUrl(item: {
+  private pickMediaUrl(
+    item: {
     url?: string;
     video_url?: string;
     image_url?: string;
     media_url?: string;
     video_versions?: Array<{ url?: string }>;
     image_versions2?: { candidates?: Array<{ url?: string }> };
-  }): string | null {
-    const direct = [item.url, item.video_url, item.image_url, item.media_url];
+    },
+    mediaType: "image" | "video" | "audio"
+  ): string | null {
+    // Prefer the field matching the declared media type. Some providers put
+    // the poster in `url` while returning the playable rendition in
+    // `video_url`; taking `url` first turns a valid video into an image or an
+    // unplayable poster.
+    const direct =
+      mediaType === "video"
+        ? [item.video_url, item.media_url, item.url, item.image_url]
+        : mediaType === "audio"
+          ? [item.media_url, item.url, item.video_url, item.image_url]
+          : [item.image_url, item.media_url, item.url, item.video_url];
     for (const candidate of direct) {
       if (typeof candidate === "string" && candidate && this.validateMediaUrl(candidate)) {
         return candidate;
       }
     }
-    if (Array.isArray(item.video_versions)) {
+    if (mediaType === "video" && Array.isArray(item.video_versions)) {
       for (const v of item.video_versions) {
         if (v && typeof v.url === "string" && v.url && this.validateMediaUrl(v.url)) return v.url;
       }
     }
-    const candidates = item.image_versions2?.candidates;
+    const candidates = mediaType !== "video" ? item.image_versions2?.candidates : undefined;
     if (Array.isArray(candidates)) {
       for (const c of candidates) {
         if (c && typeof c.url === "string" && c.url && this.validateMediaUrl(c.url)) return c.url;

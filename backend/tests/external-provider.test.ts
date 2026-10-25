@@ -479,6 +479,28 @@ describe("ExternalProvider", () => {
     expect(result.media[0].url).toMatch(/^https:\/\/cdn\.example\.com\//);
   });
 
+  it("prefers the explicit video URL over a generic poster URL", async () => {
+    global.fetch = mockFetch({
+      success: true,
+      data: {
+        type: "REEL",
+        media: [{
+          url: "https://cdn.example.com/poster.jpg",
+          video_url: "https://cdn.example.com/video.mp4",
+          type: "video",
+        }],
+      },
+    });
+    const provider = new ExternalProvider("https://api.example.com/resolve", "test-key");
+    const result = await provider.resolve("https://www.instagram.com/reel/Cxyz123/");
+
+    expect(result.media).toHaveLength(1);
+    expect(result.media[0]).toMatchObject({
+      type: "video",
+      url: "https://cdn.example.com/video.mp4",
+    });
+  });
+
   it("accepts video_versions / image_versions2 candidates", async () => {
     global.fetch = mockFetch({
       success: true,
