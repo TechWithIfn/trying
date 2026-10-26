@@ -244,6 +244,10 @@ export function toolMetadata(
     title: { absolute: page.seoTitle },
     description: page.seoDescription,
     alternates: { canonical: page.path },
+    robots: {
+      index: true,
+      follow: true,
+    },
     openGraph: {
       title: { absolute: page.seoTitle },
       description: page.seoDescription,

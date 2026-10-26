@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: { absolute: DISCLAIMER_TITLE },
   description: DISCLAIMER_DESCRIPTION,
   alternates: { canonical: "/disclaimer" },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: DISCLAIMER_TITLE,
     description: DISCLAIMER_DESCRIPTION,

@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: { absolute: DMCA_TITLE },
   description: DMCA_DESCRIPTION,
   alternates: { canonical: "/dmca" },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: DMCA_TITLE,
     description: DMCA_DESCRIPTION,

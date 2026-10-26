@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: { absolute: PRIVACY_TITLE },
   description: PRIVACY_DESCRIPTION,
   alternates: { canonical: "/privacy" },
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: PRIVACY_TITLE,
     description: PRIVACY_DESCRIPTION,
