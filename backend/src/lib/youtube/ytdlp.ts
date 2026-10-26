@@ -1,7 +1,7 @@
 import { execFile } from "child_process";
 import { existsSync } from "fs";
 import { createRequire } from "module";
-import { delimiter, isAbsolute, join } from "path";
+import { delimiter, dirname, isAbsolute, join } from "path";
 import { logger } from "../logger.js";
 
 /**
@@ -30,6 +30,18 @@ function bundledBinaryPath(): string | null {
     return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
   } catch {
     return null;
+  }
+}
+
+function packageBinaryCandidates(): string[] {
+  try {
+    const packageEntry = require.resolve("youtube-dl-exec");
+    const binDir = join(dirname(packageEntry), "bin");
+    return process.platform === "win32"
+      ? [join(binDir, "yt-dlp.exe"), join(binDir, "yt-dlp")]
+      : [join(binDir, "yt-dlp"), join(binDir, "yt-dlp.exe")];
+  } catch {
+    return [];
   }
 }
 
@@ -139,6 +151,9 @@ export function resolveYtDlp(): Promise<string> {
 
     const bundled = bundledBinaryPath();
     if (bundled && !candidates.includes(bundled)) candidates.push(bundled);
+    for (const candidate of packageBinaryCandidates()) {
+      if (!candidates.includes(candidate)) candidates.push(candidate);
+    }
 
     for (const candidate of candidates) {
       if (isPathLike(candidate)) {
