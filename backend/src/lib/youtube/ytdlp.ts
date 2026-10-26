@@ -1,7 +1,9 @@
 import { execFile } from "child_process";
+import { chmod, copyFile, stat } from "fs/promises";
 import { existsSync } from "fs";
 import { createRequire } from "module";
-import { delimiter, dirname, isAbsolute, join } from "path";
+import { delimiter, dirname, isAbsolute, join, basename } from "path";
+import { tmpdir } from "os";
 import { logger } from "../logger.js";
 
 /**
@@ -109,22 +111,60 @@ function versionArgs(): string[] {
  * but cannot execute (wrong platform, missing shared library, stripped from a
  * serverless bundle) is rejected and the next candidate is tried.
  */
-function probeCandidate(candidate: string): Promise<{ path: string; version: string } | null> {
-  return new Promise((resolve) => {
-    execFile(
+interface CandidateProbe {
+  path: string;
+  version?: string;
+  failure?: string;
+}
+
+async function makeExecutable(candidate: string): Promise<string> {
+  if (process.platform === "win32") return candidate;
+  try {
+    const details = await stat(candidate);
+    if ((details.mode & 0o111) !== 0) return candidate;
+    const copy = join(tmpdir(), `downloadit-${basename(candidate)}-${process.pid}`);
+    await copyFile(candidate, copy);
+    await chmod(copy, 0o755);
+    logger.warn("[YOUTUBE] yt-dlp bundle was not executable; copied to temporary storage", {
       candidate,
-      versionArgs(),
-      { timeout: 8_000, maxBuffer: 256 * 1024, windowsHide: true },
-      (error, stdout) => {
-        if (error) {
-          resolve(null);
-          return;
+      runtimePath: copy,
+    });
+    return copy;
+  } catch (error) {
+    throw new Error(`not executable: ${error instanceof Error ? error.message : "permission check failed"}`);
+  }
+}
+
+async function probeCandidate(candidate: string): Promise<CandidateProbe> {
+  try {
+    const executable = await makeExecutable(candidate);
+    return await new Promise((resolve) => {
+      execFile(
+        executable,
+        versionArgs(),
+        { timeout: 2_500, maxBuffer: 256 * 1024, windowsHide: true },
+        (error, stdout, stderr) => {
+          if (error) {
+            const code = typeof error.code === "string" || typeof error.code === "number" ? error.code : "unknown";
+            const detail = String(stderr || error.message || "startup failed")
+              .replace(/[\u0000-\u001f\u007f]/g, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(-240);
+            resolve({ path: candidate, failure: `exit=${code}${detail ? ` ${detail}` : ""}` });
+            return;
+          }
+          const version = String(stdout || "").trim().split(/\r?\n/)[0] || "unknown";
+          resolve({ path: executable, version });
         }
-        const version = String(stdout || "").trim().split(/\r?\n/)[0] || "unknown";
-        resolve({ path: candidate, version });
-      }
-    );
-  });
+      );
+    });
+  } catch (error) {
+    return {
+      path: candidate,
+      failure: error instanceof Error ? error.message.slice(0, 240) : "startup check failed",
+    };
+  }
 }
 
 /**
@@ -166,7 +206,7 @@ export function resolveYtDlp(): Promise<string> {
         }
       }
       const verified = await probeCandidate(candidate);
-      if (verified) {
+      if (verified.version) {
         resolvedPath = verified.path;
         cachedVersion = verified.version;
         logger.info("[YOUTUBE] yt-dlp executable resolved", {
@@ -178,6 +218,7 @@ export function resolveYtDlp(): Promise<string> {
       }
       logger.warn("[YOUTUBE] yt-dlp candidate could not be executed", {
         candidate: isPathLike(candidate) ? candidate : "(path lookup)",
+        failure: verified.failure ?? "unknown startup failure",
       });
     }
 

@@ -41,10 +41,10 @@ router.get("/", (_req: Request, res: Response) => {
  */
 router.get("/ready", async (_req: Request, res: Response) => {
   const providerName = process.env.RESOLVER_PROVIDER || "placeholder";
-  const ffmpegAvailable = await isFfmpegAvailable().catch(() => false);
-  const ytDlpAvailable = await isYtDlpAvailable().catch(() => false);
-  const capacity = capacitySnapshot();
   const drain = drainMetrics();
+  const ffmpegAvailable = await isFfmpegAvailable().catch(() => false);
+  const ytDlpAvailable = drain.draining ? false : await isYtDlpAvailable().catch(() => false);
+  const capacity = capacitySnapshot();
 
   // Only report unavailable when the instance is shutting down. A saturated
   // workload still serves cached and queued work, so it stays ready and lets
