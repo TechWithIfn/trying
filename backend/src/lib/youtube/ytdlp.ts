@@ -47,6 +47,13 @@ function packageBinaryCandidates(): string[] {
   }
 }
 
+function projectBinaryCandidates(): string[] {
+  return [
+    join(process.cwd(), "bin", "yt-dlp"),
+    join(process.cwd(), "bin", "yt-dlp.exe"),
+  ];
+}
+
 function isPathLike(value: string): boolean {
   return isAbsolute(value) || value.includes("/") || value.includes("\\");
 }
@@ -142,7 +149,7 @@ async function probeCandidate(candidate: string): Promise<CandidateProbe> {
       execFile(
         executable,
         versionArgs(),
-        { timeout: 2_500, maxBuffer: 256 * 1024, windowsHide: true },
+        { timeout: 1_500, maxBuffer: 256 * 1024, windowsHide: true },
         (error, stdout, stderr) => {
           if (error) {
             const code = typeof error.code === "string" || typeof error.code === "number" ? error.code : "unknown";
@@ -189,6 +196,9 @@ export function resolveYtDlp(): Promise<string> {
       }
     }
 
+    for (const candidate of projectBinaryCandidates()) {
+      if (!candidates.includes(candidate)) candidates.push(candidate);
+    }
     const bundled = bundledBinaryPath();
     if (bundled && !candidates.includes(bundled)) candidates.push(bundled);
     for (const candidate of packageBinaryCandidates()) {
