@@ -5,7 +5,7 @@ export const BRAND_DESCRIPTION =
   "Downloadit is a free public-media downloader for Instagram, Pinterest and YouTube. Paste a link, preview the available media, and save it without an account.";
 export const HOME_OG_IMAGE_ALT =
   "Downloadit \u2014 public-media downloader for Instagram, Pinterest and YouTube";
-export const SUPPORT_EMAIL = "support@downloadit.pro";
+export const SUPPORT_EMAIL = "supportdownloadit.pro@gmail.com";
 // Default subject for general support mail. Always build mailto links with
 // supportMailto() below — never hardcode a mailto: or Gmail compose URL.
 export const SUPPORT_MAILTO_SUBJECT = "Downloadit Support Query";
