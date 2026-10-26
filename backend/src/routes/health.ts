@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../lib/ffmpeg.js";
+import { getYtDlpVersion, isYtDlpAvailable } from "../lib/youtube/ytdlp.js";
 import { audioProviderStatus } from "../lib/audio-provider.js";
 import { capacitySnapshot } from "../lib/capacity.js";
 import { getResolverPoolSnapshot } from "../lib/resolver-pool.js";
@@ -41,6 +42,7 @@ router.get("/", (_req: Request, res: Response) => {
 router.get("/ready", async (_req: Request, res: Response) => {
   const providerName = process.env.RESOLVER_PROVIDER || "placeholder";
   const ffmpegAvailable = await isFfmpegAvailable().catch(() => false);
+  const ytDlpAvailable = await isYtDlpAvailable().catch(() => false);
   const capacity = capacitySnapshot();
   const drain = drainMetrics();
 
@@ -71,6 +73,8 @@ router.get("/ready", async (_req: Request, res: Response) => {
     audioProvider: audioProviderStatus(),
     ffmpegAvailable,
     ffmpegVersion: getFfmpegVersionSync(),
+    ytDlpAvailable,
+    ytDlpVersion: getYtDlpVersion(),
     draining: drain.draining,
     drainReason: drain.reason,
     inFlightRequests: drain.inFlight,
@@ -102,10 +106,13 @@ router.get("/capacity", (_req: Request, res: Response) => {
 
 router.get("/media", async (_req: Request, res: Response) => {
   const ffmpegAvailable = await isFfmpegAvailable();
+  const ytDlpAvailable = await isYtDlpAvailable();
   res.json({
     status: "ok",
     ffmpegAvailable,
     ffmpegVersion: getFfmpegVersionSync(),
+    ytDlpAvailable,
+    ytDlpVersion: getYtDlpVersion(),
     timestamp: new Date().toISOString(),
   });
 });
