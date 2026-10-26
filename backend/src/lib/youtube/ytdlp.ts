@@ -154,6 +154,8 @@ export function resolveYtDlp(): Promise<string> {
     for (const candidate of packageBinaryCandidates()) {
       if (!candidates.includes(candidate)) candidates.push(candidate);
     }
+    const systemBinary = commandOnPath("yt-dlp");
+    if (systemBinary && !candidates.includes(systemBinary)) candidates.push(systemBinary);
 
     for (const candidate of candidates) {
       if (isPathLike(candidate)) {
