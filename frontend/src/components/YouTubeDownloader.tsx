@@ -163,8 +163,11 @@ export default function YouTubeDownloader({
   const requestSeqRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const scrollOnErrorRef = useRef(false);
+  const lastScrolledStateRef = useRef<string | null>(null);
+  const downloadScrollRef = useRef(false);
 
   const downloading = download?.phase === "preparing" || download?.phase === "downloading";
   const busy = state === "LOADING";
@@ -198,6 +201,7 @@ export default function YouTubeDownloader({
     setTitleExpanded(false);
     setDownload(null);
     scrollOnErrorRef.current = false;
+    downloadScrollRef.current = false;
   }, [abortAll]);
 
   const focusInput = useCallback(() => {
@@ -223,6 +227,7 @@ export default function YouTubeDownloader({
     setTitleExpanded(false);
     setDownload(null);
     scrollOnErrorRef.current = false;
+    downloadScrollRef.current = false;
 
     try {
       const response = await resolveYouTubeUrl(target, controller.signal);
@@ -232,7 +237,6 @@ export default function YouTubeDownloader({
         setQuality(response.data.qualities[0]?.height ?? null);
         setTitleExpanded(false);
         setState("READY");
-        window.requestAnimationFrame(() => scrollIntoView(resultRef.current, true));
       } else {
         setError(response.error.message || "This YouTube video could not be read.");
         setState("ERROR");
@@ -321,11 +325,59 @@ export default function YouTubeDownloader({
     if (trimmed && isValidYouTubeUrl(trimmed)) void startResolve(trimmed);
   }, [busy, downloading, startResolve, url]);
 
+  // Coordinate scrolling with the rendered DOM so each section is scrolled into
+  // view exactly once per flow transition (never repeatedly during one request).
+  // `block: "start"` aligns the target near the top, below any sticky header.
   useEffect(() => {
-    if (state === "ERROR" && scrollOnErrorRef.current) {
-      window.requestAnimationFrame(() => scrollIntoView(errorRef.current));
+    if (state === "IDLE") {
+      lastScrolledStateRef.current = null;
+      downloadScrollRef.current = false;
+      return;
     }
-  }, [state]);
+
+    // Resolving: scroll the loading/progress section into view.
+    if (state === "LOADING" && lastScrolledStateRef.current !== "LOADING") {
+      const target = loadingRef.current;
+      if (target) {
+        lastScrolledStateRef.current = "LOADING";
+        window.requestAnimationFrame(() => scrollIntoView(target));
+      }
+      return;
+    }
+
+    // Resolved: scroll the results/output section into view once rendered.
+    if (state === "READY" && lastScrolledStateRef.current !== "READY") {
+      const target = resultRef.current;
+      if (target) {
+        lastScrolledStateRef.current = "READY";
+        window.requestAnimationFrame(() => scrollIntoView(target));
+      }
+      return;
+    }
+
+    // Failed: scroll the error message into view.
+    if (state === "ERROR" && scrollOnErrorRef.current && lastScrolledStateRef.current !== "ERROR") {
+      const target = errorRef.current;
+      if (target) {
+        lastScrolledStateRef.current = "ERROR";
+        window.requestAnimationFrame(() => scrollIntoView(target));
+      }
+      return;
+    }
+
+    // Download in progress: keep the result card (with its progress bar) visible.
+    if (
+      download &&
+      (download.phase === "preparing" || download.phase === "downloading") &&
+      !downloadScrollRef.current
+    ) {
+      const target = resultRef.current;
+      if (target) {
+        downloadScrollRef.current = true;
+        window.requestAnimationFrame(() => scrollIntoView(target));
+      }
+    }
+  }, [state, download]);
 
   const startDownload = useCallback(
     async (format: YouTubeFormat, bitrateKbps?: number) => {
@@ -675,7 +727,8 @@ export default function YouTubeDownloader({
           {state === "LOADING" && (
             <div className="mx-auto mt-6 w-full max-w-[720px] sm:mt-10 sm:px-5">
               <div
-                className="flex flex-col items-center gap-3 rounded-[20px] p-8 text-center"
+                ref={loadingRef}
+                className="flex flex-col items-center gap-3 rounded-[20px] p-8 text-center scroll-mt-[calc(80px+env(safe-area-inset-top,0px))]"
                 style={{ background: "var(--card)", border: "1px solid var(--border)" }}
               >
                 <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />

@@ -1,5 +1,6 @@
 import { execFile } from "child_process";
 import { existsSync } from "fs";
+import { join } from "path";
 import ffmpegPath from "ffmpeg-static";
 import { logger } from "./logger.js";
 import { inc, observe } from "./metrics.js";
@@ -7,15 +8,36 @@ import { inc, observe } from "./metrics.js";
 let cachedAvailability: boolean | null = null;
 let cachedVersion: string | null = null;
 
-export function getFfmpegPath(): string | null {
-  if (typeof ffmpegPath !== "string" || ffmpegPath.length === 0) {
-    return null;
-  }
+/** Backend root (…/backend), resolved from this module's location so the
+ * staged `bin/ffmpeg` binary is found regardless of `process.cwd()` (which on
+ * serverless hosts may not point at the backend directory). `import.meta.url`
+ * plus the global `URL` constructor is used deliberately instead of `node:url`
+ * so the DEP0169 hygiene rule ("no `url`/`node:url` imports") is respected. */
+const BACKEND_ROOT = join(new URL(import.meta.url).pathname, "..", "..", "..", "..");
+
+function stagedFfmpegPath(): string | null {
+  const candidate = join(
+    BACKEND_ROOT,
+    "bin",
+    process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
+  );
   try {
-    return existsSync(ffmpegPath) ? ffmpegPath : null;
+    return existsSync(candidate) ? candidate : null;
   } catch {
     return null;
   }
+}
+
+export function getFfmpegPath(): string | null {
+  const primary = typeof ffmpegPath === "string" && ffmpegPath.length > 0 ? ffmpegPath : null;
+  if (primary) {
+    try {
+      if (existsSync(primary)) return primary;
+    } catch {
+      /* fall through to staged binary */
+    }
+  }
+  return stagedFfmpegPath();
 }
 
 function queryVersion(ffmpeg: string): Promise<string | null> {

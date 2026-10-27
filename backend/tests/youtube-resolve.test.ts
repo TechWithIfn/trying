@@ -7,7 +7,7 @@ import {
   toResolveData,
   type YtFormat,
 } from "@/lib/youtube/resolve";
-import { YtDlpAbortedError, YtDlpProcessError } from "@/lib/youtube/ytdlp";
+import { YtDlpAbortedError, YtDlpNotAvailableError, YtDlpProcessError } from "@/lib/youtube/ytdlp";
 
 const ID = "jNQXAC9IVRw";
 const PARSED = {
@@ -199,5 +199,13 @@ describe("classifyYtDlpFailure", () => {
     const mapped = classifyYtDlpFailure(new YtDlpAbortedError("timeout"), "download");
     expect(mapped.code).toBe("YOUTUBE_TIMEOUT");
     expect(mapped.statusCode).toBe(504);
+  });
+
+  it("maps a missing yt-dlp executable to YOUTUBE_UNAVAILABLE (not retryable)", () => {
+    const mapped = classifyYtDlpFailure(new YtDlpNotAvailableError(), "probe");
+    expect(mapped.code).toBe("YOUTUBE_UNAVAILABLE");
+    expect(mapped.statusCode).toBe(503);
+    expect(mapped.toResponse().error.retryable).toBe(false);
+    expect(mapped.message).toContain("media engine");
   });
 });

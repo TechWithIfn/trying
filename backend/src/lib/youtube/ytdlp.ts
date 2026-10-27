@@ -21,6 +21,14 @@ import { logger } from "../logger.js";
 
 const require = createRequire(import.meta.url);
 
+/** Backend root resolved from this module so `bin/yt-dlp` is located
+ * independently of `process.cwd()` (serverless hosts may not set it to the
+ * backend directory). `bin/yt-dlp` is staged by scripts/ensure-ytdlp.mjs and
+ * declared in vercel.json includeFiles, so it is the deployment-safe candidate.
+ * `import.meta.url` plus the global `URL` constructor is used instead of
+ * `node:url` to respect the DEP0169 hygiene rule ("no `url`/`node:url` imports"). */
+const BACKEND_ROOT = join(new URL(import.meta.url).pathname, "..", "..", "..", "..");
+
 interface YoutubeDlConstants {
   YOUTUBE_DL_PATH?: string;
 }
@@ -48,10 +56,7 @@ function packageBinaryCandidates(): string[] {
 }
 
 function projectBinaryCandidates(): string[] {
-  return [
-    join(process.cwd(), "bin", "yt-dlp"),
-    join(process.cwd(), "bin", "yt-dlp.exe"),
-  ];
+  return [join(BACKEND_ROOT, "bin", "yt-dlp"), join(BACKEND_ROOT, "bin", "yt-dlp.exe")];
 }
 
 function isPathLike(value: string): boolean {
