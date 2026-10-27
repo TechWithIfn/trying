@@ -129,6 +129,8 @@ interface CandidateProbe {
   failure?: string;
 }
 
+const CANDIDATE_PROBE_TIMEOUT_MS = 10_000;
+
 async function makeExecutable(candidate: string): Promise<string> {
   if (process.platform === "win32") return candidate;
   try {
@@ -154,7 +156,7 @@ async function probeCandidate(candidate: string): Promise<CandidateProbe> {
       execFile(
         executable,
         versionArgs(),
-        { timeout: 1_500, maxBuffer: 256 * 1024, windowsHide: true },
+        { timeout: CANDIDATE_PROBE_TIMEOUT_MS, maxBuffer: 256 * 1024, windowsHide: true },
         (error, stdout, stderr) => {
           if (error) {
             const code = typeof error.code === "string" || typeof error.code === "number" ? error.code : "unknown";
