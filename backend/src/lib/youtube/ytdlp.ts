@@ -239,6 +239,16 @@ export function resolveYtDlp(): Promise<string> {
       });
     }
 
+    // --- Diagnostic: no candidate worked. Log everything we tried so an
+    //     operator can see exactly which paths were checked and why each
+    //     failed, instead of an opaque "media engine not installed". ---
+    logger.error("[YOUTUBE] no yt-dlp executable could be resolved", {
+      candidates: candidates.map((c) => ({ path: c, exists: isPathLike(c) ? existsSync(c) : null })),
+      ytdlpPathEnv: configured || null,
+      backendRoot: BACKEND_ROOT,
+      platform: process.platform,
+    });
+
     resolvedPromise = null;
     throw new YtDlpNotAvailableError();
   })();
@@ -356,6 +366,12 @@ export async function runYtDlp(args: string[], options: RunYtDlpOptions): Promis
     child.on("error", (error) => {
       // Spawn-level failure (typically ENOENT): the binary disappeared or the
       // platform refused it. Surface as unavailable rather than a process exit.
+      const err = error as NodeJS.ErrnoException & { code?: string | number };
+      logger.error("[YOUTUBE] yt-dlp spawn failed", {
+        binary,
+        code: err.code,
+        message: error.message,
+      });
       if (options.signal?.aborted) {
         settle(() => reject(new YtDlpAbortedError("aborted")));
         return;
