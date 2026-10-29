@@ -1,4 +1,4 @@
-import { chmod, copyFile, mkdir, stat } from "node:fs/promises";
+import { chmod, copyFile, mkdir, stat, unlink, writeFile } from "node:fs/promises";
 import { createWriteStream } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { dirname, join } from "node:path";
@@ -77,21 +77,32 @@ async function stageFile(source, destination, label) {
 }
 
 async function downloadGzip(url, destination, label) {
+  const temporary = `${destination}.download-${process.pid}`;
   try {
     const response = await fetch(url);
     if (!response.ok || !response.body) {
       throw new Error(`HTTP ${response.status}`);
     }
     await mkdir(binDir, { recursive: true });
-    await pipeline(response.body, createGunzip(), createWriteStream(destination));
+    await pipeline(response.body, createGunzip(), createWriteStream(temporary));
     if (process.platform !== "win32") {
-      await chmod(destination, 0o755);
+      await chmod(temporary, 0o755);
     }
+    if (!(await verifyExecutable(temporary, ["-version"]))) {
+      throw new Error("downloaded binary failed its startup check");
+    }
+    await copyFile(temporary, destination);
     console.log(`[youtube] ${label} downloaded: ${destination}`);
     return true;
   } catch (error) {
     console.warn(`[youtube] could not download ${label} to bin/:`, error instanceof Error ? error.message : String(error));
     return false;
+  } finally {
+    try {
+      await unlink(temporary);
+    } catch {
+      /* no temporary file was created */
+    }
   }
 }
 
@@ -145,7 +156,7 @@ function bundledBinaryPath() {
   //     a bug on Linux (tries to open bin/ffmpeg.exe instead of bin/ffmpeg)
   //     that crashes `npm install` on Vercel. We download the binary ourselves
   //     here instead. ffmpeg-static releases use .gz files, so we gunzip. ---
-  if (!(await isFilePresent(ffmpegDest) && await verifyExecutable(ffmpegDest))) {
+  if (!(await isFilePresent(ffmpegDest) && await verifyExecutable(ffmpegDest, ["-version"]))) {
     const platform = process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux";
     const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : "ia32";
     // ffmpeg-static release assets are named ffmpeg-{platform}-{arch}.gz

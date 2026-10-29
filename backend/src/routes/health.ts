@@ -10,6 +10,21 @@ import { getSessionState, isInstagramSessionConfigured } from "../lib/instagram-
 import { getBuildVersion } from "../lib/env.js";
 
 const router = Router();
+const MEDIA_HEALTH_TIMEOUT_MS = 5000;
+
+async function boundedMediaCheck(check: () => Promise<boolean>): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      check().catch(() => false),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), MEDIA_HEALTH_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 // Health/readiness answers describe this instant (uptime, draining,
 // capacity): caching them anywhere would serve stale orchestration signals.
@@ -42,8 +57,8 @@ router.get("/", (_req: Request, res: Response) => {
 router.get("/ready", async (_req: Request, res: Response) => {
   const providerName = process.env.RESOLVER_PROVIDER || "placeholder";
   const drain = drainMetrics();
-  const ffmpegAvailable = await isFfmpegAvailable().catch(() => false);
-  const ytDlpAvailable = drain.draining ? false : await isYtDlpAvailable().catch(() => false);
+  const ffmpegAvailable = await boundedMediaCheck(isFfmpegAvailable);
+  const ytDlpAvailable = drain.draining ? false : await boundedMediaCheck(isYtDlpAvailable);
   const capacity = capacitySnapshot();
 
   // Only report unavailable when the instance is shutting down. A saturated
@@ -57,6 +72,7 @@ router.get("/ready", async (_req: Request, res: Response) => {
 
   res.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "draining",
+    engineReady: ffmpegAvailable && ytDlpAvailable,
     provider: providerName,
     build,
     buildVersion: build,
@@ -71,8 +87,10 @@ router.get("/ready", async (_req: Request, res: Response) => {
     sessionSource: getSessionState().source,
     sessionValidated: getSessionState().validated,
     audioProvider: audioProviderStatus(),
+    ffmpegConfigured: Boolean(process.env.FFMPEG_BIN?.trim()),
     ffmpegAvailable,
     ffmpegVersion: getFfmpegVersionSync(),
+    ytDlpConfigured: Boolean(process.env.YTDLP_PATH?.trim()),
     ytDlpAvailable,
     ytDlpVersion: getYtDlpVersion(),
     draining: drain.draining,
@@ -105,10 +123,13 @@ router.get("/capacity", (_req: Request, res: Response) => {
 });
 
 router.get("/media", async (_req: Request, res: Response) => {
-  const ffmpegAvailable = await isFfmpegAvailable();
-  const ytDlpAvailable = await isYtDlpAvailable();
+  const ffmpegAvailable = await boundedMediaCheck(isFfmpegAvailable);
+  const ytDlpAvailable = await boundedMediaCheck(isYtDlpAvailable);
   res.json({
-    status: "ok",
+    status: ffmpegAvailable && ytDlpAvailable ? "ok" : "degraded",
+    engineReady: ffmpegAvailable && ytDlpAvailable,
+    ffmpegConfigured: Boolean(process.env.FFMPEG_BIN?.trim()),
+    ytDlpConfigured: Boolean(process.env.YTDLP_PATH?.trim()),
     ffmpegAvailable,
     ffmpegVersion: getFfmpegVersionSync(),
     ytDlpAvailable,

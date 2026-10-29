@@ -1,11 +1,16 @@
 import { execFile } from "child_process";
 import { existsSync } from "fs";
-import { join } from "path";
+import { isAbsolute, join, resolve as resolvePath } from "path";
 import { logger } from "./logger.js";
 import { inc, observe } from "./metrics.js";
 
 let cachedAvailability: boolean | null = null;
 let cachedVersion: string | null = null;
+const BACKEND_ROOT = join(
+  decodeURIComponent(new URL(".", import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, "$1"),
+  "..",
+  ".."
+);
 
 function stagedFfmpegPath(): string | null {
   const exeName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
@@ -20,9 +25,12 @@ function stagedFfmpegPath(): string | null {
 
   // 2. import.meta.url-derived path — works for serverless where cwd may differ
   try {
-    const urlPath = decodeURIComponent(new URL(import.meta.url).pathname);
-    const moduleRoot = join(urlPath, "..", "..", "..");
-    const moduleCandidate = join(moduleRoot, "bin", exeName);
+    const moduleRoot = decodeURIComponent(new URL(".", import.meta.url).pathname).replace(
+      /^\/([A-Za-z]:)/,
+      "$1"
+    );
+    const resolvedRoot = join(moduleRoot, "..", "..");
+    const moduleCandidate = join(resolvedRoot, "bin", exeName);
     if (existsSync(moduleCandidate)) return moduleCandidate;
   } catch {
     /* fall through */
@@ -36,7 +44,12 @@ export function getFfmpegPath(): string | null {
   const configured = (process.env.FFMPEG_BIN || "").trim();
   if (configured) {
     try {
-      if (existsSync(configured)) return configured;
+      if (process.platform !== "win32" && configured.toLowerCase().endsWith(".exe")) {
+        logger.warn("[FFMPEG] ignoring Windows .exe path on non-Windows runtime");
+      } else {
+        const candidate = isAbsolute(configured) ? configured : resolvePath(BACKEND_ROOT, configured);
+        if (existsSync(candidate)) return candidate;
+      }
     } catch {
       /* fall through to staged binary */
     }

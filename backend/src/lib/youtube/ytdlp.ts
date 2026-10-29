@@ -2,7 +2,7 @@ import { execFile } from "child_process";
 import { chmod, copyFile, stat } from "fs/promises";
 import { existsSync } from "fs";
 import { createRequire } from "module";
-import { delimiter, dirname, isAbsolute, join, basename } from "path";
+import { delimiter, dirname, isAbsolute, join, basename, resolve as resolvePath } from "path";
 import { tmpdir } from "os";
 import { logger } from "../logger.js";
 
@@ -24,10 +24,13 @@ const require = createRequire(import.meta.url);
 /** Backend root resolved from this module so `bin/yt-dlp` is located
  * independently of `process.cwd()` (serverless hosts may not set it to the
  * backend directory). `bin/yt-dlp` is staged by scripts/ensure-ytdlp.mjs and
- * declared in vercel.json includeFiles, so it is the deployment-safe candidate.
- * `import.meta.url` plus the global `URL` constructor is used instead of
- * `node:url` to respect the DEP0169 hygiene rule ("no `url`/`node:url` imports"). */
-const BACKEND_ROOT = join(new URL(import.meta.url).pathname, "..", "..", "..", "..");
+ * declared in vercel.json includeFiles, so it is the deployment-safe candidate. */
+const BACKEND_ROOT = join(
+  decodeURIComponent(new URL(".", import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, "$1"),
+  "..",
+  "..",
+  ".."
+);
 
 interface YoutubeDlConstants {
   YOUTUBE_DL_PATH?: string;
@@ -61,6 +64,18 @@ function projectBinaryCandidates(): string[] {
 
 function isPathLike(value: string): boolean {
   return isAbsolute(value) || value.includes("/") || value.includes("\\");
+}
+
+function isCompatibleCandidate(candidate: string): boolean {
+  return process.platform === "win32" || !candidate.toLowerCase().endsWith(".exe");
+}
+
+function configuredPathCandidates(configured: string): string[] {
+  const resolved = isAbsolute(configured) ? configured : resolvePath(BACKEND_ROOT, configured);
+  if (process.platform === "win32" && !/\.[a-z0-9]+$/i.test(resolved)) {
+    return [resolved, `${resolved}.exe`];
+  }
+  return [resolved];
 }
 
 function commandOnPath(name: string): string | null {
@@ -195,7 +210,11 @@ export function resolveYtDlp(): Promise<string> {
 
     if (configured) {
       if (isPathLike(configured)) {
-        candidates.push(configured);
+        if (isCompatibleCandidate(configured)) {
+          candidates.push(...configuredPathCandidates(configured));
+        } else {
+          logger.warn("[YOUTUBE] ignoring Windows yt-dlp path on non-Windows runtime");
+        }
       } else {
         const onPath = commandOnPath(configured);
         if (onPath) candidates.push(onPath);
@@ -214,7 +233,7 @@ export function resolveYtDlp(): Promise<string> {
     const systemBinary = commandOnPath("yt-dlp");
     if (systemBinary && !candidates.includes(systemBinary)) candidates.push(systemBinary);
 
-    for (const candidate of candidates) {
+    for (const candidate of candidates.filter(isCompatibleCandidate)) {
       if (isPathLike(candidate)) {
         try {
           if (!existsSync(candidate)) continue;

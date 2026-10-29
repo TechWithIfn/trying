@@ -10,6 +10,8 @@ them or paste them into this file.
 | --- | --- | --- |
 | `RESOLVER_PROVIDER` | Resolver used by Instagram and Pinterest. `puppeteer` needs no API key and is the working local value. | `puppeteer` |
 | `CORS_ORIGIN` | Exact browser origins allowed to call the backend, comma-separated, no trailing slash. Must match the deployed frontend. | `https://www.downloadit.pro,https://downloadit.pro` |
+| `YTDLP_PATH` | Linux yt-dlp executable packaged in `backend/bin`; never use a Windows `.exe` path. | `bin/yt-dlp` |
+| `FFMPEG_BIN` | Linux FFmpeg executable packaged in `backend/bin`; never use a Windows `.exe` path. | `bin/ffmpeg` |
 
 ## Required for reliable Instagram downloads on Vercel
 
