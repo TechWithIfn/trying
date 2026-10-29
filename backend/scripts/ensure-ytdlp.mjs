@@ -1,8 +1,9 @@
 import { chmod, copyFile, mkdir, stat, writeFile } from "node:fs/promises";
+import { createGunzip } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import ffmpegPath from "ffmpeg-static";
+import { pipeline } from "node:stream/promises";
 
 const require = createRequire(import.meta.url);
 
@@ -36,6 +37,25 @@ async function stageFile(source, destination, label) {
     return true;
   } catch (error) {
     console.warn(`[youtube] ${label} could not be staged to bin/:`, error instanceof Error ? error.message : String(error));
+    return false;
+  }
+}
+
+async function downloadGzip(url, destination, label) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok || !response.body) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    await mkdir(binDir, { recursive: true });
+    await pipeline(response.body, createGunzip(), writeFile(destination));
+    if (process.platform !== "win32") {
+      await chmod(destination, 0o755);
+    }
+    console.log(`[youtube] ${label} downloaded: ${destination}`);
+    return true;
+  } catch (error) {
+    console.warn(`[youtube] could not download ${label} to bin/:`, error instanceof Error ? error.message : String(error));
     return false;
   }
 }
@@ -85,9 +105,19 @@ function bundledBinaryPath() {
     console.log(`[youtube] yt-dlp already present: ${binaryPath}`);
   }
 
-  // --- ffmpeg: copy the ffmpeg-static binary into bin/ so it is deployed
-  //     together with yt-dlp. ffmpeg-static is not covered by vercel.json
-  //     includeFiles, so without this step FFmpeg is absent in production
-  //     and MP4 merge / audio extraction cannot run. ---
-  await stageFile(ffmpegPath, ffmpegDest, "ffmpeg");
+  // --- ffmpeg: download directly from the ffmpeg-static GitHub releases.
+  //     ffmpeg-static is NOT a dependency because its install.js script has
+  //     a bug on Linux (tries to open bin/ffmpeg.exe instead of bin/ffmpeg)
+  //     that crashes `npm install` on Vercel. We download the binary ourselves
+  //     here instead. ffmpeg-static releases use .gz files, so we gunzip. ---
+  if (!(await isUsable(ffmpegDest))) {
+    const platform = process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux";
+    const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : "ia32";
+    const suffix = platform === "win32" ? ".exe" : "";
+    const asset = `ffmpeg-${platform}-${arch}${suffix}.gz`;
+    const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/${asset}`;
+    await downloadGzip(url, ffmpegDest, "ffmpeg");
+  } else {
+    console.log(`[youtube] ffmpeg already present: ${ffmpegDest}`);
+  }
 })();

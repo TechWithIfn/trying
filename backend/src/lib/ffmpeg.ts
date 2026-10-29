@@ -1,38 +1,42 @@
 import { execFile } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
-import ffmpegPath from "ffmpeg-static";
 import { logger } from "./logger.js";
 import { inc, observe } from "./metrics.js";
 
 let cachedAvailability: boolean | null = null;
 let cachedVersion: string | null = null;
 
-/** Backend root (…/backend), resolved from this module's location so the
- * staged `bin/ffmpeg` binary is found regardless of `process.cwd()` (which on
- * serverless hosts may not point at the backend directory). `import.meta.url`
- * plus the global `URL` constructor is used deliberately instead of `node:url`
- * so the DEP0169 hygiene rule ("no `url`/`node:url` imports") is respected. */
-const BACKEND_ROOT = join(new URL(import.meta.url).pathname, "..", "..", "..", "..");
-
 function stagedFfmpegPath(): string | null {
-  const candidate = join(
-    BACKEND_ROOT,
-    "bin",
-    process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg",
-  );
+  const exeName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+
+  // 1. process.cwd() — works for npm run dev/build/test (all run from backend/)
+  const cwdCandidate = join(process.cwd(), "bin", exeName);
   try {
-    return existsSync(candidate) ? candidate : null;
+    if (existsSync(cwdCandidate)) return cwdCandidate;
   } catch {
-    return null;
+    /* fall through */
   }
+
+  // 2. import.meta.url-derived path — works for serverless where cwd may differ
+  try {
+    const urlPath = decodeURIComponent(new URL(import.meta.url).pathname);
+    const moduleRoot = join(urlPath, "..", "..", "..");
+    const moduleCandidate = join(moduleRoot, "bin", exeName);
+    if (existsSync(moduleCandidate)) return moduleCandidate;
+  } catch {
+    /* fall through */
+  }
+
+  return null;
 }
 
 export function getFfmpegPath(): string | null {
-  const primary = typeof ffmpegPath === "string" && ffmpegPath.length > 0 ? ffmpegPath : null;
-  if (primary) {
+  // FFMPEG_BIN env var override (documented in .env.example)
+  const configured = (process.env.FFMPEG_BIN || "").trim();
+  if (configured) {
     try {
-      if (existsSync(primary)) return primary;
+      if (existsSync(configured)) return configured;
     } catch {
       /* fall through to staged binary */
     }
