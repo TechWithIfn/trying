@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { pipeline } from "node:stream/promises";
+import { execFile } from "node:child_process";
 
 const require = createRequire(import.meta.url);
 
@@ -13,7 +14,7 @@ const binDir = join(root, "bin");
 const binaryPath = join(binDir, process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp");
 const ffmpegDest = join(binDir, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
 
-async function isUsable(filePath) {
+async function isFilePresent(filePath) {
   if (!filePath) return false;
   try {
     const details = await stat(filePath);
@@ -23,9 +24,42 @@ async function isUsable(filePath) {
   }
 }
 
+/**
+ * Verify a binary actually executes on the current platform by running
+ * --version. A Windows .exe file passes isFilePresent() on Linux but fails
+ * here because it cannot be executed.
+ */
+async function verifyExecutable(filePath, versionArgs = ["--version"]) {
+  if (!filePath) return false;
+  try {
+    await new Promise((resolve, reject) => {
+      execFile(
+        filePath,
+        versionArgs,
+        { timeout: 10_000, maxBuffer: 256 * 1024 },
+        (error, stdout, stderr) => {
+          const out = `${String(stdout || "")} ${String(stderr || "")}`.trim();
+          if (error) {
+            reject(new Error(`exit ${error.code}: ${error.message}`));
+            return;
+          }
+          if (!out || out.length < 3) {
+            reject(new Error("no version output"));
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function stageFile(source, destination, label) {
   try {
-    if (!(source && await isUsable(source))) {
+    if (!(source && await isFilePresent(source) && await verifyExecutable(source))) {
       console.warn(`[youtube] ${label} source not usable, skipping: ${source ?? "(none)"}`);
       return false;
     }
@@ -76,9 +110,9 @@ function bundledBinaryPath() {
   //     then fall back to downloading the latest release from GitHub.
   //     Never crash the build if both fail — the runtime will report an
   //     honest diagnostic instead of a 500. ---
-  if (!(await isUsable(binaryPath))) {
+  if (!(await isFilePresent(binaryPath) && await verifyExecutable(binaryPath))) {
     const bundled = bundledBinaryPath();
-    if (bundled && await isUsable(bundled)) {
+    if (bundled && await isFilePresent(bundled) && await verifyExecutable(bundled)) {
       await mkdir(binDir, { recursive: true });
       await copyFile(bundled, binaryPath);
       if (process.platform !== "win32") {
@@ -111,7 +145,7 @@ function bundledBinaryPath() {
   //     a bug on Linux (tries to open bin/ffmpeg.exe instead of bin/ffmpeg)
   //     that crashes `npm install` on Vercel. We download the binary ourselves
   //     here instead. ffmpeg-static releases use .gz files, so we gunzip. ---
-  if (!(await isUsable(ffmpegDest))) {
+  if (!(await isFilePresent(ffmpegDest) && await verifyExecutable(ffmpegDest))) {
     const platform = process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux";
     const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : "ia32";
     // ffmpeg-static release assets are named ffmpeg-{platform}-{arch}.gz

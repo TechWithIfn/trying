@@ -41,7 +41,11 @@ export function getFfmpegPath(): string | null {
       /* fall through to staged binary */
     }
   }
-  return stagedFfmpegPath();
+  const staged = stagedFfmpegPath();
+  if (!staged) {
+    logger.warn("[FFMPEG] no executable binary found in bin/ or FFMPEG_BIN env var");
+  }
+  return staged;
 }
 
 function queryVersion(ffmpeg: string): Promise<string | null> {
