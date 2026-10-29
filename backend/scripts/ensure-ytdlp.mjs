@@ -1,4 +1,5 @@
-import { chmod, copyFile, mkdir, stat, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, stat } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,7 +49,7 @@ async function downloadGzip(url, destination, label) {
       throw new Error(`HTTP ${response.status}`);
     }
     await mkdir(binDir, { recursive: true });
-    await pipeline(response.body, createGunzip(), writeFile(destination));
+    await pipeline(response.body, createGunzip(), createWriteStream(destination));
     if (process.platform !== "win32") {
       await chmod(destination, 0o755);
     }
@@ -113,8 +114,9 @@ function bundledBinaryPath() {
   if (!(await isUsable(ffmpegDest))) {
     const platform = process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux";
     const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : "ia32";
-    const suffix = platform === "win32" ? ".exe" : "";
-    const asset = `ffmpeg-${platform}-${arch}${suffix}.gz`;
+    // ffmpeg-static release assets are named ffmpeg-{platform}-{arch}.gz
+    // (no .exe suffix on Windows). Output file gets .exe on Windows.
+    const asset = `ffmpeg-${platform}-${arch}.gz`;
     const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/${asset}`;
     await downloadGzip(url, ffmpegDest, "ffmpeg");
   } else {
