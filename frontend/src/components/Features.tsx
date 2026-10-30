@@ -39,7 +39,7 @@ export default function Features() {
   return (
     <section
       id="features"
-      className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8"
+      className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8"
       aria-label={t.nav.features}
     >
       <div className="mx-auto max-w-[1200px]">

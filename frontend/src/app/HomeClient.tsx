@@ -136,13 +136,13 @@ export default function HomeClient() {
         <ScrollReveal><Features /></ScrollReveal>
 
         {/* ── Three steps ── */}
-        <ScrollReveal><HowItWorks /></ScrollReveal>
+        <ScrollReveal className="mobile:py-8"><HowItWorks /></ScrollReveal>
 
         {/* ── Supported media & formats: overview cards + detailed per-type
             and per-format notes. Deliberately NOT wrapped in ScrollReveal:
             this copy must be in the server-rendered HTML and visible without
             any client-side animation. ── */}
-        <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="supported-media">
+        <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="supported-media">
             <div className="mx-auto max-w-[1000px]">
               <div className="mb-10 text-center">
                 <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
@@ -319,7 +319,7 @@ export default function HomeClient() {
 
         {/* ── How Downloadit works: compact horizontal flow ── */}
         <ScrollReveal>
-          <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="how-downloadit-works">
+          <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="how-downloadit-works">
             <div className="mx-auto max-w-[1000px]">
               <div className="mb-10 text-center">
                 <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
@@ -382,7 +382,7 @@ export default function HomeClient() {
             a different stagger delay, so the fade/translate animations never
             settled at the same position and the right card sat a few pixels
             higher. Plain grid items align exactly. ── */}
-        <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="trust-limits">
+        <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="trust-limits">
           <div className="mx-auto max-w-[1000px]">
             <div className="mb-10 text-center">
               <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
@@ -458,7 +458,7 @@ export default function HomeClient() {
         {/* ── Why Downloadit: full editorial section. Deliberately NOT wrapped
             in ScrollReveal: this copy must be in the server-rendered HTML and
             visible without any client-side animation. ── */}
-        <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="why-downloadit">
+        <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="why-downloadit">
           <div className="mx-auto max-w-[1000px]">
             <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
               Why Downloadit?
@@ -600,7 +600,7 @@ export default function HomeClient() {
         </section>
 
         {/* ── Guide: what the tool does, who it is for, how it works ── */}
-        <section className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="downloadit-guide">
+        <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="downloadit-guide">
             <div className="mx-auto max-w-[900px]">
               <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
                 Guide
@@ -759,7 +759,7 @@ export default function HomeClient() {
           </section>
 
         {/* ── Detailed FAQ ── */}
-        <section className="cv-auto px-5 py-16 sm:px-6 sm:py-20 lg:px-8" aria-labelledby="faq">
+        <section className="cv-auto px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="faq">
             <div className="mx-auto max-w-[900px]">
               <p className="mb-3 text-[14px] font-bold uppercase tracking-[0.12em] text-primary-strong">
                 Support

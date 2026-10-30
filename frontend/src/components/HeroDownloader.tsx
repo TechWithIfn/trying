@@ -787,31 +787,10 @@ export default function HeroDownloader({
             </div>
           )}
 
-          {singleMedia && (
-            <div className="mt-6 flex w-full justify-center">
-              <div
-                className="inline-flex max-w-full items-center gap-2.5 rounded-xl border px-3.5 py-2"
-                style={{ background: "var(--card)", borderColor: "var(--border)" }}
-              >
-                <span
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: singleMedia.iconBg, color: singleMedia.iconColor }}
-                  aria-hidden="true"
-                >
-                  <singleMedia.icon size={14} strokeWidth={2.2} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-bold leading-tight text-fg">
-                    {singleMedia.title}
-                  </span>
-                  {mediaNote && (
-                    <span className="block text-[11px] leading-tight text-fg-subtle">
-                      {mediaNote}
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
+          {singleMedia && mediaNote && (
+            <p className="mt-3 text-[12px] leading-[1.5] text-fg-subtle mx-auto max-w-[600px]">
+              {mediaNote}
+            </p>
           )}
 
           {/* Input Bar */}

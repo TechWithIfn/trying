@@ -44,7 +44,7 @@ export default function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="px-5 py-16 sm:px-6 sm:py-20 lg:px-8"
+      className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8"
       aria-label={t.nav.howItWorks}
     >
       <div className="mx-auto max-w-[1200px]">
