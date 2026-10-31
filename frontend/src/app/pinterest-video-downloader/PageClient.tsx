@@ -67,19 +67,19 @@ export default function PinterestVideoDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Pinterest Video downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Save publicly accessible Pinterest video pins as MP4 files you can watch offline, on any device. Paste the URL of a public Pinterest video pin, and the tool reads the pin page and returns the video it exposes.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Pinterest Video" : "Know more about Pinterest Video"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                Save publicly accessible Pinterest video pins as MP4 files you can watch offline, on any device. Paste the URL of a public Pinterest video pin, and the tool reads the pin page and returns the video it exposes.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Copy the pin link, paste it into the downloader above, preview the result when it is available, then download the file the pin exposes — no watermark, no login, nothing to install.
               </p>

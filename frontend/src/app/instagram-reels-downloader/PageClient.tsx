@@ -57,19 +57,19 @@ export default function ReelsDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Reels downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            A reel is Instagram&apos;s short vertical clip — usually under a couple of minutes. Paste the link to a public reel and keep the MP4 file on your own device, with original audio included.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Reels" : "Know more about Reels"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                A reel is Instagram&apos;s short vertical clip — usually under a couple of minutes. Paste the link to a public reel and keep the MP4 file on your own device, with original audio included.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 The intent here is deliberately narrow. This is not a video archive or a music tool — it is for short clips you want to rewatch, share with someone who is not on Instagram, or hold onto because the idea inside is useful.
               </p>

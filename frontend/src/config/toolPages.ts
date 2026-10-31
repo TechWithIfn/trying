@@ -52,7 +52,7 @@ export interface InstagramToolPage extends BaseToolPage {
   /** Preselected media mode (behavioural — audio requests an MP3). */
   initialTab: InstagramMediaTab;
   /** Note rendered with the single supported-media chip in the hero. */
-  mediaNote: string;
+  mediaNote?: string;
 }
 
 export interface PinterestToolPage extends BaseToolPage {
@@ -83,7 +83,6 @@ export const TOOL_PAGES = {
     placeholder: "Paste URL",
     buttonLabel: "Download Reel",
     initialTab: "reels",
-    mediaNote: "Public Reels · MP4 with original audio",
     trust: ["No account required", "Public Reels only", "Preview before saving"],
     seoTitle: "Instagram Reels Downloader – Save Reels as MP4 | Downloadit",
     seoDescription:
@@ -101,7 +100,6 @@ export const TOOL_PAGES = {
     placeholder: "Paste URL",
     buttonLabel: "Download Video",
     initialTab: "videos",
-    mediaNote: "Public video posts · MP4 in original quality",
     trust: ["No account required", "Public videos only", "Preview before saving"],
     seoTitle: "Instagram Video Downloader – Save Videos as MP4 | Downloadit",
     seoDescription:
@@ -119,7 +117,6 @@ export const TOOL_PAGES = {
     placeholder: "Paste URL",
     buttonLabel: "Download Photo",
     initialTab: "photos",
-    mediaNote: "Single photos and multi-slide carousels · JPG, PNG or WebP",
     trust: ["No account required", "Public posts only", "Original image quality"],
     seoTitle: "Instagram Photo Downloader – Save Carousels | Downloadit",
     seoDescription:
@@ -137,7 +134,6 @@ export const TOOL_PAGES = {
     placeholder: "Paste URL",
     buttonLabel: "Download Story",
     initialTab: "stories",
-    mediaNote: "Live public Stories · JPG or MP4",
     trust: ["No account required", "Live public Stories only", "Save within 24 hours"],
     seoTitle: "Instagram Story Downloader – Save Stories | Downloadit",
     seoDescription:
@@ -155,7 +151,6 @@ export const TOOL_PAGES = {
     placeholder: "Paste URL",
     buttonLabel: "Extract Audio",
     initialTab: "audio",
-    mediaNote: "Audio from public Reels and videos · MP3",
     trust: ["No account required", "Public Reels and videos only", "Full track as MP3"],
     seoTitle: "Instagram Audio Downloader – Save Audio as MP3 | Downloadit",
     seoDescription:

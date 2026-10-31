@@ -908,7 +908,7 @@ export default function HeroDownloader({
                       </button>
                     )}
                   </div>
-                  <div className="url-actions flex min-w-0 flex-col gap-2">
+                  <div className="url-actions flex min-w-0 flex-col gap-2 w-full">
                     <button
                       type="button"
                       onClick={handlePaste}
@@ -923,7 +923,7 @@ export default function HeroDownloader({
                     <button
                       type="submit"
                       disabled={state === "PREPARING"}
-                      className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-3 text-[16px]"
+                      className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-4 text-[16px]"
                     >
                       {state === "PREPARING" ? (
                         <>
@@ -931,12 +931,12 @@ export default function HeroDownloader({
                             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
                             <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
                           </svg>
-                          <span className="btn-label truncate">{t.common.resolving}</span>
+                          <span className="btn-label truncate whitespace-nowrap">{t.common.resolving}</span>
                         </>
                       ) : (
                         <>
                           <DownloadIcon className="h-5 w-5 shrink-0" />
-                          <span className="btn-label truncate">{buttonLabel || t.common.getMedia}</span>
+                          <span className="btn-label truncate whitespace-nowrap">{buttonLabel || t.common.getMedia}</span>
                         </>
                       )}
                     </button>

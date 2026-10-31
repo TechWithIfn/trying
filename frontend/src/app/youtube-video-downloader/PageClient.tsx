@@ -74,19 +74,19 @@ export default function YouTubeVideoDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the YouTube Video downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Save publicly accessible YouTube videos as MP4 files you can watch offline, and extract the audio track as MP3. Paste a video, Shorts, embed, or youtu.be link, and the tool asks YouTube which formats that public video actually exposes before showing you anything to download.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about YouTube" : "Know more about YouTube"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                Save publicly accessible YouTube videos as MP4 files you can watch offline, and extract the audio track as MP3. Paste a video, Shorts, embed, or youtu.be link, and the tool asks YouTube which formats that public video actually exposes before showing you anything to download.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 The page reports the real title, channel, duration, and available qualities. Choose MP4 or MP3, and the file is prepared on the server before the transfer starts — no fake percentages, no invented download links, and no stored copy afterwards.
               </p>

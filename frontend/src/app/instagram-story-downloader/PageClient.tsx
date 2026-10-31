@@ -57,19 +57,19 @@ export default function StoryDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Story downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            A story is Instagram&apos;s disappearing post — a photo or short clip that lives for one day and then vanishes. Paste its link while it&apos;s still live and keep the original file before the clock runs out.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Stories" : "Know more about Stories"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                A story is Instagram&apos;s disappearing post — a photo or short clip that lives for one day and then vanishes. Paste its link while it&apos;s still live and keep the original file before the clock runs out.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Urgency is the whole difference from the rest of this site. A reel waits for you next week. A story does not. If a story matters enough to keep, treat it as a today-job rather than a tonight-job, because expiry — not logins, not formats — is the reason most story saves fail.
               </p>

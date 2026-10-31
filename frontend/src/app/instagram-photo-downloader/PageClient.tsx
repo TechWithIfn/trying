@@ -57,19 +57,19 @@ export default function CarouselDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Photo &amp; Carousel downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            A carousel is Instagram&apos;s swipeable photo post — up to ten stills in one place. Paste the link to a public post and receive Instagram&apos;s stored image, slide by slide, at the sharpness it was uploaded in.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Photos" : "Know more about Photos"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                A carousel is Instagram&apos;s swipeable photo post — up to ten stills in one place. Paste the link to a public post and receive Instagram&apos;s stored image, slide by slide, at the sharpness it was uploaded in.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Stills deserve their own page because they are used differently from video. A photo gets zoomed, cropped, pinned to a board, compared side by side with another. A ten-slide carousel is really ten separate files that happen to share one caption.
               </p>

@@ -57,19 +57,19 @@ export default function AudioDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Audio downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Sometimes the picture is beside the point. Paste the link to a public reel or video and take home just the audio as an MP3 you can listen to anywhere.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Audio" : "Know more about Audio"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                Sometimes the picture is beside the point. Paste the link to a public reel or video and take home just the audio as an MP3 you can listen to anywhere.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Listening is the intent that sets this page apart. Video pages are about watching; this one is about carrying the sound in your pocket — in earphones, in the car, in a playlist of reference clips.
               </p>

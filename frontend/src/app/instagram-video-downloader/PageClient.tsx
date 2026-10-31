@@ -57,19 +57,19 @@ export default function VideoDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Video downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Some things on Instagram cannot be squeezed into a short reel. Paste the link to a public video post and save the MP4 file to store, rewatch and study at your own pace.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Videos" : "Know more about Videos"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                Some things on Instagram cannot be squeezed into a short reel. Paste the link to a public video post and save the MP4 file to store, rewatch and study at your own pace.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 The focus here is reference, not quick entertainment. Reels are for the moment; longer videos are for the second and third viewing — pausing halfway, jumping back thirty seconds, watching on a bigger screen with a notebook open.
               </p>

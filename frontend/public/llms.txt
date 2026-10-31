@@ -1,0 +1,50 @@
+Downloadit
+https://www.downloadit.pro
+
+A free public-media downloader for Instagram, Pinterest, and YouTube. Paste a public link, preview the available media, and save it without an account. No login required, nothing to install.
+
+Instagram Downloader Features:
+- Instagram Reels Downloader: Save public Reels as MP4 with original audio
+- Instagram Video Downloader: Save public video posts as MP4
+- Instagram Photo & Carousel Downloader: Save photos and carousels as JPG, PNG, or WebP
+- Instagram Story Downloader: Save public Stories before they expire (24-hour window)
+- Instagram Audio Downloader: Extract audio from public Reels and videos as MP3
+
+Pinterest Downloader Features:
+- Pinterest Video Downloader: Save public Pinterest video pins as MP4
+- Pinterest Image & Carousel Downloader: Save Pinterest images and carousels in original quality
+
+YouTube Downloader Features:
+- YouTube Video Downloader: Download public YouTube videos as MP4 (up to 1080p) or extract audio as MP3/M4A
+
+Supported Media Types:
+- Video: MP4
+- Images: JPG, PNG, WebP
+- Audio: MP3, M4A
+
+How Visitors Can Use the Website:
+1. Copy a public link from Instagram, Pinterest, or YouTube
+2. Paste the link into the downloader input box on the relevant page
+3. Select Get Media to preview the available media
+4. Select Download to save the file to your device
+
+Privacy and No-Login:
+Downloadit does not require an account, login, or password. It only accesses publicly available media that a logged-out visitor could already see. No user data is stored.
+
+Important Pages:
+- Homepage: https://www.downloadit.pro/
+- Instagram Reels Downloader: https://www.downloadit.pro/instagram-reels-downloader
+- Instagram Video Downloader: https://www.downloadit.pro/instagram-video-downloader
+- Instagram Photo & Carousel Downloader: https://www.downloadit.pro/instagram-photo-downloader
+- Instagram Story Downloader: https://www.downloadit.pro/instagram-story-downloader
+- Instagram Audio Downloader: https://www.downloadit.pro/instagram-audio-downloader
+- Pinterest Video Downloader: https://www.downloadit.pro/pinterest-video-downloader
+- Pinterest Image & Carousel Downloader: https://www.downloadit.pro/pinterest-image-downloader
+- YouTube Video Downloader: https://www.downloadit.pro/youtube-video-downloader
+- About: https://www.downloadit.pro/about
+- Help: https://www.downloadit.pro/help
+- Contact: https://www.downloadit.pro/contact
+- Privacy Policy: https://www.downloadit.pro/privacy
+- Terms of Service: https://www.downloadit.pro/terms
+- DMCA: https://www.downloadit.pro/dmca
+- Disclaimer: https://www.downloadit.pro/disclaimer

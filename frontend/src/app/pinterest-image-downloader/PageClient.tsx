@@ -80,19 +80,19 @@ export default function PinterestImageDownloaderPageClient() {
           <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
             What the Pinterest Image &amp; Carousel downloader does
           </h2>
-          <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Save the picture behind a public Pinterest pin in its original quality — the same link works as a Pinterest carousel downloader when a pin exposes several images.
-          </p>
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="mt-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
+            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
           >
             {expanded ? "Show less about Pinterest Images" : "Know more about Pinterest Images"}
             <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
           </button>
           {expanded && (
             <>
+              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
+                Save the picture behind a public Pinterest pin in its original quality — the same link works as a Pinterest carousel downloader when a pin exposes several images.
+              </p>
               <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
                 Paste the pin link, preview the exact image, then download it in its original format. No login, no watermark, nothing to install.
               </p>
