@@ -117,10 +117,12 @@ function bundledBinaryPath() {
 }
 
 (async () => {
+  const errors = [];
+
   // --- yt-dlp: stage from the bundled dependency first (no network needed),
   //     then fall back to downloading the latest release from GitHub.
-  //     Never crash the build if both fail — the runtime will report an
-  //     honest diagnostic instead of a 500. ---
+  //     If both fail, the build must fail so the operator is alerted
+    //     instead of deploying without media engine binaries. ---
   if (!(await isFilePresent(binaryPath) && await verifyExecutable(binaryPath))) {
     const bundled = bundledBinaryPath();
     if (bundled && await isFilePresent(bundled) && await verifyExecutable(bundled)) {
@@ -144,7 +146,7 @@ function bundledBinaryPath() {
         }
         console.log(`[youtube] yt-dlp downloaded from GitHub: ${binaryPath}`);
       } catch (error) {
-        console.warn(`[youtube] could not stage yt-dlp to bin/ (runtime will diagnose):`, error instanceof Error ? error.message : String(error));
+        errors.push(`yt-dlp: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   } else {
@@ -163,8 +165,17 @@ function bundledBinaryPath() {
     // (no .exe suffix on Windows). Output file gets .exe on Windows.
     const asset = `ffmpeg-${platform}-${arch}.gz`;
     const url = `https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/${asset}`;
-    await downloadGzip(url, ffmpegDest, "ffmpeg");
+    try {
+      await downloadGzip(url, ffmpegDest, "ffmpeg");
+    } catch (error) {
+      errors.push(`ffmpeg: ${error instanceof Error ? error.message : String(error)}`);
+    }
   } else {
     console.log(`[youtube] ffmpeg already present: ${ffmpegDest}`);
+  }
+
+  if (errors.length > 0) {
+    console.error(`[youtube] Failed to stage media engine binaries: ${errors.join(", ")}`);
+    process.exit(1);
   }
 })();
