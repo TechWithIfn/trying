@@ -144,6 +144,9 @@ function bundledBinaryPath() {
         if (process.platform !== "win32") {
           await chmod(binaryPath, 0o755);
         }
+        if (!(await verifyExecutable(binaryPath))) {
+          throw new Error("downloaded yt-dlp failed version check");
+        }
         console.log(`[youtube] yt-dlp downloaded from GitHub: ${binaryPath}`);
       } catch (error) {
         errors.push(`yt-dlp: ${error instanceof Error ? error.message : String(error)}`);
