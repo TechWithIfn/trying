@@ -134,22 +134,34 @@ function bundledBinaryPath() {
       console.log(`[youtube] yt-dlp staged from bundled dependency: ${binaryPath}`);
     } else {
       const asset = process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp";
-      try {
-        const response = await fetch(`https://github.com/yt-dlp/yt-dlp/releases/latest/download/${asset}`);
-        if (!response.ok || !response.body) {
-          throw new Error(`HTTP ${response.status}`);
+      const ytDlpUrls = [
+        `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${asset}`,
+        `https://github.com/yt-dlp/yt-dlp/releases/download/${process.env.YTDLP_VERSION || "latest"}/${asset}`,
+      ];
+      let downloaded = false;
+      for (const url of ytDlpUrls) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok || !response.body) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          await mkdir(binDir, { recursive: true });
+          await writeFile(binaryPath, Buffer.from(await response.arrayBuffer()));
+          if (process.platform !== "win32") {
+            await chmod(binaryPath, 0o755);
+          }
+          if (!(await verifyExecutable(binaryPath))) {
+            throw new Error("downloaded yt-dlp failed version check");
+          }
+          console.log(`[youtube] yt-dlp downloaded from GitHub: ${binaryPath}`);
+          downloaded = true;
+          break;
+        } catch (error) {
+          errors.push(`yt-dlp download from ${url}: ${error instanceof Error ? error.message : String(error)}`);
         }
-        await mkdir(binDir, { recursive: true });
-        await writeFile(binaryPath, Buffer.from(await response.arrayBuffer()));
-        if (process.platform !== "win32") {
-          await chmod(binaryPath, 0o755);
-        }
-        if (!(await verifyExecutable(binaryPath))) {
-          throw new Error("downloaded yt-dlp failed version check");
-        }
-        console.log(`[youtube] yt-dlp downloaded from GitHub: ${binaryPath}`);
-      } catch (error) {
-        errors.push(`yt-dlp: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      if (!downloaded) {
+        console.warn("[youtube] All yt-dlp download attempts failed");
       }
     }
   } else {
