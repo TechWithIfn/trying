@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -242,12 +242,25 @@ export default function HomeClient() {
               Why Downloadit?
             </h2>
             <p className="mt-3 max-w-[65ch] text-[15px] leading-[1.6] text-fg-muted sm:text-[17px]">
-              You find a reel you want to keep, a photo worth saving, or a story that disappears tomorrow — and Instagram gives you no button for any of it. Screenshots turn soft, screen recordings look rough, and links sent to friends demand a login. Downloadit exists for that exact gap: paste the link to a public post, check what is inside, and keep the original file on your own device.
+              Instagram gives you no way to save what you see. Reels have no save button, photos cannot be downloaded, and stories vanish after 24 hours. Screenshots lose quality, screen recordings are rough, and shared links often demand a login. Downloadit exists to close that gap: you paste a link to a public post, check what is inside, and keep the original file on your own device.
             </p>
-            <div className="mt-4 text-[14px] leading-[1.6] text-fg-muted">
-              <strong>No account required:</strong> Works purely from public links — no Instagram login needed.<br/>
-              <strong>Privacy-first:</strong> Never asks for your password or tracks your activity.<br/>
-              <strong>Honest limitations:</strong> Private, deleted and expired content are clearly marked as unavailable.
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 text-[14px] leading-[1.6] text-fg-muted">
+              <div>
+                <strong>No account required</strong><br/>
+                Works purely from public links — no Instagram login needed.
+              </div>
+              <div>
+                <strong>Privacy-first</strong><br/>
+                Never asks for your password or tracks your activity.
+              </div>
+              <div>
+                <strong>Honest limitations</strong><br/>
+                Private, deleted and expired content are clearly marked as unavailable.
+              </div>
+              <div>
+                <strong>Independent service</strong><br/>
+                Not affiliated with, endorsed by, or sponsored by Instagram or Meta.
+              </div>
             </div>
             <a
               href="#hero"
