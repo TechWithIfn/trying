@@ -1,64 +1,106 @@
 import { execFile } from "child_process";
 import { existsSync } from "fs";
-import { isAbsolute, join, resolve as resolvePath } from "path";
+import { isAbsolute, resolve as resolvePath } from "path";
 import { logger } from "./logger.js";
 import { inc, observe } from "./metrics.js";
+import {
+  binaryCandidates,
+  binaryRoots,
+  ensureExecutable,
+  ensureExecutableSync,
+  findStagedBinary,
+  ffmpegReleaseAsset,
+  getBinarySource,
+  markBinarySource,
+  resolveRuntimeBinary,
+  type RuntimeBinarySpec,
+} from "./media-binary.js";
 
 let cachedAvailability: boolean | null = null;
 let cachedVersion: string | null = null;
-const BACKEND_ROOT = join(
-  decodeURIComponent(new URL(".", import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, "$1"),
-  "..",
-  ".."
-);
+let cachedPath: string | null | undefined;
+const BACKEND_ROOT = process.cwd();
 
-function stagedFfmpegPath(): string | null {
-  const exeName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-
-  // 1. process.cwd() — works for npm run dev/build/test (all run from backend/)
-  const cwdCandidate = join(process.cwd(), "bin", exeName);
+function configuredFfmpegPath(): string | null {
+  const configured = (process.env.FFMPEG_BIN || "").trim();
+  if (!configured) return null;
   try {
-    if (existsSync(cwdCandidate)) return cwdCandidate;
+    if (process.platform !== "win32" && configured.toLowerCase().endsWith(".exe")) {
+      logger.warn("[FFMPEG] ignoring Windows .exe path on non-Windows runtime");
+      return null;
+    }
+    const candidates = isAbsolute(configured)
+      ? [configured]
+      : [BACKEND_ROOT, ...binaryRoots()].map((root) => resolvePath(root, configured));
+    for (const candidate of candidates) {
+      if (existsSync(candidate)) return candidate;
+    }
   } catch {
-    /* fall through */
+    /* fall through to staged binary */
   }
-
-  // 2. import.meta.url-derived path — works for serverless where cwd may differ
-  try {
-    const moduleRoot = decodeURIComponent(new URL(".", import.meta.url).pathname).replace(
-      /^\/([A-Za-z]:)/,
-      "$1"
-    );
-    const resolvedRoot = join(moduleRoot, "..", "..");
-    const moduleCandidate = join(resolvedRoot, "bin", exeName);
-    if (existsSync(moduleCandidate)) return moduleCandidate;
-  } catch {
-    /* fall through */
-  }
-
   return null;
 }
 
+/**
+ * Locate ffmpeg without spawning it. `bin/ffmpeg` is staged by
+ * scripts/ensure-ytdlp.mjs and shipped via vercel.json `includeFiles`, but the
+ * roots cover a bundled serverless entry point and a monorepo layout too.
+ */
 export function getFfmpegPath(): string | null {
-  // FFMPEG_BIN env var override (documented in .env.example)
-  const configured = (process.env.FFMPEG_BIN || "").trim();
-  if (configured) {
-    try {
-      if (process.platform !== "win32" && configured.toLowerCase().endsWith(".exe")) {
-        logger.warn("[FFMPEG] ignoring Windows .exe path on non-Windows runtime");
-      } else {
-        const candidate = isAbsolute(configured) ? configured : resolvePath(BACKEND_ROOT, configured);
-        if (existsSync(candidate)) return candidate;
-      }
-    } catch {
-      /* fall through to staged binary */
-    }
-  }
-  const staged = stagedFfmpegPath();
+  if (cachedPath !== undefined) return cachedPath;
+
+  const fromEnv = configuredFfmpegPath();
+  const staged = fromEnv ?? findStagedBinary("ffmpeg");
   if (!staged) {
-    logger.warn("[FFMPEG] no executable binary found in bin/ or FFMPEG_BIN env var");
+    cachedPath = null;
+    logger.warn("[FFMPEG] no executable binary found in bin/ or FFMPEG_BIN env var", {
+      candidates: binaryCandidates("ffmpeg"),
+    });
+    return null;
   }
-  return staged;
+
+  cachedPath = ensureExecutableSync(staged);
+  if (!getBinarySource("ffmpeg")) {
+    markBinarySource("ffmpeg", fromEnv ? "env" : "staged");
+  }
+  return cachedPath;
+}
+
+function ffmpegRuntimeSpec(): RuntimeBinarySpec | null {
+  const asset = ffmpegReleaseAsset();
+  if (!asset) return null;
+  return {
+    label: "ffmpeg",
+    base: "ffmpeg",
+    url: `https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/${asset}`,
+    gzip: true,
+    versionArgs: ["-version"],
+  };
+}
+
+/**
+ * Async variant that provisions a missing binary on serverless hosts. Cheap
+ * when the binary is already staged: it just returns the cached path.
+ */
+export async function resolveFfmpegPath(): Promise<string | null> {
+  const existing = getFfmpegPath();
+  if (existing) return existing;
+
+  const spec = ffmpegRuntimeSpec();
+  const runtime = spec ? await resolveRuntimeBinary(spec) : null;
+  if (!runtime) return null;
+
+  try {
+    cachedPath = await ensureExecutable(runtime);
+  } catch (error) {
+    logger.error("[FFMPEG] runtime binary is not executable", {
+      path: runtime,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+  markBinarySource("ffmpeg", "runtime");
+  return cachedPath;
 }
 
 function queryVersion(ffmpeg: string): Promise<string | null> {
@@ -77,7 +119,7 @@ function queryVersion(ffmpeg: string): Promise<string | null> {
 
 export async function isFfmpegAvailable(): Promise<boolean> {
   if (cachedAvailability !== null) return cachedAvailability;
-  const ffmpeg = getFfmpegPath();
+  const ffmpeg = await resolveFfmpegPath();
   if (!ffmpeg) {
     cachedAvailability = false;
     return false;
@@ -88,6 +130,7 @@ export async function isFfmpegAvailable(): Promise<boolean> {
   logger.info("[FFMPEG] executable resolved", {
     available: cachedAvailability,
     version: cachedVersion,
+    source: getBinarySource("ffmpeg"),
   });
   return cachedAvailability;
 }

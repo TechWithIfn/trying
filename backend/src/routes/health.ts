@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../lib/ffmpeg.js";
 import { getYtDlpVersion, isYtDlpAvailable } from "../lib/youtube/ytdlp.js";
+import { getBinarySource } from "../lib/media-binary.js";
 import { audioProviderStatus } from "../lib/audio-provider.js";
 import { capacitySnapshot } from "../lib/capacity.js";
 import { getResolverPoolSnapshot } from "../lib/resolver-pool.js";
@@ -132,8 +133,12 @@ router.get("/media", async (_req: Request, res: Response) => {
     ytDlpConfigured: Boolean(process.env.YTDLP_PATH?.trim()),
     ffmpegAvailable,
     ffmpegVersion: getFfmpegVersionSync(),
+    // "staged" = shipped in bin/, "runtime" = downloaded into the temp dir
+    // because the bundle did not contain it, "env" = FFMPEG_BIN override.
+    ffmpegSource: getBinarySource("ffmpeg"),
     ytDlpAvailable,
     ytDlpVersion: getYtDlpVersion(),
+    ytDlpSource: getBinarySource("yt-dlp"),
     timestamp: new Date().toISOString(),
   });
 });

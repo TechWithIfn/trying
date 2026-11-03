@@ -2,7 +2,7 @@ import { execFile } from "child_process";
 import { mkdtemp, rm, stat } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { getFfmpegPath } from "../ffmpeg.js";
+import { getFfmpegPath, resolveFfmpegPath } from "../ffmpeg.js";
 import { AppError, ERRORS } from "../errors.js";
 import { readBoundedInt } from "../env.js";
 import { logger } from "../logger.js";
@@ -161,7 +161,7 @@ export async function safeRemoveDir(dir: string, requestId?: string): Promise<vo
  * directory. The caller streams it and must call `safeRemoveDir` afterwards.
  */
 export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Promise<DownloadedYouTubeFile> {
-  const ffmpeg = getFfmpegPath();
+  const ffmpeg = await resolveFfmpegPath();
   if (!ffmpeg) {
     throw verdict("YOUTUBE_CONVERSION_FAILED", options.probe, "ffmpeg", options.requestId);
   }

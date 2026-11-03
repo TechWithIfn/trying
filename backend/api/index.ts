@@ -4,6 +4,7 @@ import app from "../src/app.js";
 import { validateServerEnv } from "../src/lib/env.js";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../src/lib/ffmpeg.js";
 import { isYtDlpAvailable, getYtDlpVersion } from "../src/lib/youtube/ytdlp.js";
+import { getBinarySource } from "../src/lib/media-binary.js";
 
 // Vercel serverless entry point. Every request is routed here via
 // vercel.json rewrites; the Express app handles routing internally.
@@ -27,9 +28,12 @@ for (const warning of startupEnv.warnings) {
   console.log("[YOUTUBE] media engine check", {
     ffmpegAvailable: ffmpegOk,
     ffmpegVersion: getFfmpegVersionSync(),
+    ffmpegSource: getBinarySource("ffmpeg"),
     ytDlpAvailable: ytDlpOk,
     ytDlpVersion: getYtDlpVersion(),
+    ytDlpSource: getBinarySource("yt-dlp"),
     platform: process.platform,
+    arch: process.arch,
   });
 })();
 

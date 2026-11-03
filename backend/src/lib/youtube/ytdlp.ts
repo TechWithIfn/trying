@@ -1,9 +1,16 @@
 import { execFile } from "child_process";
-import { chmod, copyFile, stat } from "fs/promises";
 import { existsSync } from "fs";
 import { createRequire } from "module";
-import { delimiter, dirname, isAbsolute, join, basename, resolve as resolvePath } from "path";
-import { tmpdir } from "os";
+import { delimiter, dirname, isAbsolute, join, resolve as resolvePath } from "path";
+import {
+  binaryCandidates,
+  binaryRoots,
+  ensureExecutable,
+  markBinarySource,
+  resolveRuntimeBinary,
+  ytDlpReleaseAsset,
+  type RuntimeBinarySpec,
+} from "../media-binary.js";
 import { logger } from "../logger.js";
 
 /**
@@ -21,16 +28,8 @@ import { logger } from "../logger.js";
 
 const require = createRequire(import.meta.url);
 
-/** Backend root resolved from this module so `bin/yt-dlp` is located
- * independently of `process.cwd()` (serverless hosts may not set it to the
- * backend directory). `bin/yt-dlp` is staged by scripts/ensure-ytdlp.mjs and
- * declared in vercel.json includeFiles, so it is the deployment-safe candidate. */
-const BACKEND_ROOT = join(
-  decodeURIComponent(new URL(".", import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, "$1"),
-  "..",
-  "..",
-  ".."
-);
+/** Backend root used to resolve relative `YTDLP_PATH` values. */
+const BACKEND_ROOT = process.cwd();
 
 interface YoutubeDlConstants {
   YOUTUBE_DL_PATH?: string;
@@ -59,7 +58,10 @@ function packageBinaryCandidates(): string[] {
 }
 
 function projectBinaryCandidates(): string[] {
-  return [join(BACKEND_ROOT, "bin", "yt-dlp"), join(BACKEND_ROOT, "bin", "yt-dlp.exe")];
+  // `bin/yt-dlp` is staged by scripts/ensure-ytdlp.mjs and shipped through
+  // vercel.json `includeFiles`. The roots cover a bundled serverless entry, a
+  // monorepo `backend/` folder and local development alike.
+  return binaryCandidates("yt-dlp");
 }
 
 function isPathLike(value: string): boolean {
@@ -71,11 +73,26 @@ function isCompatibleCandidate(candidate: string): boolean {
 }
 
 function configuredPathCandidates(configured: string): string[] {
-  const resolved = isAbsolute(configured) ? configured : resolvePath(BACKEND_ROOT, configured);
-  if (process.platform === "win32" && !/\.[a-z0-9]+$/i.test(resolved)) {
-    return [resolved, `${resolved}.exe`];
+  if (isAbsolute(configured)) {
+    if (process.platform === "win32" && !/\.[a-z0-9]+$/i.test(configured)) {
+      return [configured, `${configured}.exe`];
+    }
+    return [configured];
   }
-  return [resolved];
+
+  // Relative overrides are read against the working directory first (npm
+  // scripts run from backend/), then against every deployment root so the
+  // same value keeps working in a serverless bundle.
+  const candidates: string[] = [];
+  for (const root of [BACKEND_ROOT, ...binaryRoots()]) {
+    const resolved = resolvePath(root, configured);
+    if (!candidates.includes(resolved)) candidates.push(resolved);
+    if (process.platform === "win32" && !/\.[a-z0-9]+$/i.test(resolved)) {
+      const withExe = `${resolved}.exe`;
+      if (!candidates.includes(withExe)) candidates.push(withExe);
+    }
+  }
+  return candidates;
 }
 
 function commandOnPath(name: string): string | null {
@@ -146,27 +163,23 @@ interface CandidateProbe {
 
 const CANDIDATE_PROBE_TIMEOUT_MS = 10_000;
 
-async function makeExecutable(candidate: string): Promise<string> {
-  if (process.platform === "win32") return candidate;
-  try {
-    const details = await stat(candidate);
-    if ((details.mode & 0o111) !== 0) return candidate;
-    const copy = join(tmpdir(), `downloadit-${basename(candidate)}-${process.pid}`);
-    await copyFile(candidate, copy);
-    await chmod(copy, 0o755);
-    logger.warn("[YOUTUBE] yt-dlp bundle was not executable; copied to temporary storage", {
-      candidate,
-      runtimePath: copy,
-    });
-    return copy;
-  } catch (error) {
-    throw new Error(`not executable: ${error instanceof Error ? error.message : "permission check failed"}`);
-  }
+function runtimeSpec(): RuntimeBinarySpec | null {
+  const asset = ytDlpReleaseAsset();
+  if (!asset) return null;
+  return {
+    label: "yt-dlp",
+    base: "yt-dlp",
+    // `yt-dlp_linux`/`yt-dlp_macos` are self-contained builds. The generic
+    // `yt-dlp` asset is a Python zipapp and cannot run on hosts without
+    // Python 3 — which is exactly the case for a Node serverless runtime.
+    url: `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${asset}`,
+    versionArgs: versionArgs(),
+  };
 }
 
 async function probeCandidate(candidate: string): Promise<CandidateProbe> {
   try {
-    const executable = await makeExecutable(candidate);
+    const executable = await ensureExecutable(candidate);
     return await new Promise((resolve) => {
       execFile(
         executable,
@@ -245,16 +258,42 @@ export function resolveYtDlp(): Promise<string> {
       if (verified.version) {
         resolvedPath = verified.path;
         cachedVersion = verified.version;
+        const fromEnv = configured.length > 0 && configuredPathCandidates(configured).includes(verified.path);
+        markBinarySource("yt-dlp", fromEnv ? "env" : "staged");
         logger.info("[YOUTUBE] yt-dlp executable resolved", {
           path: verified.path,
           version: verified.version,
-          source: configured && verified.path !== bundled ? "env" : "bundled",
+          source: fromEnv ? "env" : "bundled",
         });
         return verified.path;
       }
       logger.warn("[YOUTUBE] yt-dlp candidate could not be executed", {
         candidate: isPathLike(candidate) ? candidate : "(path lookup)",
         failure: verified.failure ?? "unknown startup failure",
+      });
+    }
+
+    // --- Last resort: nothing usable shipped with the deployment. Download
+    //     the standalone build into the temp dir (one per instance), verify
+    //     it, and continue. This keeps /api/youtube working even when the
+    //     host ignores `includeFiles` or stages an incompatible binary. ---
+    const spec = runtimeSpec();
+    const runtime = spec ? await resolveRuntimeBinary(spec) : null;
+    if (runtime) {
+      const verifiedRuntime = await probeCandidate(runtime);
+      if (verifiedRuntime.version) {
+        resolvedPath = verifiedRuntime.path;
+        cachedVersion = verifiedRuntime.version;
+        markBinarySource("yt-dlp", "runtime");
+        logger.info("[YOUTUBE] yt-dlp resolved from runtime download", {
+          path: verifiedRuntime.path,
+          version: verifiedRuntime.version,
+        });
+        return verifiedRuntime.path;
+      }
+      logger.error("[YOUTUBE] runtime yt-dlp download could not be executed", {
+        path: runtime,
+        failure: verifiedRuntime.failure ?? "unknown startup failure",
       });
     }
 
