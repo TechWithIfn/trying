@@ -70,9 +70,9 @@ export default function AboutPage() {
       </p>
       <h2 className="text-[20px] font-bold text-fg">Who runs Downloadit</h2>
       <p>
-        Downloadit is maintained by [MY NAME], an independent web developer who
-        started the project in 2026 to make public-media saving clearer. The
-        service is kept deliberately small, and support is handled through the{" "}
+        Downloadit is maintained by an independent web developer who started the
+        project in 2026 to make public-media saving clearer. The service is kept
+        deliberately small, and support is handled through the{" "}
         <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">
           Contact page
         </Link>
