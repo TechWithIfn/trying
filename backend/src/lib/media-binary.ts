@@ -1,5 +1,5 @@
 import { execFile } from "child_process";
-import { chmodSync, copyFileSync, existsSync, statSync } from "fs";
+import { chmodSync, copyFileSync, existsSync, readdirSync, statSync } from "fs";
 import { chmod, copyFile, readFile, readdir, rename, rm, stat, writeFile } from "fs/promises";
 import { gunzipSync } from "zlib";
 import { basename, dirname, join, resolve as resolvePath } from "path";
@@ -109,8 +109,7 @@ export function binaryCandidates(base: string): string[] {
 }
 
 /** First candidate that exists on disk. No execution probe. */
-export function findStagedBinary(base: string): string | null {
-  for (const candidate of binaryCandidates(base)) {
+export function findStagedBinary(base: string): string | null {  for (const candidate of binaryCandidates(base)) {
     if (!isCompatible(candidate)) continue;
     try {
       if (existsSync(candidate)) return candidate;
@@ -119,6 +118,22 @@ export function findStagedBinary(base: string): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Names of the files present in any candidate `bin/` folder. Ops diagnostics
+ * only (file names, never full paths) — it answers "what actually shipped?".
+ */
+export function stagedBinaryInventory(): string[] {
+  const names = new Set<string>();
+  for (const root of binaryRoots()) {
+    try {
+      for (const entry of readdirSync(join(root, "bin"))) names.add(entry);
+    } catch {
+      /* no bin/ under this root */
+    }
+  }
+  return [...names].sort();
 }
 
 /**
