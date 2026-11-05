@@ -1,10 +1,9 @@
 import { execFile } from "child_process";
 import { chmodSync, copyFileSync, existsSync, statSync } from "fs";
-import { chmod, copyFile, readdir, rename, rm, stat, writeFile } from "fs/promises";
+import { chmod, copyFile, readFile, readdir, rename, rm, stat, writeFile } from "fs/promises";
 import { gunzipSync } from "zlib";
 import { basename, dirname, join, resolve as resolvePath } from "path";
 import { tmpdir } from "os";
-import { fileURLToPath } from "url";
 import { logger } from "./logger.js";
 
 /**
@@ -30,9 +29,11 @@ import { logger } from "./logger.js";
 /** Directory of this module, when the runtime exposes a real module URL. */
 const MODULE_DIR = (() => {
   try {
-    const url = import.meta.url;
-    if (!url || !url.startsWith("file:")) return null;
-    return dirname(fileURLToPath(url));
+    const url = new URL(import.meta.url);
+    if (url.protocol !== "file:") return null;
+    // Windows file URLs arrive as /C:/... — strip the leading slash so
+    // `dirname` produces a usable drive path.
+    return dirname(decodeURIComponent(url.pathname).replace(/^\/([A-Za-z]:)/, "$1"));
   } catch {
     return null;
   }
@@ -118,6 +119,73 @@ export function findStagedBinary(base: string): string | null {
     }
   }
   return null;
+}
+
+/**
+ * A compressed staged binary (`bin/<base>.gz`). Shipping ffmpeg gzipped keeps
+ * the serverless bundle ~48 MB smaller than shipping the ~76 MB executable;
+ * it is expanded into the temp dir on first use.
+ */
+export function findStagedGzip(base: string): string | null {
+  for (const root of binaryRoots()) {
+    const candidate = join(root, "bin", `${base}.gz`);
+    try {
+      if (existsSync(candidate)) return candidate;
+    } catch {
+      /* unreadable root */
+    }
+  }
+  return null;
+}
+
+/**
+ * Expand a staged `.gz` binary into the temp dir, verify it, and cache it for
+ * the life of the instance. Returns null (never throws) on failure.
+ */
+export async function materializeStagedGzip(
+  base: string,
+  gzPath: string,
+  versionArgs: string[]
+): Promise<string | null> {
+  const destination = runtimeBinaryPath(base);
+  try {
+    if (await verifyBinary(destination, versionArgs)) {
+      runtimePaths.set(base, destination);
+      return destination;
+    }
+  } catch {
+    /* expand a fresh copy */
+  }
+
+  const temporary = `${destination}.part-${process.pid}`;
+  try {
+    const compressed = await readFile(gzPath);
+    const data = gunzipSync(compressed);
+    if (data.byteLength < 1_000_000) throw new Error(`expanded binary too small (${data.byteLength} bytes)`);
+    await writeFile(temporary, data);
+    if (process.platform !== "win32") await chmod(temporary, 0o755);
+    if (!(await verifyBinary(temporary, versionArgs))) {
+      throw new Error("staged archive failed its startup check");
+    }
+    await rename(temporary, destination);
+    runtimePaths.set(base, destination);
+    logger.info("[MEDIA] staged archive expanded", {
+      base,
+      gzPath,
+      path: destination,
+      bytes: data.byteLength,
+    });
+    return destination;
+  } catch (error) {
+    logger.error("[MEDIA] could not expand staged archive", {
+      base,
+      gzPath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  } finally {
+    await rm(temporary, { force: true }).catch(() => undefined);
+  }
 }
 
 /**

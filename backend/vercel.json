@@ -6,7 +6,8 @@
     "api/index.ts": {
       "memory": 2048,
       "maxDuration": 60,
-      "includeFiles": ["bin/**"]
+      "includeFiles": ["bin/**"],
+      "excludeFiles": ["node_modules/youtube-dl-exec/bin/**"]
     }
   }
 }

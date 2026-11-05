@@ -9,9 +9,11 @@ import {
   ensureExecutable,
   ensureExecutableSync,
   findStagedBinary,
+  findStagedGzip,
   ffmpegReleaseAsset,
   getBinarySource,
   markBinarySource,
+  materializeStagedGzip,
   resolveRuntimeBinary,
   type RuntimeBinarySpec,
 } from "./media-binary.js";
@@ -85,6 +87,18 @@ function ffmpegRuntimeSpec(): RuntimeBinarySpec | null {
 export async function resolveFfmpegPath(): Promise<string | null> {
   const existing = getFfmpegPath();
   if (existing) return existing;
+
+  // A gzipped staged binary is the serverless default: it keeps the function
+  // bundle well under Vercel's 250 MB uncompressed limit.
+  const stagedGzip = findStagedGzip("ffmpeg");
+  if (stagedGzip) {
+    const expanded = await materializeStagedGzip("ffmpeg", stagedGzip, ["-version"]);
+    if (expanded) {
+      cachedPath = expanded;
+      markBinarySource("ffmpeg", "staged");
+      return cachedPath;
+    }
+  }
 
   const spec = ffmpegRuntimeSpec();
   const runtime = spec ? await resolveRuntimeBinary(spec) : null;

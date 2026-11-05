@@ -16,7 +16,7 @@
  * standalone builds at runtime into the temp directory.
  */
 import { chmod, copyFile, mkdir, open, stat, unlink, writeFile } from "node:fs/promises";
-import { createWriteStream } from "node:fs";
+import { createReadStream, createWriteStream } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -137,6 +137,27 @@ async function isUsable(filePath, versionArgs) {
   return (await isFilePresent(filePath)) && (await looksNative(filePath)) && (await verifyExecutable(filePath, versionArgs));
 }
 
+/** Verify a gzip-compressed binary by expanding it to a temp file and running it. */
+async function isUsableGzip(gzPath, versionArgs) {
+  if (!gzPath) return false;
+  try {
+    const details = await stat(gzPath);
+    if (!details.isFile() || details.size < 1_000_000) return false;
+  } catch {
+    return false;
+  }
+  const temporary = `${gzPath}.verify-${process.pid}`;
+  try {
+    await pipeline(createReadStream(gzPath), createGunzip(), createWriteStream(temporary));
+    await markExecutable(temporary);
+    return await verifyExecutable(temporary, versionArgs);
+  } catch {
+    return false;
+  } finally {
+    await unlink(temporary).catch(() => undefined);
+  }
+}
+
 function bundledYtDlpPath() {
   try {
     const pkg = require("youtube-dl-exec");
@@ -224,8 +245,14 @@ async function stageYtDlp() {
 }
 
 async function stageFfmpeg() {
+  const gzDest = `${ffmpegDest}.gz`;
+
   if (await isUsable(ffmpegDest, ["-version"])) {
     console.log(`[youtube] ffmpeg already present: ${ffmpegDest}`);
+    return true;
+  }
+  if (!isWindows && (await isUsableGzip(gzDest, ["-version"]))) {
+    console.log(`[youtube] ffmpeg archive already present: ${gzDest}`);
     return true;
   }
 
@@ -237,23 +264,35 @@ async function stageFfmpeg() {
 
   const url = `${FFMPEG_RELEASE}/${asset}`;
   try {
-    await downloadGzip(url, ffmpegDest);
-    await markExecutable(ffmpegDest);
-    if (!(await isUsable(ffmpegDest, ["-version"]))) {
-      throw new Error("downloaded ffmpeg failed verification");
+    if (isWindows) {
+      // Local Windows development runs the binary directly, so keep it raw.
+      await downloadGzip(url, ffmpegDest);
+      await markExecutable(ffmpegDest);
+      if (!(await isUsable(ffmpegDest, ["-version"]))) throw new Error("downloaded ffmpeg failed verification");
+      console.log(`[youtube] ffmpeg downloaded: ${ffmpegDest} (${asset})`);
+    } else {
+      // Serverless deployments ship the ~28 MB archive instead of the ~76 MB
+      // executable; src/lib/ffmpeg.ts expands it into the temp dir on first
+      // use. This keeps the function under Vercel's 250 MB bundle limit.
+      await unlink(gzDest).catch(() => undefined);
+      await downloadBinary(url, gzDest);
+      if (!(await isUsableGzip(gzDest, ["-version"]))) throw new Error("downloaded ffmpeg archive failed verification");
+      await unlink(ffmpegDest).catch(() => undefined);
+      console.log(`[youtube] ffmpeg archive staged: ${gzDest} (${asset})`);
     }
-    console.log(`[youtube] ffmpeg downloaded: ${ffmpegDest} (${asset})`);
     return true;
   } catch (error) {
     console.warn(`[youtube] could not stage ffmpeg: ${error instanceof Error ? error.message : String(error)}`);
-    await unlink(ffmpegDest).catch(() => undefined);
+    await unlink(isWindows ? ffmpegDest : gzDest).catch(() => undefined);
     return false;
   }
 }
 
 /** Drop binaries for other platforms so a deployment never ships dead weight. */
 async function removeForeignBinaries() {
-  const foreign = isWindows ? [join(binDir, "yt-dlp"), join(binDir, "ffmpeg")] : [join(binDir, "yt-dlp.exe"), join(binDir, "ffmpeg.exe")];
+  const foreign = isWindows
+    ? [join(binDir, "yt-dlp"), join(binDir, "ffmpeg"), join(binDir, "ffmpeg.gz")]
+    : [join(binDir, "yt-dlp.exe"), join(binDir, "ffmpeg.exe")];
   for (const filePath of foreign) {
     await unlink(filePath).catch(() => undefined);
   }
