@@ -15,7 +15,7 @@
  * ever fails, `src/lib/media-binary.ts` can still provision the same
  * standalone builds at runtime into the temp directory.
  */
-import { chmod, copyFile, mkdir, open, stat, unlink, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, open, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { createReadStream, createWriteStream } from "node:fs";
 import { createGunzip } from "node:zlib";
 import { Readable } from "node:stream";
@@ -87,7 +87,8 @@ async function verifyExecutable(filePath, versionArgs = ["--version"]) {
         (error, stdout, stderr) => {
           const out = `${String(stdout || "")} ${String(stderr || "")}`.trim();
           if (error) {
-            reject(new Error(`exit ${error.code}: ${error.message}`));
+            const detail = String(stderr || "").trim().split(/\r?\n/)[0] || error.message;
+            reject(new Error(`exit ${error.code}: ${detail}`));
             return;
           }
           if (!out || out.length < 3) {
@@ -172,6 +173,23 @@ async function markExecutable(filePath) {
   if (!isWindows) await chmod(filePath, 0o755);
 }
 
+/** Retry a flaky network step (GitHub Releases occasionally throttles CI). */
+async function withRetries(attempts, label, task) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+      console.warn(
+        `[youtube] ${label} attempt ${attempt}/${attempts} failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, attempt * 2_000));
+    }
+  }
+  throw lastError;
+}
+
 /** Download an uncompressed binary (yt-dlp releases are raw files). */
 async function downloadBinary(url, destination) {
   const temporary = `${destination}.download-${process.pid}`;
@@ -230,11 +248,13 @@ async function stageYtDlp() {
 
   const url = `${YTDLP_RELEASE}/${asset}`;
   try {
-    await downloadBinary(url, binaryPath);
-    await markExecutable(binaryPath);
-    if (!(await isUsable(binaryPath))) {
-      throw new Error("downloaded yt-dlp failed verification (wrong platform or interpreter script)");
-    }
+    await withRetries(3, "yt-dlp download", async () => {
+      await downloadBinary(url, binaryPath);
+      await markExecutable(binaryPath);
+      if (!(await isUsable(binaryPath))) {
+        throw new Error("downloaded yt-dlp failed verification (wrong platform or interpreter script)");
+      }
+    });
     console.log(`[youtube] yt-dlp downloaded: ${binaryPath} (${asset})`);
     return true;
   } catch (error) {
@@ -266,24 +286,52 @@ async function stageFfmpeg() {
   try {
     if (isWindows) {
       // Local Windows development runs the binary directly, so keep it raw.
-      await downloadGzip(url, ffmpegDest);
-      await markExecutable(ffmpegDest);
-      if (!(await isUsable(ffmpegDest, ["-version"]))) throw new Error("downloaded ffmpeg failed verification");
+      await withRetries(3, "ffmpeg download", async () => {
+        await downloadGzip(url, ffmpegDest);
+        await markExecutable(ffmpegDest);
+        if (!(await isUsable(ffmpegDest, ["-version"]))) throw new Error("downloaded ffmpeg failed verification");
+      });
       console.log(`[youtube] ffmpeg downloaded: ${ffmpegDest} (${asset})`);
     } else {
-      // Serverless deployments ship the ~28 MB archive instead of the ~76 MB
+      // Serverless deployments ship the archive instead of the ~76 MB
       // executable; src/lib/ffmpeg.ts expands it into the temp dir on first
       // use. This keeps the function under Vercel's 250 MB bundle limit.
-      await unlink(gzDest).catch(() => undefined);
-      await downloadBinary(url, gzDest);
-      if (!(await isUsableGzip(gzDest, ["-version"]))) throw new Error("downloaded ffmpeg archive failed verification");
+      await withRetries(3, "ffmpeg download", async () => {
+        await unlink(gzDest).catch(() => undefined);
+        await downloadBinary(url, gzDest);
+        if (!(await isUsableGzip(gzDest, ["-version"]))) {
+          throw new Error("downloaded ffmpeg archive failed verification");
+        }
+      });
       await unlink(ffmpegDest).catch(() => undefined);
       console.log(`[youtube] ffmpeg archive staged: ${gzDest} (${asset})`);
     }
     return true;
   } catch (error) {
-    console.warn(`[youtube] could not stage ffmpeg: ${error instanceof Error ? error.message : String(error)}`);
-    await unlink(isWindows ? ffmpegDest : gzDest).catch(() => undefined);
+    console.warn(`[youtube] could not stage ffmpeg (${isWindows ? "binary" : "archive"}): ${error instanceof Error ? error.message : String(error)}`);
+    await unlink(gzDest).catch(() => undefined);
+
+    if (!isWindows) {
+      // Last attempt at build time: stage the executable itself. Larger bundle,
+      // but a fast first request beats a runtime download.
+      try {
+        await withRetries(2, "ffmpeg raw fallback", async () => {
+          await downloadGzip(url, ffmpegDest);
+          await markExecutable(ffmpegDest);
+          if (!(await isUsable(ffmpegDest, ["-version"]))) throw new Error("downloaded ffmpeg failed verification");
+        });
+        console.log(`[youtube] ffmpeg staged uncompressed (archive path failed): ${ffmpegDest}`);
+        return true;
+      } catch (fallbackError) {
+        console.warn(
+          `[youtube] could not stage ffmpeg: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`
+        );
+        await unlink(ffmpegDest).catch(() => undefined);
+        return false;
+      }
+    }
+
+    await unlink(ffmpegDest).catch(() => undefined);
     return false;
   }
 }
@@ -303,6 +351,11 @@ async function removeForeignBinaries() {
   await removeForeignBinaries();
 
   const [ytDlpOk, ffmpegOk] = [await stageYtDlp(), await stageFfmpeg()];
+
+  // Explicit inventory so a deployment log always answers "what actually
+  // shipped in bin/?" without guessing.
+  const contents = await readdir(binDir).catch(() => []);
+  console.log(`[youtube] bin/ contents: ${contents.length > 0 ? contents.join(", ") : "(empty)"}`);
 
   if (!ytDlpOk || !ffmpegOk) {
     // Not fatal: src/lib/media-binary.ts downloads the same standalone builds

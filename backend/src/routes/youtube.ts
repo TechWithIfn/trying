@@ -53,13 +53,17 @@ const perIpDownload = new KeyedConcurrency(
 
 function resolveTimeoutMs(): number {
   const configured = readPositiveInt("YOUTUBE_RESOLVE_TIMEOUT_MS", 30_000);
-  if (process.env.VERCEL) return Math.min(configured, 50_000);
+  // Cold instances may need to provision the media binaries before yt-dlp can
+  // start, so the platform cap must leave room for that first request.
+  if (process.env.VERCEL) return Math.min(configured, 120_000);
   return configured;
 }
 
 function downloadTimeoutMs(): number {
   const configured = readPositiveInt("YOUTUBE_DOWNLOAD_TIMEOUT_MS", 5 * 60_000);
-  if (process.env.VERCEL) return Math.min(configured, 55_000);
+  // Keep the work budget below maxDuration (300 s) so a cold-start provisioning
+  // download plus transcode still finishes and the file streams to completion.
+  if (process.env.VERCEL) return Math.min(configured, 240_000);
   return configured;
 }
 

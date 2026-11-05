@@ -47,7 +47,8 @@ and download timeouts and pointed at binary packaging/resolution.
 | `backend/src/lib/ffmpeg.ts` | Same root discovery + executable-bit handling; new async `resolveFfmpegPath()` that expands a staged `bin/ffmpeg.gz` (or downloads ffmpeg) before the merge/transcode step. |
 | `backend/src/lib/youtube/download.ts` | Uses `await resolveFfmpegPath()` so the merge/transcode step can provision ffmpeg before spawning yt-dlp. |
 | `backend/src/routes/health.ts`, `backend/api/index.ts` | `/api/health/media` and the cold-start log now report `ytDlpSource` / `ffmpegSource` (`staged`, `env`, `runtime`) and the runtime architecture. |
-| `backend/vercel.json` | `includeFiles` changed to `["bin/**"]`; `excludeFiles` drops `youtube-dl-exec`'s bundled Python zipapp (useless on Linux, keeps the function small). |
+| `backend/src/routes/youtube.ts` | Serverless time budgets raised (resolve cap 120 s, download cap 240 s) so a cold instance that must provision a binary still finishes instead of being cut off mid-stream. |
+| `backend/vercel.json` | `includeFiles: "bin/**"` (string glob — arrays fail schema validation), `excludeFiles` drops `youtube-dl-exec`'s bundled Python zipapp, and `maxDuration` raised from 60 s to 300 s (Hobby maximum). |
 | `backend/.env.example` | Documents `MEDIA_BIN_DIR`, `MEDIA_RUNTIME_DOWNLOAD`, and recommends **leaving `YTDLP_PATH` / `FFMPEG_BIN` unset** (a Windows-only value on the server is worse than auto-detection). |
 
 ## Verification performed
@@ -72,45 +73,50 @@ and download timeouts and pointed at binary packaging/resolution.
   `yt-dlp` (39 MB) + `ffmpeg.gz` (28 MB) keeps the function well below the
   250 MB uncompressed ceiling enforced by AWS/Vercel.
 
-## Deploy status at the time of writing
+## Deploy result (verified live)
 
-The push (`4cc0298`) is on `origin/main`, but the live backend still reported
-the previous build (`build: c35b7f3…`, no `ffmpegSource`/`ytDlpSource` fields
-in `/api/health/media`), so the fix is **not yet live**:
+After the `vercel.json` schema fix (`913d1f9`) the deployment succeeded:
 
 ```text
-GET https://backend-chi-orpin-90.vercel.app/api/health/media   (after push)
-{"status":"degraded","ffmpegAvailable":true,"ffmpegVersion":"7.0.2-static","ytDlpAvailable":false, ...}
+GET /api/health/media
+{"status":"ok","engineReady":true,
+ "ytDlpAvailable":true,"ytDlpVersion":"2026.10.26","ytDlpSource":"staged",
+ "ffmpegAvailable":true,"ffmpegVersion":"7.0.2-static","ffmpegSource":"runtime"}
+
+POST /api/youtube/resolve           → 200, 1080p/720p/480p/240p/144p + audio options
+GET  /api/youtube/download (mp3)    → 200, 3,409,580 bytes, ~14 s warm
 ```
 
-That response is still produced by the old code, and its `ffmpeg` success comes
-from the project's existing `FFMPEG_BIN` override, not from the bundle.
+`ytDlpSource: "staged"` proves the standalone Linux binary shipped in `bin/`
+and was found by the new multi-root locator. `ffmpegSource: "runtime"` shows
+the archive was not in the bundle for that instance, so it was provisioned
+into `/tmp` on first use.
 
-## Deploy checklist (required)
+**Cold-start caveat that was then fixed:** the first one or two cold instances
+produced a `200` with a truncated body (8 KB / 24 KB) because runtime ffmpeg
+provisioning + download + transcode exceeded the old 60 s function limit. The
+body was cut mid-stream while the client waited. `maxDuration` is now 300 s
+and the internal budgets are 120 s / 240 s, so the same cold request completes.
 
-1. Push this commit and let Vercel rebuild the **backend** project
-   (root directory `backend`). If the project is not connected to GitHub,
-   deploy manually from `backend/` (`vercel --prod`).
-2. **Remove `FFMPEG_BIN` and `YTDLP_PATH` from the Vercel project env vars** if
-   they contain Windows paths or point at files that do not exist on Linux.
-   They are no longer needed.
-3. After the deployment, confirm with:
-   `curl https://backend-chi-orpin-90.vercel.app/api/health/media`
-   Expected: `"engineReady": true`, plus `"ffmpegSource"` and
-   `"ytDlpSource"` (`staged` is ideal, `runtime` also works).
-   The first call after a cold start may take a few seconds if the bundle
-   needed the runtime fallback download.
-4. If the build fails with "Serverless Function exceeded the unzipped maximum
-   size of 250 MB", remove the ffmpeg static asset from the bundle and rely on
-   the runtime download (`MEDIA_RUNTIME_DOWNLOAD=1`).
+## Follow-up deployment notes
+
+* A first attempt to deploy failed schema validation because `includeFiles` /
+  `excludeFiles` were arrays. Vercel expects a **string glob**, which is fixed
+  in `913d1f9`.
+* If a future build fails with "Serverless Function exceeded the unzipped
+  maximum size of 250 MB", remove the staged ffmpeg asset and rely on the
+  runtime download (already the automatic fallback) or opt into
+  `VERCEL_SUPPORT_LARGE_FUNCTIONS=1`.
 
 ## Remaining limitations (not code defects)
 
-* Vercel functions cap at 60 s. Merging a long 1080p video can exceed that;
-  audio and shorter videos are the realistic serverless workloads.
+* Long 1080p merges on a cold instance still cost time (provisioning + download
+  + transcode). The 300 s function duration covers it, but audio and typical
+  videos remain the best serverless workloads.
 * YouTube may show a "confirm you're not a bot" challenge to datacenter IPs.
   That surfaces as `YOUTUBE_BOT_CHECK` (a different, honest error) and cannot
   be fixed by packaging changes.
-* Each new serverless instance downloads the fallback binaries again if the
-  bundle does not contain them; cold starts are slower until `includeFiles`
-  ships them correctly.
+* If the staging step cannot obtain ffmpeg during a build, the first request on
+  each new instance downloads ~28 MB into `/tmp`; the build now retries,
+  falls back to shipping the uncompressed binary, and `maxDuration` covers the
+  slow first request either way.
