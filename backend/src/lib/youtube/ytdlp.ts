@@ -143,7 +143,7 @@ function normalizedYtDlpText(error: YtDlpProcessError): string {
  * intentionally terminal.
  */
 export function isRetryableYtDlpError(error: unknown): boolean {
-  if (error instanceof YtDlpAbortedError) return error.reason === "timeout";
+  if (error instanceof YtDlpAbortedError) return false;
   if (!(error instanceof YtDlpProcessError)) return false;
 
   const text = normalizedYtDlpText(error);

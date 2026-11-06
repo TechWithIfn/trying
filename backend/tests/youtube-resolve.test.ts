@@ -217,12 +217,12 @@ describe("classifyYtDlpFailure", () => {
     expect(mapped.message).toContain("media engine");
   });
 
-  it("retries temporary upstream failures but not bot or permanent failures", () => {
+  it("retries temporary upstream failures but not bot, timeout, or permanent failures", () => {
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 503", 1))).toBe(true);
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 429", 1))).toBe(true);
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "Sign in to confirm you're not a bot", 1))).toBe(false);
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 403: Forbidden", 1))).toBe(false);
-    expect(isRetryableYtDlpError(new YtDlpAbortedError("timeout"))).toBe(true);
+    expect(isRetryableYtDlpError(new YtDlpAbortedError("timeout"))).toBe(false);
     expect(isRetryableYtDlpError(new YtDlpAbortedError("aborted"))).toBe(false);
   });
 });
