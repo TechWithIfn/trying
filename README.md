@@ -173,6 +173,12 @@ cd backend && npm start
 
 **Required environment variables:**
 - `PORT` — server port (set by hosting platform, e.g., Railway, Render)
+
+For a Linux container deployment, use
+[backend/ALTERNATIVE_HOSTING.md](./backend/ALTERNATIVE_HOSTING.md). It documents
+the Docker image, runtime requirements, environment variables, and verification
+steps for testing the existing backend on another provider without changing
+the frontend API contract.
 - `NODE_ENV=production`
 - `CORS_ORIGIN` — your frontend URL (e.g., `https://yourdomain.com`)
 - `RESOLVER_PROVIDER=external`
