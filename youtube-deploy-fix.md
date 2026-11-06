@@ -1,6 +1,7 @@
 # YouTube Downloader — Deployed-Server Fix
 
 **Date:** November 4, 2026
+**Updated:** November 6, 2026 — deploy verified live, cold-start issue fixed.
 **Symptom:** `https://backend-chi-orpin-90.vercel.app` returned
 `YOUTUBE_UNAVAILABLE` ("media engine is not installed or could not be started")
 for every YouTube request, while the same code worked on Windows locally.
@@ -41,12 +42,12 @@ and download timeouts and pointed at binary packaging/resolution.
 
 | File | Change |
 |------|--------|
-| `backend/src/lib/media-binary.ts` *(new)* | Shared binary locator. Searches `MEDIA_BIN_DIR`, `LAMBDA_TASK_ROOT`, `/var/task`, `cwd`, cwd/module ancestors and `<root>/backend`, fixes the executable bit (copying to the writable temp dir on read-only mounts), verifies binaries, and downloads the correct standalone build into the temp dir as a last resort (once per instance, 5-minute failure backoff, stale partial cleanup). |
+| `backend/src/lib/media-binary.ts` *(new)* | Shared binary locator. Searches `MEDIA_BIN_DIR`, `LAMBDA_TASK_ROOT`, `/var/task`, `cwd`, cwd/module ancestors and `<root>/backend` (never the filesystem root `/`, whose `bin/` is the OS binary directory), fixes the executable bit (copying to the writable temp dir on read-only mounts), verifies binaries, expands the staged `bin/ffmpeg.gz`, and downloads the correct standalone build into the temp dir as a last resort (once per instance, 5-minute failure backoff, stale partial cleanup, collision-free temp names). |
 | `backend/scripts/ensure-ytdlp.mjs` | Stages the **self-contained** `yt-dlp_linux` / `yt-dlp_linux_aarch64` / `yt-dlp_macos` / `yt-dlp.exe` builds, rejects shebang scripts by magic bytes, removes foreign-platform binaries, and no longer hides ffmpeg download failures. On Linux/macOS ffmpeg is staged **gzipped** (`bin/ffmpeg.gz`, ~28 MB instead of ~76 MB) to stay under Vercel's 250 MB function limit. |
 | `backend/src/lib/youtube/ytdlp.ts` | Candidate search uses the shared roots (no more `import.meta.url`-only path), resolves relative `YTDLP_PATH` against every root, and falls back to a runtime download when nothing usable shipped. |
 | `backend/src/lib/ffmpeg.ts` | Same root discovery + executable-bit handling; new async `resolveFfmpegPath()` that expands a staged `bin/ffmpeg.gz` (or downloads ffmpeg) before the merge/transcode step. |
 | `backend/src/lib/youtube/download.ts` | Uses `await resolveFfmpegPath()` so the merge/transcode step can provision ffmpeg before spawning yt-dlp. |
-| `backend/src/routes/health.ts`, `backend/api/index.ts` | `/api/health/media` and the cold-start log now report `ytDlpSource` / `ffmpegSource` (`staged`, `env`, `runtime`) and the runtime architecture. |
+| `backend/src/routes/health.ts`, `backend/api/index.ts` | `/api/health/media` and the cold-start log now report `ytDlpSource` / `ffmpegSource` (`staged`, `env`, `runtime`), the staged `bin/` file inventory, the staged archive size (`stagedFfmpegGzip`) and any expansion failure (`ffmpegStagingError`). |
 | `backend/src/routes/youtube.ts` | Serverless time budgets raised (resolve cap 120 s, download cap 240 s) so a cold instance that must provision a binary still finishes instead of being cut off mid-stream. |
 | `backend/vercel.json` | `includeFiles: "bin/**"` (string glob — arrays fail schema validation), `excludeFiles` drops `youtube-dl-exec`'s bundled Python zipapp, and `maxDuration` raised from 60 s to 300 s (Hobby maximum). |
 | `backend/.env.example` | Documents `MEDIA_BIN_DIR`, `MEDIA_RUNTIME_DOWNLOAD`, and recommends **leaving `YTDLP_PATH` / `FFMPEG_BIN` unset** (a Windows-only value on the server is worse than auto-detection). |
@@ -78,19 +79,35 @@ and download timeouts and pointed at binary packaging/resolution.
 After the `vercel.json` schema fix (`913d1f9`) the deployment succeeded:
 
 ```text
-GET /api/health/media
+GET /api/health/media                          (build c36c2156)
 {"status":"ok","engineReady":true,
  "ytDlpAvailable":true,"ytDlpVersion":"2026.10.26","ytDlpSource":"staged",
- "ffmpegAvailable":true,"ffmpegVersion":"7.0.2-static","ffmpegSource":"runtime"}
+ "ffmpegAvailable":true,"ffmpegVersion":"7.0.2-static","ffmpegSource":"staged",
+ "stagedFiles":["ffmpeg.gz","yt-dlp"],
+ "stagedFfmpegGzip":{"path":"/var/task/backend/bin/ffmpeg.gz","bytes":29354986},
+ "ffmpegStagingError":null}
 
 POST /api/youtube/resolve           → 200, 1080p/720p/480p/240p/144p + audio options
-GET  /api/youtube/download (mp3)    → 200, 3,409,580 bytes, ~14 s warm
+GET  /api/youtube/download (mp3)    → 200, 3,409,580 bytes, ~11 s
+GET  /api/youtube/download (720p)   → 200, 30,002,656 bytes, ~8 s
 ```
 
-`ytDlpSource: "staged"` proves the standalone Linux binary shipped in `bin/`
-and was found by the new multi-root locator. `ffmpegSource: "runtime"` shows
-the archive was not in the bundle for that instance, so it was provisioned
-into `/tmp` on first use.
+Four consecutive `/api/health/media` calls all reported
+`ffmpegSource: "staged"` and `ytDlpSource: "staged"`, i.e. both engines now
+come from the bundle; the runtime-download fallback is not used in the happy
+path.
+
+### Why `ffmpegSource` was `"runtime"` at first
+
+The staged archive *was* in the bundle all along. The expansion step used a
+temp file named `downloadit-ffmpeg.part-<pid>`; the cold-start engine probe in
+`api/index.ts` and the request that triggered that cold start both called
+`resolveFfmpegPath()` in the same process, so both wrote/renamed the **same**
+temp path. One call renamed the file first, the other's `rename` then failed,
+returned `null`, and fell back to the runtime download — which also overwrote
+the reported source. Temp names now include a timestamp suffix, concurrent
+expansion is safe, and the failure reason is exposed as `ffmpegStagingError`
+(plus `stagedFfmpegGzip` for the archive size).
 
 **Cold-start caveat that was then fixed:** the first one or two cold instances
 produced a `200` with a truncated body (8 KB / 24 KB) because runtime ffmpeg
