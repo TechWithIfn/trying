@@ -495,7 +495,11 @@ export function classifyYtDlpFailure(
   if (/timed? ?out|timeout/.test(haystack)) {
     return verdict("YOUTUBE_TIMEOUT", { ...diagnostics, youtubeStage: stage });
   }
-  if (/not a bot|confirm you[’']?re not a bot/.test(haystack)) {
+  if (
+    /not a bot|confirm you[’']?re not a bot|robot check|automated query|access denied due to/.test(
+      haystack
+    )
+  ) {
     return verdict("YOUTUBE_BOT_CHECK", { ...diagnostics, youtubeStage: stage });
   }
   if (/age[- ]?restricted|confirm your age|inappropriate for some users/.test(haystack)) {
