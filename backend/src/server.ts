@@ -15,7 +15,12 @@ import { getFfmpegPath, getFfmpegVersionSync, isFfmpegAvailable } from "./lib/ff
 import { performShutdown, registerCleanup, startDraining } from "./lib/shutdown.js";
 import { capacitySnapshot } from "./lib/capacity.js";
 import { readPositiveInt, validateServerEnv } from "./lib/env.js";
-import { getYtDlpPath, getYtDlpVersion, isYtDlpAvailable } from "./lib/youtube/ytdlp.js";
+import {
+  getYtDlpPath,
+  getYtDlpVersion,
+  isYtDlpAvailable,
+  isYtDlpVersionOutdated,
+} from "./lib/youtube/ytdlp.js";
 
 // Local development / traditional hosting entry point.
 // On Vercel serverless, api/index.ts serves the exported app instead and
@@ -73,6 +78,7 @@ const server = app.listen(PORT, () => {
         ytDlpAvailable,
         ytDlpPath: getYtDlpPath(),
         ytDlpVersion: getYtDlpVersion(),
+        ytDlpOutdated: isYtDlpVersionOutdated(),
         ffmpegAvailable,
         ffmpegPath: getFfmpegPath(),
         ffmpegVersion: getFfmpegVersionSync(),

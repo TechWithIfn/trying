@@ -731,6 +731,34 @@ function isYouTubeResolveSuccess(value: unknown): value is YouTubeResolveSuccess
   );
 }
 
+function youtubeTransportError(status: number): YouTubeError {
+  if (status === 403) {
+    return {
+      code: "YOUTUBE_VIDEO_UNAVAILABLE",
+      message: "This YouTube video is unavailable or access was refused.",
+    };
+  }
+  if (status === 429) {
+    return {
+      code: "YOUTUBE_RATE_LIMITED",
+      message: "YouTube is temporarily rate-limiting requests. Please try again later.",
+      retryable: true,
+    };
+  }
+  if (status >= 500) {
+    return {
+      code: "YOUTUBE_UPSTREAM_ERROR",
+      message: "YouTube is temporarily unavailable. Please try again later.",
+      retryable: true,
+    };
+  }
+  return {
+    code: "TEMPORARY_ERROR",
+    message: "The server returned an unexpected response. Please try again.",
+    retryable: true,
+  };
+}
+
 export async function resolveYouTubeUrl(
   url: string,
   signal?: AbortSignal
@@ -771,7 +799,7 @@ export async function resolveYouTubeUrl(
   });
   return {
     success: false,
-    error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." },
+    error: youtubeTransportError(response.status),
   };
 }
 
@@ -844,7 +872,7 @@ export async function downloadYouTubeFile(options: {
     });
     return {
       ok: false,
-      error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." },
+      error: youtubeTransportError(response.status),
     };
   }
 

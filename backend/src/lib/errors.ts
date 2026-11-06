@@ -465,7 +465,7 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
   },
   YOUTUBE_BOT_CHECK: {
     message:
-      "YouTube asked this server to confirm it is not a bot. Please try again in a few minutes.",
+      "YouTube is temporarily restricting requests from our server. Please try again later.",
     status: 503,
     retryable: true,
   },

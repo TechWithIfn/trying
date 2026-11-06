@@ -1,6 +1,7 @@
 import { AppError, ERRORS } from "../errors.js";
 import { readPositiveInt } from "../env.js";
 import { logger } from "../logger.js";
+import { withRetry } from "../retry.js";
 import type { Author, ErrorCode, ResolveDiagnostics } from "../types.js";
 import type { ParsedYouTubeUrl } from "../validators/youtube-url.js";
 import { YOUTUBE_AUDIO_OPTIONS, type YouTubeAudioOption } from "./audio.js";
@@ -9,6 +10,11 @@ import {
   YtDlpAbortedError,
   YtDlpNotAvailableError,
   YtDlpProcessError,
+  getYtDlpRetryAfterMs,
+  getYtDlpPath,
+  getYtDlpVersion,
+  isRetryableYtDlpError,
+  sanitizeYtDlpStderr,
 } from "./ytdlp.js";
 
 /** Qualities the page offers when the video exposes them. */
@@ -405,19 +411,41 @@ export async function probeYouTube(
   const startedAt = Date.now();
   let stdout: string;
   try {
-    const result = await runYtDlp(
-      [
-        "--dump-single-json",
-        "--no-playlist",
-        "--no-warnings",
-        "--no-progress",
-        "--skip-download",
-        parsed.normalized,
-      ],
-      { timeoutMs: options.timeoutMs, signal: options.signal, maxBuffer: 32 * 1024 * 1024 }
+    const result = await withRetry(
+      (attempt) => {
+        logger.info("[YOUTUBE] yt-dlp probe attempt", {
+          requestId: options.requestId,
+          videoId: parsed.videoId,
+          retryAttempt: attempt,
+          platform: process.platform,
+          runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
+        });
+        return runYtDlp(
+          [
+            "--dump-single-json",
+            "--no-playlist",
+            "--no-warnings",
+            "--no-progress",
+            "--skip-download",
+            parsed.normalized,
+          ],
+          { timeoutMs: options.timeoutMs, signal: options.signal, maxBuffer: 32 * 1024 * 1024 }
+        );
+      },
+      {
+        attempts: 3,
+        baseDelayMs: 2_000,
+        maxDelayMs: 30_000,
+        signal: options.signal,
+        maxElapsedMs: process.env.VERCEL ? options.timeoutMs : undefined,
+        isRetryable: isRetryableYtDlpError,
+        retryAfterMs: getYtDlpRetryAfterMs,
+        logContext: { requestId: options.requestId, videoId: parsed.videoId, stage: "probe" },
+      }
     );
     stdout = result.stdout;
   } catch (error) {
+    logYtDlpFailure(error, "probe", options.requestId, parsed.videoId, Date.now() - startedAt);
     throw classifyYtDlpFailure(error, "probe", options.requestId, parsed.videoId);
   }
 
@@ -491,15 +519,23 @@ export function classifyYtDlpFailure(
   const stderr = error instanceof YtDlpProcessError ? error.stderr : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
   const haystack = `${message}\n${stderr}`.toLowerCase();
+  const category = classifyYtDlpCategory(haystack);
+  logger.warn("[YOUTUBE] yt-dlp failure classified", {
+    requestId,
+    videoId,
+    stage,
+    category,
+    platform: process.platform,
+    runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
+    ytDlpPath: getYtDlpPath(),
+    ytDlpVersion: getYtDlpVersion(),
+    ytDlpStderr: stderr ? sanitizeYtDlpStderr(stderr) : null,
+  });
 
   if (/timed? ?out|timeout/.test(haystack)) {
     return verdict("YOUTUBE_TIMEOUT", { ...diagnostics, youtubeStage: stage });
   }
-  if (
-    /not a bot|confirm you[’']?re not a bot|robot check|automated query|access denied due to/.test(
-      haystack
-    )
-  ) {
+  if (category === "bot_verification") {
     return verdict("YOUTUBE_BOT_CHECK", { ...diagnostics, youtubeStage: stage });
   }
   if (/age[- ]?restricted|confirm your age|inappropriate for some users/.test(haystack)) {
@@ -522,8 +558,14 @@ export function classifyYtDlpFailure(
   ) {
     return verdict("YOUTUBE_VIDEO_NOT_FOUND", { ...diagnostics, youtubeStage: stage });
   }
-  if (/http error 429|too many requests|rate.?limit/.test(haystack)) {
+  if (category === "rate_limited") {
     return verdict("YOUTUBE_RATE_LIMITED", { ...diagnostics, youtubeStage: stage });
+  }
+  if (/http error 403\b|http 403\b|forbidden/.test(haystack)) {
+    return verdict("YOUTUBE_VIDEO_UNAVAILABLE", { ...diagnostics, youtubeStage: stage });
+  }
+  if (/http error 5\d\d\b|http 5\d\d\b|service unavailable|bad gateway|gateway timeout/.test(haystack)) {
+    return verdict("YOUTUBE_UPSTREAM_ERROR", { ...diagnostics, youtubeStage: stage });
   }
   if (/requested format is not available|no video formats found|requested quality/.test(haystack)) {
     return verdict("YOUTUBE_QUALITY_UNAVAILABLE", { ...diagnostics, youtubeStage: stage });
@@ -536,6 +578,66 @@ export function classifyYtDlpFailure(
   }
 
   return verdict("YOUTUBE_UPSTREAM_ERROR", { ...diagnostics, youtubeStage: stage });
+}
+
+export type YtDlpErrorCategory =
+  | "bot_verification"
+  | "rate_limited"
+  | "server_error"
+  | "timeout"
+  | "network"
+  | "video_unavailable"
+  | "unsupported_format"
+  | "unknown";
+
+export function classifyYtDlpCategory(haystack: string): YtDlpErrorCategory {
+  if (/not a bot|confirm you[’']?re not a bot|captcha|robot check|automated query|access denied due to/.test(haystack)) {
+    return "bot_verification";
+  }
+  if (/http error 429|http 429|too many requests|rate.?limit/.test(haystack)) return "rate_limited";
+  if (/http error 5\d\d|http 5\d\d|service unavailable|bad gateway|gateway timeout/.test(haystack)) {
+    return "server_error";
+  }
+  if (/timed? ?out|timeout/.test(haystack)) return "timeout";
+  if (/fetch failed|econnreset|econnrefused|enotfound|eai_again|etimedout|socket hang up|connection (reset|refused|closed)/.test(haystack)) {
+    return "network";
+  }
+  if (/requested format is not available|no video formats found|requested quality/.test(haystack)) {
+    return "unsupported_format";
+  }
+  if (/private video|this video is private|members[- ]only|premium|video unavailable|http error 403|forbidden/.test(haystack)) {
+    return "video_unavailable";
+  }
+  return "unknown";
+}
+
+function logYtDlpFailure(
+  error: unknown,
+  stage: string,
+  requestId: string | undefined,
+  videoId: string,
+  durationMs: number
+): void {
+  const stderr = error instanceof YtDlpProcessError ? error.stderr : "";
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error("[YOUTUBE] yt-dlp execution failed", {
+    requestId,
+    videoId,
+    stage,
+    durationMs,
+    platform: process.platform,
+    runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
+    ytDlpPath: getYtDlpPath(),
+    ytDlpVersion: getYtDlpVersion(),
+    errorCategory: classifyYtDlpCategory(`${message}\n${stderr}`.toLowerCase()),
+    httpStatus: extractYtDlpHttpStatus(`${message}\n${stderr}`),
+    stderr: stderr ? sanitizeYtDlpStderr(stderr) : message,
+  });
+}
+
+function extractYtDlpHttpStatus(text: string): number | null {
+  const match = text.match(/\b(?:http error|http)\s+(403|429|5\d\d)\b/i);
+  return match ? Number(match[1]) : null;
 }
 
 /** Public shape returned by POST /api/youtube/resolve. */

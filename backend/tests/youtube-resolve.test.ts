@@ -7,7 +7,12 @@ import {
   toResolveData,
   type YtFormat,
 } from "@/lib/youtube/resolve";
-import { YtDlpAbortedError, YtDlpNotAvailableError, YtDlpProcessError } from "@/lib/youtube/ytdlp";
+import {
+  isRetryableYtDlpError,
+  YtDlpAbortedError,
+  YtDlpNotAvailableError,
+  YtDlpProcessError,
+} from "@/lib/youtube/ytdlp";
 
 const ID = "jNQXAC9IVRw";
 const PARSED = {
@@ -184,8 +189,11 @@ describe("classifyYtDlpFailure", () => {
   const cases: Array<[string, string]> = [
     ["ERROR: Private video. Sign in if you've been granted access", "YOUTUBE_VIDEO_UNAVAILABLE"],
     ["ERROR: Sign in to confirm you're not a bot", "YOUTUBE_BOT_CHECK"],
+    ["ERROR: CAPTCHA required; automated query detected", "YOUTUBE_BOT_CHECK"],
     ["ERROR: [youtube] x: Video unavailable", "YOUTUBE_VIDEO_NOT_FOUND"],
     ["ERROR: HTTP Error 429: Too Many Requests", "YOUTUBE_RATE_LIMITED"],
+    ["ERROR: HTTP Error 403: Forbidden", "YOUTUBE_VIDEO_UNAVAILABLE"],
+    ["ERROR: HTTP Error 503: Service Unavailable", "YOUTUBE_UPSTREAM_ERROR"],
     ["ERROR: Requested format is not available", "YOUTUBE_QUALITY_UNAVAILABLE"],
     ["ERROR: ffmpeg exited with code 1", "YOUTUBE_CONVERSION_FAILED"],
   ];
@@ -207,5 +215,14 @@ describe("classifyYtDlpFailure", () => {
     expect(mapped.statusCode).toBe(503);
     expect(mapped.toResponse().error.retryable).toBe(false);
     expect(mapped.message).toContain("media engine");
+  });
+
+  it("retries temporary upstream failures but not bot or permanent failures", () => {
+    expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 503", 1))).toBe(true);
+    expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 429", 1))).toBe(true);
+    expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "Sign in to confirm you're not a bot", 1))).toBe(false);
+    expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 403: Forbidden", 1))).toBe(false);
+    expect(isRetryableYtDlpError(new YtDlpAbortedError("timeout"))).toBe(true);
+    expect(isRetryableYtDlpError(new YtDlpAbortedError("aborted"))).toBe(false);
   });
 });

@@ -3,7 +3,12 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import app from "../src/app.js";
 import { validateServerEnv } from "../src/lib/env.js";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../src/lib/ffmpeg.js";
-import { getYtDlpPath, isYtDlpAvailable, getYtDlpVersion } from "../src/lib/youtube/ytdlp.js";
+import {
+  getYtDlpPath,
+  isYtDlpAvailable,
+  isYtDlpVersionOutdated,
+  getYtDlpVersion,
+} from "../src/lib/youtube/ytdlp.js";
 import { getBinarySource } from "../src/lib/media-binary.js";
 
 // Vercel serverless entry point. Every request is routed here via
@@ -39,6 +44,7 @@ console.log("[YOUTUBE] media engine startup", {
     ytDlpAvailable: ytDlpOk,
     ytDlpPath: getYtDlpPath(),
     ytDlpVersion: getYtDlpVersion(),
+    ytDlpOutdated: isYtDlpVersionOutdated(),
     ytDlpSource: getBinarySource("yt-dlp"),
     platform: process.platform,
     arch: process.arch,

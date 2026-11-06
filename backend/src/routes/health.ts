@@ -1,6 +1,11 @@
 import { Router, Request, Response } from "express";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../lib/ffmpeg.js";
-import { getYtDlpPath, getYtDlpVersion, isYtDlpAvailable } from "../lib/youtube/ytdlp.js";
+import {
+  getYtDlpPath,
+  getYtDlpVersion,
+  isYtDlpAvailable,
+  isYtDlpVersionOutdated,
+} from "../lib/youtube/ytdlp.js";
 import {
   getBinarySource,
   getMaterializeError,
@@ -100,6 +105,7 @@ router.get("/ready", async (_req: Request, res: Response) => {
     ytDlpAvailable,
     ytDlpPath: getYtDlpPath(),
     ytDlpVersion: getYtDlpVersion(),
+    ytDlpOutdated: isYtDlpVersionOutdated(),
     draining: drain.draining,
     drainReason: drain.reason,
     inFlightRequests: drain.inFlight,
@@ -145,6 +151,7 @@ router.get("/media", async (_req: Request, res: Response) => {
     ytDlpAvailable,
     ytDlpPath: getYtDlpPath(),
     ytDlpVersion: getYtDlpVersion(),
+    ytDlpOutdated: isYtDlpVersionOutdated(),
     ytDlpSource: getBinarySource("yt-dlp"),
     // Names only (no paths): proves what the deployment bundle contained.
     stagedFiles: stagedBinaryInventory(),

@@ -28,6 +28,10 @@ export interface RetryOptions {
   /** Return false to fail fast on this error. */
   isRetryable?: (error: unknown, attempt: number) => boolean;
   onRetry?: (info: { attempt: number; delayMs: number; error: unknown }) => void;
+  /** Optional upstream delay, capped by maxDelayMs. */
+  retryAfterMs?: (error: unknown) => number | null;
+  /** Optional wall-clock budget for all attempts, including backoff. */
+  maxElapsedMs?: number;
   /** Log context (tag/requestId) so retry noise is attributable. */
   logContext?: Record<string, unknown>;
 }
@@ -79,7 +83,11 @@ export async function withRetry<T>(
   const { signal, onRetry, logContext } = options;
 
   let lastError: unknown;
+  const startedAt = Date.now();
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    if (attempt > 1 && options.maxElapsedMs !== undefined && Date.now() - startedAt >= options.maxElapsedMs) {
+      break;
+    }
     if (signal?.aborted) throw signal.reason ?? new Error("aborted");
     try {
       return await fn(attempt);
@@ -87,7 +95,17 @@ export async function withRetry<T>(
       lastError = error;
       if (attempt >= attempts) break;
       if (!isRetryable(error, attempt)) break;
-      const delayMs = backoffDelay(attempt, baseDelayMs, maxDelayMs);
+      const requestedDelay = options.retryAfterMs?.(error) ?? 0;
+      const delayMs = Math.min(
+        maxDelayMs,
+        Math.max(backoffDelay(attempt, baseDelayMs, maxDelayMs), requestedDelay)
+      );
+      if (
+        options.maxElapsedMs !== undefined &&
+        Date.now() - startedAt + delayMs >= options.maxElapsedMs
+      ) {
+        break;
+      }
       logger.warn("[retry] transient failure, retrying", {
         ...logContext,
         attempt,

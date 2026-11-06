@@ -133,6 +133,53 @@ export class YtDlpProcessError extends Error {
   }
 }
 
+function normalizedYtDlpText(error: YtDlpProcessError): string {
+  return `${error.message}\n${error.stderr}`.toLowerCase();
+}
+
+/**
+ * Retry only failures that may succeed without changing the requested video
+ * or format. Bot checks, CAPTCHA, access restrictions, and format errors are
+ * intentionally terminal.
+ */
+export function isRetryableYtDlpError(error: unknown): boolean {
+  if (error instanceof YtDlpAbortedError) return error.reason === "timeout";
+  if (!(error instanceof YtDlpProcessError)) return false;
+
+  const text = normalizedYtDlpText(error);
+  if (
+    /not a bot|captcha|robot check|automated query|private video|video unavailable|requested format|no video formats|age[- ]?restricted|sign in|members?[- ]only|premium|ffmpeg|postprocess|unable to merge/.test(
+      text
+    )
+  ) {
+    return false;
+  }
+  return (
+    /http error (429|5\d\d)\b|too many requests|rate.?limit|service unavailable|bad gateway|gateway timeout|temporar(?:y|ily) unavailable|fetch failed|econnreset|econnrefused|enotfound|eai_again|etimedout|socket hang up|connection (reset|refused|closed)/.test(
+      text
+    )
+  );
+}
+
+/** Parse a Retry-After value if yt-dlp included one in its diagnostic text. */
+export function getYtDlpRetryAfterMs(error: unknown): number | null {
+  if (!(error instanceof YtDlpProcessError)) return null;
+  const match = error.stderr.match(/retry-after\s*:\s*(\d+)/i);
+  if (!match) return null;
+  const seconds = Number(match[1]);
+  return Number.isSafeInteger(seconds) && seconds >= 0 ? seconds * 1000 : null;
+}
+
+export function sanitizeYtDlpStderr(stderr: string): string {
+  return stderr
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/(?:cookie|authorization|token|sessionid|csrftoken)\s*[:=]\s*\S+/gi, "$1=[redacted]")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(-1200);
+}
+
 export class YtDlpAbortedError extends Error {
   readonly reason: "aborted" | "timeout";
   constructor(reason: "aborted" | "timeout") {
@@ -145,6 +192,7 @@ export class YtDlpAbortedError extends Error {
 let resolvedPath: string | null = null;
 let resolvedPromise: Promise<string> | null = null;
 let cachedVersion: string | null = null;
+const MIN_SUPPORTED_YTDLP_VERSION = [2024, 1, 1] as const;
 
 function versionArgs(): string[] {
   return ["--version"];
@@ -325,6 +373,19 @@ export async function isYtDlpAvailable(): Promise<boolean> {
 
 export function getYtDlpVersion(): string | null {
   return cachedVersion;
+}
+
+export function isYtDlpVersionOutdated(version = cachedVersion): boolean {
+  if (!version) return false;
+  const match = version.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+  if (!match) return false;
+  const current = match.slice(1).map(Number);
+  for (let index = 0; index < MIN_SUPPORTED_YTDLP_VERSION.length; index += 1) {
+    if (current[index] !== MIN_SUPPORTED_YTDLP_VERSION[index]) {
+      return current[index] < MIN_SUPPORTED_YTDLP_VERSION[index];
+    }
+  }
+  return false;
 }
 
 export function getYtDlpPath(): string | null {

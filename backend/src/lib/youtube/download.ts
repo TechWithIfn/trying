@@ -6,8 +6,22 @@ import { getFfmpegPath, resolveFfmpegPath } from "../ffmpeg.js";
 import { AppError, ERRORS } from "../errors.js";
 import { readBoundedInt } from "../env.js";
 import { logger } from "../logger.js";
-import { classifyYtDlpFailure, type YouTubeProbe, type YouTubeSelection } from "./resolve.js";
-import { runYtDlp } from "./ytdlp.js";
+import { withRetry } from "../retry.js";
+import {
+  classifyYtDlpCategory,
+  classifyYtDlpFailure,
+  type YouTubeProbe,
+  type YouTubeSelection,
+} from "./resolve.js";
+import {
+  getYtDlpRetryAfterMs,
+  getYtDlpPath,
+  getYtDlpVersion,
+  isRetryableYtDlpError,
+  runYtDlp,
+  sanitizeYtDlpStderr,
+  YtDlpProcessError,
+} from "./ytdlp.js";
 import {
   DEFAULT_YOUTUBE_AUDIO_OPTION,
   findYouTubeAudioOption,
@@ -173,11 +187,33 @@ export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Prom
 
   try {
     try {
-      const result = await runYtDlp(buildYouTubeDownloadArgs(options, ffmpeg, filePath), {
-        timeoutMs: options.timeoutMs,
-        signal: options.signal,
-        maxBuffer: 16 * 1024 * 1024,
-      });
+      const result = await withRetry(
+        (attempt) => {
+          logger.info("[YOUTUBE] yt-dlp download attempt", {
+            requestId: options.requestId,
+            videoId: options.probe.videoId,
+            format: options.format,
+            retryAttempt: attempt,
+            platform: process.platform,
+            runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
+          });
+          return runYtDlp(buildYouTubeDownloadArgs(options, ffmpeg, filePath), {
+            timeoutMs: options.timeoutMs,
+            signal: options.signal,
+            maxBuffer: 16 * 1024 * 1024,
+          });
+        },
+        {
+          attempts: 3,
+          baseDelayMs: 2_000,
+          maxDelayMs: 30_000,
+          signal: options.signal,
+          maxElapsedMs: process.env.VERCEL ? options.timeoutMs : undefined,
+          isRetryable: isRetryableYtDlpError,
+          retryAfterMs: getYtDlpRetryAfterMs,
+          logContext: { requestId: options.requestId, videoId: options.probe.videoId, stage: "download" },
+        }
+      );
       if (result.stderr) {
         logger.info("[YOUTUBE] yt-dlp finished", {
           requestId: options.requestId,
@@ -187,6 +223,25 @@ export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Prom
         });
       }
     } catch (error) {
+      logger.error("[YOUTUBE] yt-dlp download failed", {
+        requestId: options.requestId,
+        videoId: options.probe.videoId,
+        format: options.format,
+        durationMs: Date.now() - startedAt,
+        platform: process.platform,
+        runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
+        ytDlpPath: getYtDlpPath(),
+        ytDlpVersion: getYtDlpVersion(),
+        errorCategory:
+          error instanceof YtDlpProcessError
+            ? classifyYtDlpCategory(`${error.message}\n${error.stderr}`.toLowerCase())
+            : "execution_error",
+        httpStatus:
+          error instanceof YtDlpProcessError
+            ? Number(error.stderr.match(/\b(?:http error|http)\s+(403|429|5\d\d)\b/i)?.[1] ?? 0) || null
+            : null,
+        stderr: error instanceof YtDlpProcessError ? sanitizeYtDlpStderr(error.stderr) : null,
+      });
       throw classifyYtDlpFailure(
         error,
         isYouTubeAudioFormat(options.format) ? "audio" : "download",
