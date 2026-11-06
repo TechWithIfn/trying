@@ -4,26 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import HeroDownloader, { type DownloaderTab } from "@/components/HeroDownloader";
-import PinterestDownloader from "@/components/PinterestDownloader";
-import YouTubeDownloader from "@/components/YouTubeDownloader";
-import FacebookDownloader from "@/components/FacebookDownloader";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 import { useLanguage } from "@/i18n";
 import ProseSection from "@/components/ProseSection";
 
-import { ShieldCheck, Film, Video, Image as ImageIcon, Clock, Music, Link2, Search, Download, Eye, Pin, Play } from "lucide-react";
-import { FacebookIcon } from "@/components/ToolCategoryDropdown";
-import { TOOL_PAGES } from "@/config/toolPages";
-
-type HomePlatform = "instagram" | "pinterest" | "youtube" | "facebook";
-
-const HOME_PLATFORMS = [
-  { id: "instagram" as const, label: "Instagram", Icon: Film, color: "#ec5fa8", background: "rgba(236, 95, 168, 0.12)" },
-  { id: "pinterest" as const, label: "Pinterest", Icon: Pin, color: "#e60023", background: "rgba(230, 0, 35, 0.10)" },
-  { id: "youtube" as const, label: "YouTube", Icon: Play, color: "#ff0000", background: "rgba(255, 0, 0, 0.09)" },
-  { id: "facebook" as const, label: "Facebook", Icon: FacebookIcon, color: "#1877f2", background: "rgba(24, 119, 242, 0.10)" },
-] as const;
+import { Film, Video, Image as ImageIcon, Clock, Music, Link2, Search, Download, Eye, ShieldCheck } from "lucide-react";
 
 const MEDIA_ROWS = [
   { href: "/instagram-reels-downloader", label: "Reels", note: "Supported video downloads", Icon: Film },
@@ -31,7 +17,6 @@ const MEDIA_ROWS = [
   { href: "/instagram-photo-downloader", label: "Photos & Carousels", note: "Single photos and multi-slide posts", Icon: ImageIcon },
   { href: "/instagram-story-downloader", label: "Stories", note: "Active public Stories", Icon: Clock },
   { href: "/instagram-audio-downloader", label: "Audio", note: "MP3 extraction", Icon: Music },
-  { href: "/facebook-video-downloader", label: "Facebook videos", note: "Public videos, Reels and Watch links", Icon: FacebookIcon },
 ] as const;
 
 const FORMAT_ROWS = [
@@ -49,7 +34,6 @@ const FLOW_STAGES = [
 
 export default function HomeClient() {
   const { t } = useLanguage();
-  const [activePlatform, setActivePlatform] = useState<HomePlatform>("instagram");
   const [activeTab, setActiveTab] = useState<DownloaderTab | null>(null);
 
   useEffect(() => {
@@ -60,104 +44,27 @@ export default function HomeClient() {
   }, []);
 
   const handleDownloaderTabChange = (tab: DownloaderTab | null) => {
-    setActivePlatform("instagram");
     setActiveTab(tab);
     if (tab) {
       document.querySelector("section#hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  const selectPlatform = (platform: HomePlatform) => {
-    setActivePlatform(platform);
-    setActiveTab(null);
-    requestAnimationFrame(() => {
-      document.querySelector("section#hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-
-  const renderDownloader = () => {
-    if (activePlatform === "pinterest") {
-      const page = TOOL_PAGES.pinterestVideo;
-      return (
-        <PinterestDownloader
-          titleA={page.titleA}
-          titleB={page.titleB}
-          subtitle={page.description}
-          badge={page.badge}
-          placeholder={page.placeholder}
-          buttonLabel={page.buttonLabel}
-          benefits={page.trust}
-          modes={page.modes}
-        />
-      );
-    }
-    if (activePlatform === "youtube") {
-      const page = TOOL_PAGES.youtubeVideo;
-      return (
-        <YouTubeDownloader
-          titleA={page.titleA}
-          titleB={page.titleB}
-          subtitle={page.description}
-          badge={page.badge}
-          placeholder={page.placeholder}
-          buttonLabel={page.buttonLabel}
-          benefits={page.trust}
-        />
-      );
-    }
-    if (activePlatform === "facebook") {
-      const page = TOOL_PAGES.facebookVideo;
-      return (
-        <FacebookDownloader
-          badge={page.badge}
-          titleA={page.titleA}
-          titleB={page.titleB}
-          subtitle={page.description}
-          placeholder={page.placeholder}
-          buttonLabel={page.buttonLabel}
-          benefits={page.trust}
-        />
-      );
-    }
-    return (
-      <HeroDownloader
+  const renderDownloader = () => (
+    <HeroDownloader
         activeTab={activeTab}
         onActiveTabChange={setActiveTab}
         titleA={t.hero.titleA}
         titleB={t.hero.titleB}
         subtitle={t.hero.subtitle}
         placeholder={activeTab === "audio" ? t.hero.audioPlaceholder : t.hero.placeholder}
-      />
-    );
-  };
+    />
+  );
 
   return (
     <>
       <Header activeDownloaderTab={activeTab} onDownloaderTabChange={handleDownloaderTabChange} />
       <main id="main-content" className="flex-1">
-        <section className="px-5 pt-4 sm:px-6 lg:px-8" aria-label="Downloader platforms">
-          <div className="mx-auto grid max-w-[720px] grid-cols-2 gap-2 sm:grid-cols-4">
-            {HOME_PLATFORMS.map(({ id, label, Icon, color, background }) => {
-              const selected = activePlatform === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => selectPlatform(id)}
-                  className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all ${
-                    selected ? "border-primary/30 bg-primary-light text-primary-strong shadow-xs" : "border-border bg-card text-fg-muted hover:bg-primary-light hover:text-primary"
-                  }`}
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background, color }}>
-                    <Icon size={18} strokeWidth={2.2} />
-                  </span>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </section>
         <div id="home-downloader">{renderDownloader()}</div>
 
         {/* ── Supported content & formats ── */}
@@ -231,7 +138,7 @@ export default function HomeClient() {
                   How Downloadit works
                 </h2>
                 <p className="mx-auto mt-3 max-w-[520px] text-[15px] leading-[1.6] text-fg-muted">
-                  Downloadit accepts supported public links from Instagram, Pinterest, YouTube and Facebook. When you paste a link, the service checks the available media and prepares a preview. You can then choose the available file and save it to your device.
+                  Downloadit accepts supported public links from Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads. When you paste a link, the service checks the available media and prepares a preview. You can then choose the available file and save it to your device.
                 </p>
               </div>
               <div
@@ -356,7 +263,7 @@ export default function HomeClient() {
               </div>
               <div>
                 <strong>Independent service</strong><br/>
-                Not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook.
+                Not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube, Facebook or X.
               </div>
             </div>
             <a
@@ -481,7 +388,7 @@ export default function HomeClient() {
                   "name": "Is Downloadit affiliated with a source platform?",
                   "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "No. Downloadit is independent and not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook. It only touches content that is already public to logged-out visitors."
+                    "text": "No. Downloadit is independent and not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube, Facebook or X. It only touches content that is already public to logged-out visitors."
                   }
                 }
               ],

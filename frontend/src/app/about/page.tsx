@@ -5,7 +5,7 @@ import { SITE_URL } from "@/config/site";
 
 const ABOUT_TITLE = "About Downloadit – Independent Public-Media Downloader";
 const ABOUT_DESCRIPTION =
-  "Learn about Downloadit, how its independent Instagram, Pinterest, YouTube and Facebook downloader works, and what it does not access.";
+  "Learn about Downloadit, how its independent Instagram, Pinterest, YouTube, Facebook and Twitter/X downloader works, and what it does not access.";
 
 export const metadata: Metadata = {
   title: { absolute: ABOUT_TITLE },
@@ -164,7 +164,7 @@ export default function AboutPage() {
       <h2 className="text-[20px] font-bold text-fg">An independent service</h2>
       <p>
         Downloadit is an independent service and is not affiliated with,
-        endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook. It only reads what is
+        endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube, Facebook or X. It only reads what is
         already publicly available through normal links, and you are
         responsible for having the right to download and reuse anything you
         save — see the <Link href="/terms" className="font-semibold text-fg transition-colors hover:text-primary">Terms</Link> and{" "}

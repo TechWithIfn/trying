@@ -5,10 +5,52 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2, Pin, ImagePlay, Play } from "lucide-react";
 
-export function FacebookIcon({ className, size = 24, strokeWidth = 2 }: { className?: string; size?: number; strokeWidth?: number }) {
+export function FacebookIcon({ className, size = 24 }: { className?: string; size?: number; strokeWidth?: number }) {
   return (
     <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M13.5 21v-8h2.75l.4-3h-3.15V8.08c0-.87.24-1.46 1.5-1.46h1.8V3.94c-.31-.04-1.38-.14-2.63-.14-2.6 0-4.38 1.59-4.38 4.5V10H7v3h2.79v8h3.71Z" />
+    </svg>
+  );
+}
+
+export function InstagramIcon({ className, size = 24 }: { className?: string; size?: number }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PinterestIcon({ className, size = 24 }: { className?: string; size?: number }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.1 2.5c-5.2 0-8.3 3.7-8.3 7.7 0 3 1.7 5.7 4.5 6.7-.1-.6-.1-1.6 0-2.3l1-4.1s-.3-.7-.3-1.7c0-1.6.9-2.8 2-2.8.9 0 1.3.7 1.3 1.5 0 .9-.6 2.2-.9 3.4-.3 1 .5 1.8 1.5 1.8 1.8 0 3.1-1.9 3.1-4.7 0-2.5-1.8-4.2-4.4-4.2-3 0-4.8 2.2-4.8 4.5 0 .9.3 1.8.8 2.3.1.1.1.2.1.4l-.3 1.1c-.1.4-.4.5-.8.3-1.2-.5-2-2.2-2-3.6 0-2.9 2.1-6.9 7.5-6.9 4 0 6.7 2.9 6.7 6.1 0 4.1-2.3 7.2-5.5 7.2-1.1 0-2.1-.6-2.5-1.3l-.7 2.8c-.3 1.1-1.1 2.5-1.6 3.3 1.2.4 2.4.6 3.7.6 5.2 0 9.5-4.2 9.5-9.5S17.3 2.5 12.1 2.5Z" />
+    </svg>
+  );
+}
+
+export function YouTubeIcon({ className, size = 24 }: { className?: string; size?: number }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M21.6 7.2a2.8 2.8 0 0 0-2-2C17.8 4.7 12 4.7 12 4.7s-5.8 0-7.6.5a2.8 2.8 0 0 0-2 2C1.9 9 1.9 12 1.9 12s0 3 .5 4.8a2.8 2.8 0 0 0 2 2c1.8.5 7.6.5 7.6.5s5.8 0 7.6-.5a2.8 2.8 0 0 0 2-2c.5-1.8.5-4.8.5-4.8s0-3-.5-4.8ZM10 15.7V8.3l6.3 3.7-6.3 3.7Z" />
+    </svg>
+  );
+}
+
+export function TwitterIcon({ className, size = 24 }: { className?: string; size?: number }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.9 2H22l-6.77 7.74L23.2 22h-6.24l-4.89-6.39L6.48 22H3.37l7.24-8.28L2.8 2h6.4l4.42 5.84L18.9 2Zm-1.09 17.87h1.73L8.26 4.03H6.4l11.41 15.84Z" />
+    </svg>
+  );
+}
+
+export function ThreadsIcon({ className, size = 24 }: { className?: string; size?: number }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3.2c-4.9 0-8.3 3.4-8.3 8.5 0 5.3 3.4 9.1 8.3 9.1 4.1 0 7.1-2.5 7.1-6.1 0-2.9-2-4.8-5.3-4.8-2.7 0-4.3 1.3-4.3 3.1 0 1.4 1.1 2.4 2.6 2.4 1.1 0 2-.6 2.4-1.6-.3 2-1.5 3.2-3.5 3.2-2.7 0-4.4-2.1-4.4-5.4 0-3.5 2-5.8 5.3-5.8 2.2 0 3.8 1 4.8 2.8l1.8-1c-1.3-2.8-3.6-4.4-6.5-4.4Z" fill="currentColor" />
     </svg>
   );
 }
@@ -83,6 +125,20 @@ export const DROPDOWN_TOOLS: DropdownToolItem[] = [
     label: "Facebook Video Downloader",
     icon: FacebookIcon,
     iconBg: "rgba(24, 119, 242, 0.10)",
+    iconColor: "var(--primary)",
+  },
+  {
+    href: "/twitter-video-downloader",
+    label: "Twitter/X Video Downloader",
+    icon: TwitterIcon,
+    iconBg: "rgba(15, 23, 42, 0.10)",
+    iconColor: "var(--primary)",
+  },
+  {
+    href: "/threads-video-downloader",
+    label: "Threads Video Downloader",
+    icon: ThreadsIcon,
+    iconBg: "rgba(15, 23, 42, 0.10)",
     iconColor: "var(--primary)",
   },
 ];

@@ -1,10 +1,10 @@
 export const SITE_URL = "https://www.downloadit.pro";
 export const BRAND_NAME = "Downloadit";
-export const BRAND_TITLE = "Instagram, Pinterest, YouTube & Facebook Downloader | Downloadit";
+export const BRAND_TITLE = "Instagram, Pinterest, YouTube, Facebook, Twitter/X & Threads Downloader | Downloadit";
 export const BRAND_DESCRIPTION =
-  "Downloadit is a free public-media downloader for Instagram, Pinterest, YouTube and Facebook. Paste a public link, preview the available media, and save it without an account.";
+  "Downloadit is a free public-media downloader for Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads. Paste a public link, preview the available media, and save it without an account.";
 export const HOME_OG_IMAGE_ALT =
-  "Downloadit \u2014 public-media downloader for Instagram, Pinterest, YouTube and Facebook";
+  "Downloadit \u2014 public-media downloader for Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads";
 export const SUPPORT_EMAIL = "supportdownloadit.pro@gmail.com";
 // Default subject for general support mail. Always build mailto links with
 // supportMailto() below — never hardcode a mailto: or Gmail compose URL.

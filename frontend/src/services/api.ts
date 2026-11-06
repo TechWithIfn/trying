@@ -94,12 +94,66 @@ export async function resolveFacebookUrl(url: string, signal?: AbortSignal): Pro
     logApiFailure({ requestType: "pinterest-resolve", requestUrl, status: null, error });
     throw error;
   }
+
   const body = await response.json().catch(() => null);
   if (isResolveResponse(body)) return body;
   return {
     success: false,
     error: {
       code: response.ok ? "TEMPORARY_ERROR" : "FACEBOOK_RESOLVE_FAILED",
+      message: "The server returned an unexpected response.",
+    },
+  };
+}
+
+export async function resolveTwitterUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
+  const requestUrl = `${getApiBase()}/api/twitter/resolve`;
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      cache: "no-store",
+      signal,
+    });
+  } catch (error) {
+    logApiFailure({ requestType: "twitter-resolve", requestUrl, status: null, error });
+    throw error;
+  }
+
+  const body = await response.json().catch(() => null);
+  if (isResolveResponse(body)) return body;
+  return {
+    success: false,
+    error: {
+      code: response.ok ? "TEMPORARY_ERROR" : "TWITTER_RESOLVE_FAILED",
+      message: "The server returned an unexpected response.",
+    },
+  };
+}
+
+export async function resolveThreadsUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
+  const requestUrl = `${getApiBase()}/api/threads/resolve`;
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      cache: "no-store",
+      signal,
+    });
+  } catch (error) {
+    logApiFailure({ requestType: "threads-resolve", requestUrl, status: null, error });
+    throw error;
+  }
+  const body = await response.json().catch(() => null);
+  if (isResolveResponse(body)) return body;
+  return {
+    success: false,
+    error: {
+      code: response.ok ? "TEMPORARY_ERROR" : "THREADS_RESOLVE_FAILED",
       message: "The server returned an unexpected response.",
     },
   };
@@ -115,7 +169,9 @@ export type ApiRequestType =
   | "pinterest-sse"
   | "youtube-resolve"
   | "youtube-download"
-  | "facebook-resolve";
+  | "facebook-resolve"
+  | "twitter-resolve"
+  | "threads-resolve";
 
 export type ApiFailureCategory =
   | "network"

@@ -535,6 +535,8 @@ export default function HelpClient() {
                   ["/pinterest-video-downloader", "Pinterest video downloader"],
                   ["/youtube-video-downloader", "YouTube video downloader"],
                   ["/facebook-video-downloader", "Facebook video downloader"],
+                  ["/twitter-video-downloader", "Twitter/X video downloader"],
+                  ["/threads-video-downloader", "Threads video downloader"],
                 ].map(([href, label]) => (
                   <Link key={href} href={href} className={TOOL_LINK}>{label}</Link>
                 ))}

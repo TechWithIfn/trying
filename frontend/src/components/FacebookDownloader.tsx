@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clipboard, Download as DownloadIcon, Link as LinkIcon, Loader2, Sparkles, X } from "lucide-react";
-import { resolveFacebookUrl, type ResolveData } from "@/services/api";
+import { resolveFacebookUrl, type ResolveData, type ResolveResponse } from "@/services/api";
 import { useAutoScrollFlow, type FlowStatus } from "@/hooks/useAutoScrollFlow";
 
 const MediaResult = dynamic(() => import("./ResultPanel").then((module) => module.MediaResult), {
@@ -22,6 +22,10 @@ interface Props {
   placeholder: string;
   buttonLabel?: string;
   benefits: string[];
+  resolveUrl?: (url: string, signal?: AbortSignal) => Promise<ResolveResponse>;
+  inputLabel?: string;
+  platformName?: string;
+  resultMode?: "video" | "audio" | "auto";
 }
 
 export default function FacebookDownloader({
@@ -32,6 +36,10 @@ export default function FacebookDownloader({
   placeholder,
   buttonLabel,
   benefits,
+  resolveUrl = resolveFacebookUrl,
+  inputLabel = "Facebook video URL",
+  platformName = "Facebook",
+  resultMode = "video",
 }: Props) {
   const [url, setUrl] = useState("");
   const [result, setResult] = useState<ResolveData | null>(null);
@@ -110,7 +118,7 @@ export default function FacebookDownloader({
     blurForKeyboard();
 
     try {
-      const response = await resolveFacebookUrl(url.trim(), controller.signal);
+      const response = await resolveUrl(url.trim(), controller.signal);
       if (response.success) {
         setResult(response.data);
         setFlowStatus("success");
@@ -190,7 +198,7 @@ export default function FacebookDownloader({
                   <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
                   <input
                     ref={inputRef}
-                    name="facebook-url"
+                    name="media-url"
                     type="text"
                     value={url}
                     onChange={(event) => {
@@ -200,7 +208,7 @@ export default function FacebookDownloader({
                     }}
                     placeholder={placeholder}
                     className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-12 text-[16px] font-medium text-fg placeholder:text-fg-subtle focus:outline-none"
-                    aria-label="Facebook video URL"
+                    aria-label={inputLabel}
                     aria-invalid={error ? true : undefined}
                     autoComplete="off"
                     spellCheck={false}
@@ -226,7 +234,7 @@ export default function FacebookDownloader({
                   <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
                   <input
                     ref={inputRef}
-                    name="facebook-url-mobile"
+                    name="media-url-mobile"
                     type="text"
                     value={url}
                     onChange={(event) => {
@@ -236,7 +244,7 @@ export default function FacebookDownloader({
                     }}
                     placeholder={placeholder}
                     className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-20 text-[16px] font-medium text-fg placeholder:text-fg-subtle focus:outline-none"
-                    aria-label="Facebook video URL"
+                    aria-label={inputLabel}
                     autoComplete="off"
                     spellCheck={false}
                     disabled={busy}
@@ -272,7 +280,7 @@ export default function FacebookDownloader({
               {busy && (
                 <div className="mt-6 w-full max-w-[720px] rounded-[20px] p-5 text-center sm:p-8" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
                   <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" aria-hidden="true" />
-                  <p className="mt-3 text-sm font-medium text-fg-muted">Finding your Facebook video…</p>
+                  <p className="mt-3 text-sm font-medium text-fg-muted">Finding your {platformName} video…</p>
                 </div>
               )}
               {error && (
@@ -287,7 +295,7 @@ export default function FacebookDownloader({
                 </div>
               )}
               {result && (
-                <MediaResult result={result} mode="video" variant="facebook" onReset={clear} />
+                <MediaResult result={result} mode={resultMode === "auto" ? result.media[0]?.type === "audio" ? "audio" : "video" : resultMode} variant={platformName.toLowerCase() === "twitter/x" ? "twitter" : platformName.toLowerCase() === "threads" ? "threads" : "facebook"} onReset={clear} />
               )}
             </div>
           )}

@@ -41,8 +41,8 @@ export const en: Strings = {
     // tech and crawlers ("Instagram Downloader Reels, ..." — the two spans are
     // separate blocks, so the space would otherwise vanish).
     titleA: "Free Online Video Downloader for ",
-    titleB: "Instagram, Pinterest, YouTube & Facebook",
-    subtitle: "Download supported public media from Instagram, Pinterest, YouTube and Facebook with Downloadit. Paste a link, preview what is available, and save it without an account.",
+    titleB: "Instagram, Pinterest, YouTube, Facebook, Twitter/X & Threads",
+    subtitle: "Download supported public media from Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads with Downloadit. Paste a link, preview what is available, and save it without an account.",
     cardTitle: "Paste an Instagram Link",
     placeholder: "Paste URL",
     audioPlaceholder: "Paste URL",
@@ -204,7 +204,7 @@ export const en: Strings = {
       },
       {
         q: "Is Downloadit affiliated with a source platform?",
-        a: "No. Downloadit is independent and is not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook.",
+        a: "No. Downloadit is independent and is not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube, Facebook or X.",
       },
     ],
   },
@@ -257,7 +257,7 @@ export const en: Strings = {
       advertise: "Advertise",
     },
     disclaimer:
-      "Downloadit is independent and not affiliated with Instagram, Meta, Pinterest, Google, YouTube or Facebook. Only download content you have the right to save.",
+      "Downloadit is independent and not affiliated with Instagram, Meta, Pinterest, Google, YouTube, Facebook or X. Only download content you have the right to save.",
     rights: "All rights reserved.",
     madeWith: "Made with ♥ for Downloadit.",
     homeLabel: "Downloadit home",

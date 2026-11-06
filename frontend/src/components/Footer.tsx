@@ -58,6 +58,8 @@ export default function Footer() {
     { label: "Pinterest Image & Carousel Downloader", href: "/pinterest-image-downloader" },
     { label: "YouTube Video Downloader", href: "/youtube-video-downloader" },
     { label: "Facebook Video Downloader", href: "/facebook-video-downloader" },
+    { label: "Twitter/X Video Downloader", href: "/twitter-video-downloader" },
+    { label: "Threads Video Downloader", href: "/threads-video-downloader" },
   ];
 
   const RESOURCE_LINKS = [

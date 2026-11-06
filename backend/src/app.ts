@@ -7,6 +7,8 @@ import audioRouter from "./routes/audio.js";
 import pinterestRouter from "./routes/pinterest.js";
 import youtubeRouter from "./routes/youtube.js";
 import facebookRouter from "./routes/facebook.js";
+import twitterRouter from "./routes/twitter.js";
+import threadsRouter from "./routes/threads.js";
 import healthRouter from "./routes/health.js";
 import storyDebugRouter from "./routes/story-debug.js";
 import { logger } from "./lib/logger.js";
@@ -212,6 +214,8 @@ app.use("/api/audio", audioRouter);
 app.use("/api/pinterest", pinterestRouter);
 app.use("/api/youtube", youtubeRouter);
 app.use("/api/facebook", facebookRouter);
+app.use("/api/twitter", twitterRouter);
+app.use("/api/threads", threadsRouter);
 // Protected dev-only Story diagnostics (404 in production unless
 // ALLOW_STORY_DEBUG=true, DEBUG_SECRET-gated). Never cached, never leaks
 // credentials — see the route module.

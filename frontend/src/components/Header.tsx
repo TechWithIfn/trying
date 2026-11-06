@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, HelpCircle, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Shield, FileText, ChevronDown, Info, Scale, ScrollText, Newspaper, Pin, ImagePlay, Play } from "lucide-react";
+import { Globe, HelpCircle, Download, Menu, X, Check, Home as HomeIcon, ChevronDown, Info, Scale, ScrollText, Newspaper, Shield, FileText } from "lucide-react";
 import { useLanguage, LANGUAGES } from "@/i18n";
 import type { DownloaderTab } from "@/components/HeroDownloader";
-import ToolCategoryDropdown, { FacebookIcon } from "@/components/ToolCategoryDropdown";
+import { FacebookIcon, InstagramIcon, PinterestIcon, ThreadsIcon, TwitterIcon, YouTubeIcon } from "@/components/ToolCategoryDropdown";
 
 interface HeaderProps {
   activeDownloaderTab?: DownloaderTab | null;
@@ -91,6 +91,15 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
   const iconBtn =
     "site-icon-btn flex h-11 min-w-[44px] items-center justify-center gap-1.5 rounded-xl px-2 text-[16px] font-medium text-fg-muted transition-colors hover:bg-primary-light hover:text-primary sm:h-auto sm:w-auto sm:hover:bg-transparent";
 
+  const platformLinks = [
+    { href: "/instagram-video-downloader", label: "Instagram", Icon: InstagramIcon, color: "#ec5fa8" },
+    { href: "/pinterest-video-downloader", label: "Pinterest", Icon: PinterestIcon, color: "#e60023" },
+    { href: "/youtube-video-downloader", label: "YouTube", Icon: YouTubeIcon, color: "#ff0000" },
+    { href: "/facebook-video-downloader", label: "Facebook", Icon: FacebookIcon, color: "#1877f2" },
+    { href: "/twitter-video-downloader", label: "Twitter/X", Icon: TwitterIcon, color: "#0f172a" },
+    { href: "/threads-video-downloader", label: "Threads", Icon: ThreadsIcon, color: "#0f172a" },
+  ] as const;
+
   return (
     <>
       <header
@@ -116,13 +125,26 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
           <div className="site-controls flex shrink-0 items-center gap-1 sm:gap-1.5">
             {/* Desktop nav: downloader selector + section links */}
             <div className="hidden lg:flex items-center gap-0.5 xl:gap-1 mr-2">
-              <ToolCategoryDropdown />
               <nav className="flex items-center gap-0.5 xl:gap-1" aria-label="Site sections">
                 <Link href="/about" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">About</Link>
                 <Link href="/blog" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">Blog</Link>
                 <Link href="/contact" className="rounded-full px-3 py-1.5 text-[14px] font-medium text-fg-muted hover:bg-primary-light hover:text-primary transition-colors whitespace-nowrap">Contact</Link>
               </nav>
             </div>
+            <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="Platform downloaders">
+              {platformLinks.map(({ href, label, Icon, color }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-label={`${label} downloader`}
+                  title={label}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-fg-muted transition-colors hover:bg-primary-light hover:text-primary sm:h-9 sm:w-9"
+                  style={{ color }}
+                >
+                  <Icon size={19} />
+                </Link>
+              ))}
+            </nav>
             <div className="relative" ref={langRef}>
               <button
                 type="button"
@@ -187,7 +209,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
 
             <Link
               href="/help"
-              className={iconBtn}
+              className={`${iconBtn} hidden sm:flex`}
               aria-label={t.common.help}
               aria-current={onHelp ? "page" : undefined}
               style={onHelp ? { color: "var(--primary)" } : undefined}
@@ -237,31 +259,6 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             <span className="mobile-nav-icon bg-primary-light text-primary"><HomeIcon className="h-[18px] w-[18px]" /></span>
             <span>Home</span>
           </Link>
-          {([
-            ["/instagram-reels-downloader", "Instagram Reels Downloader", Film, "bg-pink-500/10"] as const,
-            ["/instagram-video-downloader", "Instagram Video Downloader", Video, "bg-primary-light"] as const,
-            ["/instagram-photo-downloader", "Instagram Photo & Carousel Downloader", ImageIcon, "bg-orange-500/10"] as const,
-            ["/instagram-story-downloader", "Instagram Story Downloader", Clock, "bg-sky-500/10"] as const,
-            ["/instagram-audio-downloader", "Instagram Audio Downloader", Music2, "bg-emerald-500/10"] as const,
-            ["/pinterest-video-downloader", "Pinterest Video Downloader", Pin, "bg-rose-500/10"] as const,
-            ["/pinterest-image-downloader", "Pinterest Image & Carousel Downloader", ImagePlay, "bg-rose-500/10"] as const,
-            ["/youtube-video-downloader", "YouTube Video Downloader", Play, "bg-red-500/10"] as const,
-            ["/facebook-video-downloader", "Facebook Video Downloader", FacebookIcon, "bg-blue-500/10"] as const,
-          ]).map(([href, label, Icon, bg]) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={handleNavClick}
-                className={`flex min-h-[44px] w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-[16px] font-semibold transition-colors hover:bg-primary-light hover:text-primary ${active ? "bg-primary-light text-primary-strong" : "text-fg"}`}
-                aria-current={active ? "page" : undefined}
-              >
-                <span className={`mobile-nav-icon ${bg}`}><Icon className="h-[18px] w-[18px]" /></span>
-                <span>{label}</span>
-              </Link>
-            );
-          })}
           <div className="my-2 border-t border-border-light" />
           <Link href="/contact" onClick={handleNavClick} className="flex min-h-[44px] items-center gap-3 rounded-2xl px-3 py-2.5 text-[16px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary">
             <span>Contact</span>

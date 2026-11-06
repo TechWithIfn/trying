@@ -39,7 +39,7 @@ export default function TermsPage() {
       </p>
       <p>
         Downloadit is an independent service and is not affiliated with or endorsed by Meta,
-        Instagram, Pinterest, Google, YouTube or Facebook.
+        Instagram, Pinterest, Google, YouTube, Facebook or X.
       </p>
       <p>
         You agree not to misuse the service, attempt to access non-public content through it,

@@ -69,11 +69,21 @@ export interface FacebookToolPage extends BaseToolPage {
   platform: "facebook";
 }
 
+export interface TwitterToolPage extends BaseToolPage {
+  platform: "twitter";
+}
+
+export interface ThreadsToolPage extends BaseToolPage {
+  platform: "threads";
+}
+
 export type ToolPageConfig =
   | InstagramToolPage
   | PinterestToolPage
   | YouTubeToolPage
-  | FacebookToolPage;
+  | FacebookToolPage
+  | TwitterToolPage
+  | ThreadsToolPage;
 
 export const TOOL_PAGES = {
   instagramReels: {
@@ -241,6 +251,38 @@ export const TOOL_PAGES = {
     seoTitle: "Facebook Video Downloader – Download Public Videos & Reels | Downloadit",
     seoDescription:
       "Download public Facebook videos, Reels, and Watch videos online with Downloadit. Paste a Facebook video link, preview the video, and download it easily.",
+  },
+  twitterVideo: {
+    platform: "twitter",
+    path: "/twitter-video-downloader",
+    name: "Twitter Video Downloader",
+    titleA: "Twitter Video ",
+    titleB: "Downloader",
+    badge: "Twitter/X Video Downloader · Free & Easy",
+    description:
+      "Download publicly accessible Twitter/X videos as MP4. Paste a public post link, preview the available video, and save it without a login.",
+    placeholder: "Paste a public Twitter or X post URL",
+    buttonLabel: "Get Video",
+    trust: ["Public posts only", "No login required", "Preview before saving"],
+    seoTitle: "Twitter Video Downloader – Download X Videos Online | Downloadit",
+    seoDescription:
+      "Download videos from Twitter (X) online with Downloadit. Paste a public post link, preview the video and download supported media easily.",
+  },
+  threadsVideo: {
+    platform: "threads",
+    path: "/threads-video-downloader",
+    name: "Threads Video Downloader",
+    titleA: "Threads Video ",
+    titleB: "Downloader",
+    badge: "Threads Video Downloader · Free & Easy",
+    description:
+      "Download videos and images from public Threads posts. Paste a link, preview supported media, and save it without a login.",
+    placeholder: "Paste a public Threads post URL",
+    buttonLabel: "Get Media",
+    trust: ["Public posts only", "No login required", "Video and images supported"],
+    seoTitle: "Threads Video Downloader – Download Threads Videos Online | Downloadit",
+    seoDescription:
+      "Download videos and images from public Threads posts with Downloadit. Paste a Threads post link, preview supported media, and download videos or images online easily.",
   },
 } as const satisfies Record<string, ToolPageConfig>;
 

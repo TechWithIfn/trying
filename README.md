@@ -139,6 +139,8 @@ set the variables in Project Settings → Environment Variables and redeploy.
 | GET | `/api/download/:id/:mediaIndex` | Download a specific media item by resolved ID |
 | POST | `/api/youtube/resolve` | Validate a public YouTube URL and return real available qualities |
 | GET | `/api/youtube/download?url=…&format=mp4\|mp3&quality=1080` | Prepare and stream a YouTube MP4 or MP3 |
+| POST | `/api/twitter/resolve` | Validate a public Twitter/X status URL and return an available video |
+| POST | `/api/threads/resolve` | Validate a public Threads post URL and return available public video or image media |
 | GET | `/api/health` | Health check |
 
 ## Production Deployment
