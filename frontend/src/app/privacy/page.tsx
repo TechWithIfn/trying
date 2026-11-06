@@ -4,7 +4,7 @@ import { SITE_URL } from "@/config/site";
 
 const PRIVACY_TITLE = "Privacy Policy | Downloadit";
 const PRIVACY_DESCRIPTION =
-  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram, Pinterest or YouTube downloader.";
+  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram, Pinterest, YouTube or Facebook downloader.";
 
 export const metadata: Metadata = {
   title: { absolute: PRIVACY_TITLE },
@@ -34,14 +34,15 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="October 2026" crumbPath="/privacy">
       <p>
-        Downloadit does not require an account, sign-up, or login for Instagram, Pinterest or
-        YouTube links. We do not keep a download
+        Downloadit does not require an account, sign-up, or login for Instagram, Pinterest,
+        YouTube or Facebook links. We do not keep a download
         history in your browser.
       </p>
       <p>
         When you paste a link, it is sent to our backend solely to resolve publicly available
         media and deliver your download. Links and resolved media references are kept only
-        transiently to complete your request and expire automatically.
+        transiently to complete your request and expire automatically. We do not request or
+        store social-media passwords, browser cookies, or account credentials.
       </p>
       <p>
         Your browser keeps one small preference on your device — the language

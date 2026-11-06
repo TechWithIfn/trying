@@ -40,9 +40,9 @@ export const en: Strings = {
     // Trailing space keeps the concatenated <h1> text readable for assistive
     // tech and crawlers ("Instagram Downloader Reels, ..." — the two spans are
     // separate blocks, so the space would otherwise vanish).
-    titleA: "Instagram Downloader ",
-    titleB: "Reels, Videos, Carousels & Audio",
-    subtitle: "Download public Instagram Reels, videos, carousels and audio with Downloadit. Preview media and save it to your device quickly, no login required.",
+    titleA: "Free Online Video Downloader for ",
+    titleB: "Instagram, Pinterest, YouTube & Facebook",
+    subtitle: "Download supported public media from Instagram, Pinterest, YouTube and Facebook with Downloadit. Paste a link, preview what is available, and save it without an account.",
     cardTitle: "Paste an Instagram Link",
     placeholder: "Paste URL",
     audioPlaceholder: "Paste URL",
@@ -203,8 +203,8 @@ export const en: Strings = {
         a: "No. There is nothing to install and no extension — it works directly in a modern browser.",
       },
       {
-        q: "Is Downloadit affiliated with Instagram?",
-        a: "No. It is an independent service, not affiliated with, endorsed by, or sponsored by Instagram or Meta.",
+        q: "Is Downloadit affiliated with a source platform?",
+        a: "No. Downloadit is independent and is not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook.",
       },
     ],
   },
@@ -257,7 +257,7 @@ export const en: Strings = {
       advertise: "Advertise",
     },
     disclaimer:
-      "Downloadit is not affiliated with Instagram or Meta. Only download content you have the right to save.",
+      "Downloadit is independent and not affiliated with Instagram, Meta, Pinterest, Google, YouTube or Facebook. Only download content you have the right to save.",
     rights: "All rights reserved.",
     madeWith: "Made with ♥ for Downloadit.",
     homeLabel: "Downloadit home",

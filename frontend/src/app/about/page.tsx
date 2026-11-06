@@ -84,8 +84,9 @@ export default function AboutPage() {
       </p>
       <h2 className="text-[20px] font-bold text-fg">How it works, in simple words</h2>
       <p>
-        Think of it like this: every public Instagram post, Pinterest pin or
-        YouTube video is a page anyone can open, with media sitting on it. When
+        Think of it like this: every public Instagram post, Pinterest pin,
+        YouTube video or Facebook video is a page anyone can open, with media
+        sitting on it. When
         you paste a link,
         Downloadit opens that same public page — exactly as a logged-out
         stranger would see it — finds the media files on it, and shows them
@@ -109,7 +110,7 @@ export default function AboutPage() {
       <p>What it deliberately does not do:</p>
       <ul className="list-disc space-y-1 pl-6">
         <li>Open private accounts, Close Friends stories, or anything that needs a login.</li>
-        <li>Ask for your Instagram password — not once, not ever.</li>
+        <li>Ask for a social-media password, cookie or account credential — not once, not ever.</li>
         <li>Keep copies of your links or files, or track who downloads what.</li>
       </ul>
       <h2 className="text-[20px] font-bold text-fg">What you can download</h2>
@@ -163,7 +164,7 @@ export default function AboutPage() {
       <h2 className="text-[20px] font-bold text-fg">An independent service</h2>
       <p>
         Downloadit is an independent service and is not affiliated with,
-        endorsed by, or sponsored by Instagram or Meta. It only reads what is
+        endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook. It only reads what is
         already publicly available through normal links, and you are
         responsible for having the right to download and reuse anything you
         save — see the <Link href="/terms" className="font-semibold text-fg transition-colors hover:text-primary">Terms</Link> and{" "}

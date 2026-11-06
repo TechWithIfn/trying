@@ -7,7 +7,11 @@ import { resolveFacebookUrl, type ResolveData } from "@/services/api";
 import { useAutoScrollFlow, type FlowStatus } from "@/hooks/useAutoScrollFlow";
 
 const MediaResult = dynamic(() => import("./ResultPanel").then((module) => module.MediaResult), {
-  ssr: false,
+  loading: () => (
+    <div className="mx-auto mt-6 w-full max-w-[720px] sm:mt-10 sm:px-5" aria-hidden="true">
+      <div className="rounded-[20px] p-5 sm:p-8 animate-shimmer" style={{ minHeight: "320px" }} />
+    </div>
+  ),
 });
 
 interface Props {

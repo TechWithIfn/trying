@@ -523,6 +523,24 @@ export default function HelpClient() {
             </section>
 
           </ProseSection>
+          <ProseSection>
+            <section className="mt-8">
+              <SectionTitle>Choose a platform</SectionTitle>
+              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
+                Use the focused guide for the platform hosting your public link:
+              </p>
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+                {[
+                  ["/instagram-video-downloader", "Instagram video downloader"],
+                  ["/pinterest-video-downloader", "Pinterest video downloader"],
+                  ["/youtube-video-downloader", "YouTube video downloader"],
+                  ["/facebook-video-downloader", "Facebook video downloader"],
+                ].map(([href, label]) => (
+                  <Link key={href} href={href} className={TOOL_LINK}>{label}</Link>
+                ))}
+              </div>
+            </section>
+          </ProseSection>
           {/* ── 8. Email support ── */}
             <section
               className="mt-8 rounded-[24px] p-8 text-center sm:p-10"

@@ -95,7 +95,8 @@ export default function ContactPage() {
             <h2 className="text-[20px] font-bold text-fg">Broken download reports</h2>
             <p>
               Same address, with one extra check before you write: open the
-              link in a private browser window while logged out of Instagram.
+              link in a private browser window while logged out of the source
+              platform.
               If it does not open there, the content is not public and no
               downloader can fetch it — that is the answer, no email needed.
               If it does open and Downloadit still fails, send the link with
@@ -126,7 +127,7 @@ export default function ContactPage() {
           <p className="mt-8 text-[16px] text-fg-muted">
             Prefer the downloader itself?{" "}
             <Link href="/" className="font-semibold text-primary-strong hover:underline">
-              Back to the Instagram downloader
+              Back to the downloader
             </Link>
             .
           </p>

@@ -67,7 +67,7 @@ export default function FacebookVideoDownloaderPage() {
           <h2 className="mt-8 text-2xl font-bold text-fg">How to use the Facebook video downloader</h2>
           <ol className="mt-3 list-decimal space-y-2 pl-5 text-base leading-7 text-fg-muted">
             <li>Open the public Facebook video, Reel, or Watch page.</li>
-            <li>Use Facebook's Share option and copy the link.</li>
+            <li>Use Facebook&apos;s Share option and copy the link.</li>
             <li>Return to Downloadit and paste the link into the Facebook downloader.</li>
             <li>Choose Get Video, confirm the preview, and download the available MP4.</li>
           </ol>

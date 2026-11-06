@@ -38,6 +38,10 @@ export default function TermsPage() {
         to save, for personal use.
       </p>
       <p>
+        Downloadit is an independent service and is not affiliated with or endorsed by Meta,
+        Instagram, Pinterest, Google, YouTube or Facebook.
+      </p>
+      <p>
         You agree not to misuse the service, attempt to access non-public content through it,
         or use it in any way that violates applicable law or the rights of others. Automated,
         abusive or excessive use that degrades the service for others is not allowed, and

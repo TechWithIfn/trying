@@ -4,13 +4,26 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import HeroDownloader, { type DownloaderTab } from "@/components/HeroDownloader";
+import PinterestDownloader from "@/components/PinterestDownloader";
+import YouTubeDownloader from "@/components/YouTubeDownloader";
+import FacebookDownloader from "@/components/FacebookDownloader";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
 import { useLanguage } from "@/i18n";
 import ProseSection from "@/components/ProseSection";
 
-import { ShieldCheck, Film, Video, Image as ImageIcon, Clock, Music, Link2, Search, Download, Eye } from "lucide-react";
+import { ShieldCheck, Film, Video, Image as ImageIcon, Clock, Music, Link2, Search, Download, Eye, Pin, Play } from "lucide-react";
 import { FacebookIcon } from "@/components/ToolCategoryDropdown";
+import { TOOL_PAGES } from "@/config/toolPages";
+
+type HomePlatform = "instagram" | "pinterest" | "youtube" | "facebook";
+
+const HOME_PLATFORMS = [
+  { id: "instagram" as const, label: "Instagram", Icon: Film, color: "#ec5fa8", background: "rgba(236, 95, 168, 0.12)" },
+  { id: "pinterest" as const, label: "Pinterest", Icon: Pin, color: "#e60023", background: "rgba(230, 0, 35, 0.10)" },
+  { id: "youtube" as const, label: "YouTube", Icon: Play, color: "#ff0000", background: "rgba(255, 0, 0, 0.09)" },
+  { id: "facebook" as const, label: "Facebook", Icon: FacebookIcon, color: "#1877f2", background: "rgba(24, 119, 242, 0.10)" },
+] as const;
 
 const MEDIA_ROWS = [
   { href: "/instagram-reels-downloader", label: "Reels", note: "Supported video downloads", Icon: Film },
@@ -36,6 +49,7 @@ const FLOW_STAGES = [
 
 export default function HomeClient() {
   const { t } = useLanguage();
+  const [activePlatform, setActivePlatform] = useState<HomePlatform>("instagram");
   const [activeTab, setActiveTab] = useState<DownloaderTab | null>(null);
 
   useEffect(() => {
@@ -46,24 +60,105 @@ export default function HomeClient() {
   }, []);
 
   const handleDownloaderTabChange = (tab: DownloaderTab | null) => {
+    setActivePlatform("instagram");
     setActiveTab(tab);
     if (tab) {
-      document.getElementById("hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector("section#hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  };
+
+  const selectPlatform = (platform: HomePlatform) => {
+    setActivePlatform(platform);
+    setActiveTab(null);
+    requestAnimationFrame(() => {
+      document.querySelector("section#hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const renderDownloader = () => {
+    if (activePlatform === "pinterest") {
+      const page = TOOL_PAGES.pinterestVideo;
+      return (
+        <PinterestDownloader
+          titleA={page.titleA}
+          titleB={page.titleB}
+          subtitle={page.description}
+          badge={page.badge}
+          placeholder={page.placeholder}
+          buttonLabel={page.buttonLabel}
+          benefits={page.trust}
+          modes={page.modes}
+        />
+      );
+    }
+    if (activePlatform === "youtube") {
+      const page = TOOL_PAGES.youtubeVideo;
+      return (
+        <YouTubeDownloader
+          titleA={page.titleA}
+          titleB={page.titleB}
+          subtitle={page.description}
+          badge={page.badge}
+          placeholder={page.placeholder}
+          buttonLabel={page.buttonLabel}
+          benefits={page.trust}
+        />
+      );
+    }
+    if (activePlatform === "facebook") {
+      const page = TOOL_PAGES.facebookVideo;
+      return (
+        <FacebookDownloader
+          badge={page.badge}
+          titleA={page.titleA}
+          titleB={page.titleB}
+          subtitle={page.description}
+          placeholder={page.placeholder}
+          buttonLabel={page.buttonLabel}
+          benefits={page.trust}
+        />
+      );
+    }
+    return (
+      <HeroDownloader
+        activeTab={activeTab}
+        onActiveTabChange={setActiveTab}
+        titleA={t.hero.titleA}
+        titleB={t.hero.titleB}
+        subtitle={t.hero.subtitle}
+        placeholder={activeTab === "audio" ? t.hero.audioPlaceholder : t.hero.placeholder}
+      />
+    );
   };
 
   return (
     <>
       <Header activeDownloaderTab={activeTab} onDownloaderTabChange={handleDownloaderTabChange} />
       <main id="main-content" className="flex-1">
-        <HeroDownloader
-          activeTab={activeTab}
-          onActiveTabChange={setActiveTab}
-          titleA={t.hero.titleA}
-          titleB={t.hero.titleB}
-          subtitle={t.hero.subtitle}
-          placeholder={activeTab === "audio" ? t.hero.audioPlaceholder : t.hero.placeholder}
-        />
+        <section className="px-5 pt-4 sm:px-6 lg:px-8" aria-label="Downloader platforms">
+          <div className="mx-auto grid max-w-[720px] grid-cols-2 gap-2 sm:grid-cols-4">
+            {HOME_PLATFORMS.map(({ id, label, Icon, color, background }) => {
+              const selected = activePlatform === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => selectPlatform(id)}
+                  className={`flex items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-semibold transition-all ${
+                    selected ? "border-primary/30 bg-primary-light text-primary-strong shadow-xs" : "border-border bg-card text-fg-muted hover:bg-primary-light hover:text-primary"
+                  }`}
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background, color }}>
+                    <Icon size={18} strokeWidth={2.2} />
+                  </span>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+        <div id="home-downloader">{renderDownloader()}</div>
 
         {/* ── Supported content & formats ── */}
         <section className="px-5 py-10 sm:px-6 sm:py-16 lg:px-8" aria-labelledby="supported-media">
@@ -114,7 +209,7 @@ export default function HomeClient() {
                   ))}
                 </ul>
                 <p className="mt-auto pt-3 text-[13px] leading-[1.4] text-fg-subtle">
-                  Formats follow what Instagram provides — files pass through, not converted.
+                  Formats follow what each platform provides — files pass through, not converted.
                 </p>
               </div>
             </div>
@@ -136,7 +231,7 @@ export default function HomeClient() {
                   How Downloadit works
                 </h2>
                 <p className="mx-auto mt-3 max-w-[520px] text-[15px] leading-[1.6] text-fg-muted">
-                  Downloadit accepts supported public Instagram links. When you paste a link, the service checks the available media and prepares a preview. You can then choose the available file and save it to your device.
+                  Downloadit accepts supported public links from Instagram, Pinterest, YouTube and Facebook. When you paste a link, the service checks the available media and prepares a preview. You can then choose the available file and save it to your device.
                 </p>
               </div>
               <div
@@ -194,11 +289,11 @@ export default function HomeClient() {
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3 items-stretch">
               {[
-                { title: "Privacy", desc: "Downloadit never asks for your Instagram password and you never need to log in to Instagram. You only paste a public link." },
+                { title: "Privacy", desc: "Downloadit never asks for a social-media password, cookie or account credential. You only paste a public link." },
 
-                { title: "Public content only", desc: "Downloadit does not bypass Instagram privacy controls. Private, deleted or expired content cannot be downloaded." },
+                { title: "Public content only", desc: "Downloadit does not bypass source-platform privacy controls. Private, deleted or expired content cannot be downloaded." },
 
-                { title: "Your responsibility", desc: "Only save content you own or have permission to reuse. Downloadit is independent and not affiliated with Instagram or Meta." },
+                { title: "Your responsibility", desc: "Only save content you own or have permission to reuse. Downloadit is independent and not affiliated with the source platforms." },
 
               ].map((c) => (
                 <div
@@ -224,11 +319,11 @@ export default function HomeClient() {
               </p>
               <h3>What we ask from you and what we do not</h3>
               <p>
-                We never ask for an Instagram password, login, or two-factor code — there is no account here to sign into, so there is nothing that could ask for one. If any page ever asks you to sign in to Instagram to use Downloadit, close it: that request did not come from us. How your pasted links are handled is explained on the Privacy Policy page.
+                We never ask for a social-media password, login, or two-factor code — there is no account here to sign into, so there is nothing that could ask for one. If any page ever asks you to sign in to a source platform to use Downloadit, close it: that request did not come from us. How your pasted links are handled is explained on the Privacy Policy page.
               </p>
               <h3>Using downloaded content fairly</h3>
               <p>
-                Download only your own content or content you have permission for, and give credit when you reuse someone else's work. Crediting is polite but it is not permission — reposting, remixing, or running clips in ads needs the creator's agreement first. For removal or copyright requests, use the DMCA and copyright page. The ground rules are also set out in the Disclaimer, and step-by-step help lives on the Help page.
+                Download only your own content or content you have permission for, and give credit when you reuse someone else&apos;s work. Crediting is polite but it is not permission — reposting, remixing, or running clips in ads needs the creator&apos;s agreement first. For removal or copyright requests, use the DMCA and copyright page. The ground rules are also set out in the Disclaimer, and step-by-step help lives on the Help page.
               </p>
             </ProseSection>
           </div>
@@ -261,7 +356,7 @@ export default function HomeClient() {
               </div>
               <div>
                 <strong>Independent service</strong><br/>
-                Not affiliated with, endorsed by, or sponsored by Instagram or Meta.
+                Not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook.
               </div>
             </div>
             <a
@@ -383,10 +478,10 @@ export default function HomeClient() {
                 },
                 {
                   "@type": "Question",
-                  "name": "Is Downloadit affiliated with Instagram?",
+                  "name": "Is Downloadit affiliated with a source platform?",
                   "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "No. It is an independent service, not affiliated with, endorsed by, or sponsored by Instagram or Meta. It only touches content that is already public to logged-out visitors."
+                    "text": "No. Downloadit is independent and not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube or Facebook. It only touches content that is already public to logged-out visitors."
                   }
                 }
               ],

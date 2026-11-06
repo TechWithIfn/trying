@@ -106,7 +106,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Video",
     initialTab: "videos",
     trust: ["No account required", "Public videos only", "Preview before saving"],
-    seoTitle: "Instagram Video Downloader – Download Reels, Photos & Videos | Downloadit",
+    seoTitle: "Instagram Video Downloader – Reels, Photos & Carousels | Downloadit",
     seoDescription:
       "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
   },
@@ -179,7 +179,7 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Preview before downloading",
     ],
-    seoTitle: "Pinterest Video Downloader – Download Videos & Images | Downloadit",
+    seoTitle: "Pinterest Video & Image Downloader – Save Pins & Carousels | Downloadit",
     seoDescription:
       "Free Pinterest video downloader. Paste a public pin link and save Pinterest videos as MP4 in original quality. No login, no watermark, no app needed.",
   },
@@ -222,7 +222,7 @@ export const TOOL_PAGES = {
       "Public videos only",
       "MP4 video or MP3/M4A audio",
     ],
-    seoTitle: "YouTube Video Downloader – Download Videos & Audio | Downloadit",
+    seoTitle: "YouTube Video Downloader – Download Videos in Supported Quality | Downloadit",
     seoDescription:
       "Free YouTube video downloader. Paste a public YouTube link, choose an available MP4 quality (up to 1080p), or extract the audio as MP3. No login, no app, no watermark added.",
   },
@@ -238,7 +238,7 @@ export const TOOL_PAGES = {
     placeholder: "Paste a public Facebook video, Reel or Watch URL",
     buttonLabel: "Get Video",
     trust: ["Public videos only", "No login required", "Preview before saving"],
-    seoTitle: "Facebook Video Downloader – Download Facebook Reels & Videos | Downloadit",
+    seoTitle: "Facebook Video Downloader – Download Public Videos & Reels | Downloadit",
     seoDescription:
       "Download public Facebook videos, Reels, and Watch videos online with Downloadit. Paste a Facebook video link, preview the video, and download it easily.",
   },
