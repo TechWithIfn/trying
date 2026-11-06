@@ -11,9 +11,11 @@ import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { getProvider } from "./lib/providers/index.js";
 import { audioProviderStatus } from "./lib/audio-provider.js";
+import { getFfmpegPath, getFfmpegVersionSync, isFfmpegAvailable } from "./lib/ffmpeg.js";
 import { performShutdown, registerCleanup, startDraining } from "./lib/shutdown.js";
 import { capacitySnapshot } from "./lib/capacity.js";
 import { readPositiveInt, validateServerEnv } from "./lib/env.js";
+import { getYtDlpPath, getYtDlpVersion, isYtDlpAvailable } from "./lib/youtube/ytdlp.js";
 
 // Local development / traditional hosting entry point.
 // On Vercel serverless, api/index.ts serves the exported app instead and
@@ -57,6 +59,32 @@ const server = app.listen(PORT, () => {
   });
 
   logger.info("Workload capacity", { capacity: capacitySnapshot() });
+
+  logger.info("YouTube media engine startup", {
+    platform: process.platform,
+    arch: process.arch,
+    ytdlpPathConfigured: Boolean(process.env.YTDLP_PATH?.trim()),
+    ffmpegPathConfigured: Boolean(process.env.FFMPEG_BIN?.trim()),
+  });
+  void Promise.all([isYtDlpAvailable(), isFfmpegAvailable()]).then(
+    ([ytDlpAvailable, ffmpegAvailable]) => {
+      logger.info("YouTube media engine status", {
+        platform: process.platform,
+        ytDlpAvailable,
+        ytDlpPath: getYtDlpPath(),
+        ytDlpVersion: getYtDlpVersion(),
+        ffmpegAvailable,
+        ffmpegPath: getFfmpegPath(),
+        ffmpegVersion: getFfmpegVersionSync(),
+      });
+    },
+    (error) => {
+      logger.error("YouTube media engine startup check failed", {
+        platform: process.platform,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  );
 
   // Non-fatal env validation: warn about misconfiguration (missing session,
   // placeholder provider, unset CORS) without crashing — the backend stays

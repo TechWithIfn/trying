@@ -327,6 +327,10 @@ export function getYtDlpVersion(): string | null {
   return cachedVersion;
 }
 
+export function getYtDlpPath(): string | null {
+  return resolvedPath;
+}
+
 export interface RunYtDlpOptions {
   timeoutMs: number;
   signal?: AbortSignal;

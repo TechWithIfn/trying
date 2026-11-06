@@ -501,7 +501,7 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
   },
   YOUTUBE_UNAVAILABLE: {
     message:
-      "YouTube downloading is not available on this server because its media engine is not installed or could not be started.",
+      "YouTube downloading is unavailable because the media engine could not find or start a Linux-compatible yt-dlp executable. Set YTDLP_PATH only to a valid executable, or leave it unset to use the bundled binary.",
     status: 503,
     retryable: false,
   },

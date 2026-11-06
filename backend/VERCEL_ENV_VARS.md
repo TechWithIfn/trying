@@ -4,14 +4,22 @@ Non-secret checklist for the Vercel project that serves `backend/`
 (Settings → Environment Variables). Values are set only in Vercel; never commit
 them or paste them into this file.
 
-## Required
+## Core required variables
 
 | Variable | Description | Safe example |
 | --- | --- | --- |
 | `RESOLVER_PROVIDER` | Resolver used by Instagram and Pinterest. `puppeteer` needs no API key and is the working local value. | `puppeteer` |
 | `CORS_ORIGIN` | Exact browser origins allowed to call the backend, comma-separated, no trailing slash. Must match the deployed frontend. | `https://www.downloadit.pro,https://downloadit.pro` |
-| `YTDLP_PATH` | Linux yt-dlp executable packaged in `backend/bin`; never use a Windows `.exe` path. | `bin/yt-dlp` |
-| `FFMPEG_BIN` | Linux FFmpeg executable packaged in `backend/bin`; never use a Windows `.exe` path. | `bin/ffmpeg` |
+
+## Optional media path overrides
+
+The backend stages and verifies Linux-compatible binaries automatically. Leave
+these unset unless a deployment provides its own executable:
+
+| Variable | Description | Safe example |
+| --- | --- | --- |
+| `YTDLP_PATH` | Linux yt-dlp executable override; never use a Windows `.exe` path. | `bin/yt-dlp` |
+| `FFMPEG_BIN` | Linux FFmpeg executable override; never use a Windows `.exe` path. | `bin/ffmpeg` |
 
 ## Required for reliable Instagram downloads on Vercel
 
@@ -60,5 +68,7 @@ These already have safe defaults; set them only with a measured reason.
 - `ALLOW_MOCK_CDN`, `ALLOW_STORY_DEBUG` — development/debug only; never enable in production.
 - `TRUST_PROXY`, `TRUST_PROXY_HOPS`, `PUPPETEER_RUNTIME`, `DISABLE_BACKGROUND_TIMERS` — Vercel is auto-detected; leave unset unless diagnosing a proxy/runtime issue.
 
-Vercel does not read the local `backend/.env` from GitHub. Every value above
-must be entered separately in the Vercel dashboard.
+Vercel does not read the local `backend/.env` from GitHub. Enter the required
+variables above in the Vercel dashboard. Do not copy Windows `YTDLP_PATH` or
+`FFMPEG_BIN` values from local development; leaving both path overrides unset is
+the recommended deployment configuration.

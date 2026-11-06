@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/
+Host: www.downloadit.app
+Sitemap: https://www.downloadit.app/sitemap.xml

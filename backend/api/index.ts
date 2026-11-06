@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import app from "../src/app.js";
 import { validateServerEnv } from "../src/lib/env.js";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../src/lib/ffmpeg.js";
-import { isYtDlpAvailable, getYtDlpVersion } from "../src/lib/youtube/ytdlp.js";
+import { getYtDlpPath, isYtDlpAvailable, getYtDlpVersion } from "../src/lib/youtube/ytdlp.js";
 import { getBinarySource } from "../src/lib/media-binary.js";
 
 // Vercel serverless entry point. Every request is routed here via
@@ -22,6 +22,13 @@ for (const warning of startupEnv.warnings) {
 // Media engine diagnostics (runs once per cold start on Vercel).
 // Logs whether ffmpeg and yt-dlp are available so operators can diagnose
 // the "media engine is not installed" error without exposing secrets.
+console.log("[YOUTUBE] media engine startup", {
+  platform: process.platform,
+  arch: process.arch,
+  ytdlpPathConfigured: Boolean(process.env.YTDLP_PATH?.trim()),
+  ffmpegPathConfigured: Boolean(process.env.FFMPEG_BIN?.trim()),
+});
+
 (async () => {
   const ffmpegOk = await isFfmpegAvailable().catch(() => false);
   const ytDlpOk = await isYtDlpAvailable().catch(() => false);
@@ -30,6 +37,7 @@ for (const warning of startupEnv.warnings) {
     ffmpegVersion: getFfmpegVersionSync(),
     ffmpegSource: getBinarySource("ffmpeg"),
     ytDlpAvailable: ytDlpOk,
+    ytDlpPath: getYtDlpPath(),
     ytDlpVersion: getYtDlpVersion(),
     ytDlpSource: getBinarySource("yt-dlp"),
     platform: process.platform,

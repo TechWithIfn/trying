@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../lib/ffmpeg.js";
-import { getYtDlpVersion, isYtDlpAvailable } from "../lib/youtube/ytdlp.js";
+import { getYtDlpPath, getYtDlpVersion, isYtDlpAvailable } from "../lib/youtube/ytdlp.js";
 import {
   getBinarySource,
   getMaterializeError,
@@ -98,6 +98,7 @@ router.get("/ready", async (_req: Request, res: Response) => {
     ffmpegVersion: getFfmpegVersionSync(),
     ytDlpConfigured: Boolean(process.env.YTDLP_PATH?.trim()),
     ytDlpAvailable,
+    ytDlpPath: getYtDlpPath(),
     ytDlpVersion: getYtDlpVersion(),
     draining: drain.draining,
     drainReason: drain.reason,
@@ -142,6 +143,7 @@ router.get("/media", async (_req: Request, res: Response) => {
     // because the bundle did not contain it, "env" = FFMPEG_BIN override.
     ffmpegSource: getBinarySource("ffmpeg"),
     ytDlpAvailable,
+    ytDlpPath: getYtDlpPath(),
     ytDlpVersion: getYtDlpVersion(),
     ytDlpSource: getBinarySource("yt-dlp"),
     // Names only (no paths): proves what the deployment bundle contained.
