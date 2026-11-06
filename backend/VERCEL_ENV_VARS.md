@@ -1,8 +1,13 @@
-# Vercel backend environment variables
+# Vercel backend deployment configuration
 
-Non-secret checklist for the Vercel project that serves `backend/`
-(Settings → Environment Variables). Values are set only in Vercel; never commit
-them or paste them into this file.
+The Vercel project must use `backend` as its **Root Directory**. With that
+setting, Vercel reads `backend/vercel.json`, runs `npm run build`, and serves
+`api/index.ts`. Do not set the repository root as the backend project root:
+the root package is the frontend/workspace orchestrator and does not provide
+the backend function configuration.
+
+Values below are set only in Vercel; never commit or paste secrets into this
+file.
 
 ## Core required variables
 
@@ -10,6 +15,11 @@ them or paste them into this file.
 | --- | --- | --- |
 | `RESOLVER_PROVIDER` | Resolver used by Instagram and Pinterest. `puppeteer` needs no API key and is the working local value. | `puppeteer` |
 | `CORS_ORIGIN` | Exact browser origins allowed to call the backend, comma-separated, no trailing slash. Must match the deployed frontend. | `https://www.downloadit.pro,https://downloadit.pro` |
+
+The backend's `package.json` build script runs
+`scripts/ensure-ytdlp.mjs`. It stages binaries for the Vercel Linux build
+platform, and `vercel.json` includes `bin/**` in the function while excluding
+the Windows-oriented `youtube-dl-exec` bundled binary.
 
 ## Optional media path overrides
 
@@ -59,6 +69,12 @@ These already have safe defaults; set them only with a measured reason.
 | `AUDIO_PROVIDER_URL` / `AUDIO_PROVIDER_KEY` | Optional dedicated audio resolver; the key is secret. |
 | `X_IG_APP_ID` | Optional Instagram app id used by the session helper. |
 | `BUILD_VERSION` | Optional build id for `/api/health/ready`; Vercel supplies a commit SHA automatically. |
+| `YOUTUBE_RESOLVE_TIMEOUT_MS` | Metadata probe deadline; Vercel caps it at 120 seconds. Default `30000`. |
+| `YOUTUBE_DOWNLOAD_TIMEOUT_MS` | Download/transcode deadline; Vercel caps it at 240 seconds. Default `300000`. |
+| `YOUTUBE_MAX_DURATION_SECONDS` | Maximum accepted video duration. Default `3600`. |
+| `YOUTUBE_MAX_OUTPUT_BYTES` | Maximum prepared output size. Default `536870912`. |
+| `MEDIA_RUNTIME_DOWNLOAD` | Set `1` only to explicitly allow runtime binary provisioning; staged binaries are preferred. |
+| `RATE_LIMIT_YOUTUBE_MAX_REQUESTS` | Shared YouTube request budget per IP/window. Default `12`. |
 
 ## Do not set
 
@@ -72,3 +88,18 @@ Vercel does not read the local `backend/.env` from GitHub. Enter the required
 variables above in the Vercel dashboard. Do not copy Windows `YTDLP_PATH` or
 `FFMPEG_BIN` values from local development; leaving both path overrides unset is
 the recommended deployment configuration.
+
+## Deployment verification
+
+After deployment, check these endpoints without exposing logs or secrets:
+
+```text
+GET /api/health
+GET /api/health/ready
+GET /api/health/media
+```
+
+`/api/health/media` should report Linux-compatible `ytDlpAvailable` and
+`ffmpegAvailable` as `true`, and `ytDlpSource`/`ffmpegSource` as `staged` (or
+`runtime` if the host omitted the staged files). These checks verify the media
+engine only; they cannot prove that YouTube will allow the Vercel egress IP.

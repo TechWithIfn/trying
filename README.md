@@ -159,6 +159,12 @@ The frontend is a Next.js application. Deploy to any platform that supports Next
 
 ### Backend
 
+For the Vercel backend project, set the Vercel **Root Directory** to
+`backend`. This makes Vercel use `backend/vercel.json`, run the backend build,
+and serve `backend/api/index.ts`. See
+[backend/VERCEL_ENV_VARS.md](./backend/VERCEL_ENV_VARS.md) for the complete
+configuration and verification checklist.
+
 **Build command:**
 ```bash
 cd backend && npm run build
