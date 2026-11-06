@@ -26,6 +26,9 @@ function classify(stderr: string): { code: string; message: string; status: numb
 
 router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
   const requestId = generateToken();
+  const startedAt = Date.now();
+  res.setHeader("X-Request-Id", requestId);
+  res.setHeader("Cache-Control", "no-store");
   const rateLimit = checkRateLimit(`facebook:${getClientIp(req)}`, routeRateLimitConfig("facebook"));
   if (!rateLimit.allowed) {
     res.setHeader("Retry-After", String(Math.ceil(rateLimit.retryAfterMs / 1000)));
@@ -34,9 +37,15 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
   }
   const checked = validateFacebookUrl(req.body?.url);
   if (!checked.valid || !checked.parsed) {
+    logger.info("[FACEBOOK] URL validation failed", { requestId, duration: Date.now() - startedAt });
     res.status(400).json(failure("FACEBOOK_INVALID_URL", checked.error || "Invalid Facebook URL."));
     return;
   }
+  logger.info("[FACEBOOK] URL validated", {
+    requestId,
+    duration: Date.now() - startedAt,
+    host: checked.parsed.hostname,
+  });
 
   const controller = new AbortController();
   const onClose = (): void => {
@@ -72,7 +81,9 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
       res.status(422).json(failure("FACEBOOK_NO_VIDEO", "Facebook did not provide a public downloadable video."));
       return;
     }
-    logger.info("[FACEBOOK] resolved public video", { requestId, url: checked.parsed.normalized, mediaId: info.id || null });
+    const duration = Date.now() - startedAt;
+    res.setHeader("X-Resolve-Duration-Ms", String(duration));
+    logger.info("[FACEBOOK] resolved public video", { requestId, duration, mediaId: info.id || null });
     res.json({
       success: true,
       data: {
@@ -100,7 +111,12 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
     }
     const stderr = error instanceof YtDlpProcessError ? error.stderr : error instanceof Error ? error.message : "unknown";
     const mapped = classify(stderr);
-    logger.warn("[FACEBOOK] resolve failed", { requestId, category: mapped.code, stderr: stderr.slice(0, 2000) });
+    logger.warn("[FACEBOOK] resolve failed", {
+      requestId,
+      category: mapped.code,
+      duration: Date.now() - startedAt,
+      stderr: stderr.slice(0, 2000),
+    });
     if (!res.headersSent) res.status(mapped.status).json(failure(mapped.code, mapped.message));
   } finally {
     res.off("close", onClose);
