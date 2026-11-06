@@ -1,7 +1,13 @@
 import { Router, Request, Response } from "express";
 import { isFfmpegAvailable, getFfmpegVersionSync } from "../lib/ffmpeg.js";
 import { getYtDlpVersion, isYtDlpAvailable } from "../lib/youtube/ytdlp.js";
-import { getBinarySource, stagedBinaryInventory } from "../lib/media-binary.js";import { audioProviderStatus } from "../lib/audio-provider.js";
+import {
+  getBinarySource,
+  getMaterializeError,
+  stagedBinaryInventory,
+  stagedGzipInfo,
+} from "../lib/media-binary.js";
+import { audioProviderStatus } from "../lib/audio-provider.js";
 import { capacitySnapshot } from "../lib/capacity.js";
 import { getResolverPoolSnapshot } from "../lib/resolver-pool.js";
 import { currentDrainReason, drainMetrics, isDraining } from "../lib/shutdown.js";
@@ -140,6 +146,10 @@ router.get("/media", async (_req: Request, res: Response) => {
     ytDlpSource: getBinarySource("yt-dlp"),
     // Names only (no paths): proves what the deployment bundle contained.
     stagedFiles: stagedBinaryInventory(),
+    // Archive diagnostics: proves the staged ffmpeg.gz exists and is intact,
+    // and explains why expanding it failed (if it did).
+    stagedFfmpegGzip: stagedGzipInfo("ffmpeg"),
+    ffmpegStagingError: getMaterializeError("ffmpeg"),
     timestamp: new Date().toISOString(),
   });
 });

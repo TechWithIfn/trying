@@ -62,6 +62,9 @@ export function binaryRoots(): string[] {
     const trimmed = (value ?? "").trim();
     if (!trimmed) return;
     const normalized = resolvePath(trimmed);
+    // The filesystem root is never a project root, and `/bin` is the OS
+    // binary directory — scanning it would only produce false positives.
+    if (normalized === dirname(normalized)) return;
     if (!roots.includes(normalized)) roots.push(normalized);
   };
 
@@ -109,7 +112,8 @@ export function binaryCandidates(base: string): string[] {
 }
 
 /** First candidate that exists on disk. No execution probe. */
-export function findStagedBinary(base: string): string | null {  for (const candidate of binaryCandidates(base)) {
+export function findStagedBinary(base: string): string | null {
+  for (const candidate of binaryCandidates(base)) {
     if (!isCompatible(candidate)) continue;
     try {
       if (existsSync(candidate)) return candidate;
@@ -155,7 +159,8 @@ export function findStagedGzip(base: string): string | null {
 
 /**
  * Expand a staged `.gz` binary into the temp dir, verify it, and cache it for
- * the life of the instance. Returns null (never throws) on failure.
+ * the life of the instance. Returns null (never throws) on failure; the reason
+ * is kept so `/api/health/media` can report why provisioning fell back.
  */
 export async function materializeStagedGzip(
   base: string,
@@ -172,7 +177,7 @@ export async function materializeStagedGzip(
     /* expand a fresh copy */
   }
 
-  const temporary = `${destination}.part-${process.pid}`;
+  const temporary = `${destination}.part-${process.pid}-${Date.now().toString(36)}`;
   try {
     const compressed = await readFile(gzPath);
     const data = gunzipSync(compressed);
@@ -184,6 +189,7 @@ export async function materializeStagedGzip(
     }
     await rename(temporary, destination);
     runtimePaths.set(base, destination);
+    materializeErrors.delete(base);
     logger.info("[MEDIA] staged archive expanded", {
       base,
       gzPath,
@@ -192,14 +198,35 @@ export async function materializeStagedGzip(
     });
     return destination;
   } catch (error) {
+    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    materializeErrors.set(base, message);
     logger.error("[MEDIA] could not expand staged archive", {
       base,
       gzPath,
-      error: error instanceof Error ? error.message : String(error),
+      gzBytes: await stat(gzPath).then((s) => s.size).catch(() => -1),
+      error: message,
     });
     return null;
   } finally {
     await rm(temporary, { force: true }).catch(() => undefined);
+  }
+}
+
+const materializeErrors = new Map<string, string>();
+
+/** Why the last staged-archive expansion for `base` failed, if it did. */
+export function getMaterializeError(base: string): string | null {
+  return materializeErrors.get(base) ?? null;
+}
+
+/** Size of the staged archive for `base` (diagnostics: detects truncation). */
+export function stagedGzipInfo(base: string): { path: string; bytes: number } | null {
+  const found = findStagedGzip(base);
+  if (!found) return null;
+  try {
+    return { path: found, bytes: statSync(found).size };
+  } catch {
+    return { path: found, bytes: -1 };
   }
 }
 
@@ -375,7 +402,7 @@ export async function resolveRuntimeBinary(spec: RuntimeBinarySpec): Promise<str
 
   const task = (async (): Promise<string | null> => {
     const destination = runtimeBinaryPath(spec.base);
-    const temporary = `${destination}.part-${process.pid}`;
+    const temporary = `${destination}.part-${process.pid}-${Date.now().toString(36)}`;
 
     try {
       await cleanupPartialDownloads(spec.base);
