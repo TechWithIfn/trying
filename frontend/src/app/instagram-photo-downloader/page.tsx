@@ -3,6 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
+import CarouselDownloaderPageClient from "./PageClient";
 import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 
 const PAGE = TOOL_PAGES.instagramPhoto;
