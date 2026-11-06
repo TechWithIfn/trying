@@ -44,6 +44,7 @@ const ROUTE_MAX_DEFAULTS = {
   stream: 180,
   audio: 20,
   pinterest: 20,
+  facebook: 20,
   // Resolve and download share this bucket. A long transfer is expensive and
   // may spawn FFmpeg, so the default is deliberately tighter than Pinterest.
   youtube: 12,
@@ -54,6 +55,7 @@ const ROUTE_ENV_KEYS: Record<keyof typeof ROUTE_MAX_DEFAULTS, string> = {
   stream: "RATE_LIMIT_STREAM_MAX_REQUESTS",
   audio: "RATE_LIMIT_AUDIO_MAX_REQUESTS",
   pinterest: "RATE_LIMIT_PINTEREST_MAX_REQUESTS",
+  facebook: "RATE_LIMIT_FACEBOOK_MAX_REQUESTS",
   youtube: "RATE_LIMIT_YOUTUBE_MAX_REQUESTS",
 };
 

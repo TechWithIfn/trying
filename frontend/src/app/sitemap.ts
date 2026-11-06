@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/pinterest-video-downloader", lastModified: new Date("2026-10-24T00:00:00.000Z") },
     { path: "/pinterest-image-downloader", lastModified: new Date("2026-10-24T00:00:00.000Z") },
     { path: "/youtube-video-downloader", lastModified: new Date("2026-10-24T00:00:00.000Z") },
+    { path: "/facebook-video-downloader", lastModified: new Date("2026-10-24T00:00:00.000Z") },
 
     // Blog index
     { path: "/blog", lastModified: new Date("2026-10-24T00:00:00.000Z") },

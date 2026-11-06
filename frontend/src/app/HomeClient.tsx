@@ -10,6 +10,7 @@ import { useLanguage } from "@/i18n";
 import ProseSection from "@/components/ProseSection";
 
 import { ShieldCheck, Film, Video, Image as ImageIcon, Clock, Music, Link2, Search, Download, Eye } from "lucide-react";
+import { FacebookIcon } from "@/components/ToolCategoryDropdown";
 
 const MEDIA_ROWS = [
   { href: "/instagram-reels-downloader", label: "Reels", note: "Supported video downloads", Icon: Film },
@@ -17,6 +18,7 @@ const MEDIA_ROWS = [
   { href: "/instagram-photo-downloader", label: "Photos & Carousels", note: "Single photos and multi-slide posts", Icon: ImageIcon },
   { href: "/instagram-story-downloader", label: "Stories", note: "Active public Stories", Icon: Clock },
   { href: "/instagram-audio-downloader", label: "Audio", note: "MP3 extraction", Icon: Music },
+  { href: "/facebook-video-downloader", label: "Facebook videos", note: "Public videos, Reels and Watch links", Icon: FacebookIcon },
 ] as const;
 
 const FORMAT_ROWS = [

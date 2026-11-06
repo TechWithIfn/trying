@@ -5,6 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2, Pin, ImagePlay, Play } from "lucide-react";
 
+export function FacebookIcon({ className, size = 24, strokeWidth = 2 }: { className?: string; size?: number; strokeWidth?: number }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13.5 21v-8h2.75l.4-3h-3.15V8.08c0-.87.24-1.46 1.5-1.46h1.8V3.94c-.31-.04-1.38-.14-2.63-.14-2.6 0-4.38 1.59-4.38 4.5V10H7v3h2.79v8h3.71Z" />
+    </svg>
+  );
+}
+
 export type DropdownToolItem = {
   href: string;
   label: string;
@@ -68,6 +76,13 @@ export const DROPDOWN_TOOLS: DropdownToolItem[] = [
     label: "YouTube Video Downloader",
     icon: Play,
     iconBg: "rgba(255, 0, 0, 0.09)",
+    iconColor: "var(--primary)",
+  },
+  {
+    href: "/facebook-video-downloader",
+    label: "Facebook Video Downloader",
+    icon: FacebookIcon,
+    iconBg: "rgba(24, 119, 242, 0.10)",
     iconColor: "var(--primary)",
   },
 ];

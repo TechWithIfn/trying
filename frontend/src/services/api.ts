@@ -79,6 +79,32 @@ export interface ResolveError {
 
 export type ResolveResponse = ResolveSuccess | ResolveError;
 
+export async function resolveFacebookUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
+  const requestUrl = `${getApiBase()}/api/facebook/resolve`;
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      cache: "no-store",
+      signal,
+    });
+  } catch (error) {
+    logApiFailure({ requestType: "pinterest-resolve", requestUrl, status: null, error });
+    throw error;
+  }
+  const body = await response.json().catch(() => null);
+  if (isResolveResponse(body)) return body;
+  return {
+    success: false,
+    error: {
+      code: response.ok ? "TEMPORARY_ERROR" : "FACEBOOK_RESOLVE_FAILED",
+      message: "The server returned an unexpected response.",
+    },
+  };
+}
+
 export type ApiRequestType =
   | "resolve-post"
   | "resolve-sse"
@@ -88,7 +114,8 @@ export type ApiRequestType =
   | "pinterest-resolve"
   | "pinterest-sse"
   | "youtube-resolve"
-  | "youtube-download";
+  | "youtube-download"
+  | "facebook-resolve";
 
 export type ApiFailureCategory =
   | "network"
@@ -561,7 +588,7 @@ export async function resolvePinterestUrl(
       signal,
     });
   } catch (error) {
-    logApiFailure({ requestType: "pinterest-resolve", requestUrl, status: null, error });
+    logApiFailure({ requestType: "facebook-resolve", requestUrl, status: null, error });
     throw error;
   }
   if (!response.ok) {

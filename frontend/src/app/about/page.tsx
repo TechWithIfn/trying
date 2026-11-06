@@ -5,7 +5,7 @@ import { SITE_URL } from "@/config/site";
 
 const ABOUT_TITLE = "About Downloadit – Independent Public-Media Downloader";
 const ABOUT_DESCRIPTION =
-  "Learn who runs Downloadit, how its independent Instagram, Pinterest and YouTube downloader works, and what it does not access.";
+  "Learn about Downloadit, how its independent Instagram, Pinterest, YouTube and Facebook downloader works, and what it does not access.";
 
 export const metadata: Metadata = {
   title: { absolute: ABOUT_TITLE },
@@ -54,25 +54,23 @@ export default function AboutPage() {
       <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
       <p>
         Downloadit is a free tool for saving media from public Instagram,
-        Pinterest and YouTube links.
+        Pinterest, YouTube and Facebook links.
         Paste a link, preview what is found, and download it to your phone,
         tablet or desktop. No account, no app install, no login — that is the
         whole idea.
       </p>
       <h2 className="text-[20px] font-bold text-fg">Why it was built</h2>
       <p>
-        It was built out of a small, everyday annoyance: Instagram has no save
-        button. People screenshot images and lose quality, or screen-record
-        clips and get something barely watchable. I wanted one page with one
-        field that skips all of that — paste a public link, get the original
-        file, done. No popups in the way, no password asked, nothing to sign
-        up for.
+        It was built to make saving publicly accessible media clearer and more
+        convenient. The workflow is intentionally simple: paste a public link,
+        preview the available file, and save it. No popups in the way, no
+        password asked, and nothing to sign up for.
       </p>
       <h2 className="text-[20px] font-bold text-fg">Who runs Downloadit</h2>
       <p>
-        Downloadit is maintained by an independent web developer who started the
-        project in 2026 to make public-media saving clearer. The service is kept
-        deliberately small, and support is handled through the{" "}
+        Downloadit is an independent web service focused on public-media
+        downloads. The service is kept deliberately small, and support is
+        handled through the{" "}
         <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">
           Contact page
         </Link>
@@ -126,7 +124,8 @@ export default function AboutPage() {
         stories keep whatever image or video format they were posted in. Downloadit also supports{" "}
         <Link href="/pinterest-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest videos</Link>,{" "}
         <Link href="/pinterest-image-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest images</Link> and{" "}
-        <Link href="/youtube-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public YouTube videos</Link>. The{" "}
+        <Link href="/youtube-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public YouTube videos</Link> and{" "}
+        <Link href="/facebook-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public Facebook videos</Link>. The{" "}
         <Link href="/help" className="font-semibold text-fg transition-colors hover:text-primary">Help page</Link>{" "}
         walks through each of these with troubleshooting for the common
         failures.
@@ -134,11 +133,11 @@ export default function AboutPage() {
       <h2 className="text-[20px] font-bold text-fg">Public content only</h2>
       <p>
         One rule governs everything: public content only. The test is what a
-        logged-out stranger can view. Private accounts, Close Friends,
-        deleted posts and expired stories fail that test and return a clear
-        message instead of a file. Access controls are never bypassed, and
-        nothing on this site will ever ask for your Instagram password to get
-        around them.
+        logged-out stranger can view. Private accounts, private boards,
+        deleted posts, expired stories and login-walled videos fail that test
+        and return a clear message instead of a file. Access controls are never
+        bypassed, and the service does not ask for social-media passwords or
+        account credentials.
       </p>
       <h2 className="text-[20px] font-bold text-fg">Privacy by design</h2>
       <p>

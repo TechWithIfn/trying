@@ -65,10 +65,15 @@ export interface YouTubeToolPage extends BaseToolPage {
   platform: "youtube";
 }
 
+export interface FacebookToolPage extends BaseToolPage {
+  platform: "facebook";
+}
+
 export type ToolPageConfig =
   | InstagramToolPage
   | PinterestToolPage
-  | YouTubeToolPage;
+  | YouTubeToolPage
+  | FacebookToolPage;
 
 export const TOOL_PAGES = {
   instagramReels: {
@@ -101,7 +106,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Video",
     initialTab: "videos",
     trust: ["No account required", "Public videos only", "Preview before saving"],
-    seoTitle: "Instagram Video Downloader – Save Videos as MP4 | Downloadit",
+    seoTitle: "Instagram Video Downloader – Download Reels, Photos & Videos | Downloadit",
     seoDescription:
       "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
   },
@@ -174,7 +179,7 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Preview before downloading",
     ],
-    seoTitle: "Pinterest Video Downloader – Save MP4 Free | Downloadit",
+    seoTitle: "Pinterest Video Downloader – Download Videos & Images | Downloadit",
     seoDescription:
       "Free Pinterest video downloader. Paste a public pin link and save Pinterest videos as MP4 in original quality. No login, no watermark, no app needed.",
   },
@@ -217,9 +222,25 @@ export const TOOL_PAGES = {
       "Public videos only",
       "MP4 video or MP3/M4A audio",
     ],
-    seoTitle: "YouTube Video Downloader – Download YouTube Videos & MP3 Free",
+    seoTitle: "YouTube Video Downloader – Download Videos & Audio | Downloadit",
     seoDescription:
       "Free YouTube video downloader. Paste a public YouTube link, choose an available MP4 quality (up to 1080p), or extract the audio as MP3. No login, no app, no watermark added.",
+  },
+  facebookVideo: {
+    platform: "facebook",
+    path: "/facebook-video-downloader",
+    name: "Facebook Video Downloader",
+    titleA: "Facebook Video ",
+    titleB: "Downloader",
+    badge: "Facebook Video Downloader · Free & Easy",
+    description:
+      "Save publicly accessible Facebook videos, Reels and Watch videos as MP4. Paste a link, preview it, and download without a Facebook login.",
+    placeholder: "Paste a public Facebook video, Reel or Watch URL",
+    buttonLabel: "Get Video",
+    trust: ["Public videos only", "No login required", "Preview before saving"],
+    seoTitle: "Facebook Video Downloader – Download Facebook Reels & Videos | Downloadit",
+    seoDescription:
+      "Download public Facebook videos, Reels, and Watch videos online with Downloadit. Paste a Facebook video link, preview the video, and download it easily.",
   },
 } as const satisfies Record<string, ToolPageConfig>;
 

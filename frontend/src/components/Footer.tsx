@@ -57,6 +57,7 @@ export default function Footer() {
     { label: "Pinterest Video Downloader", href: "/pinterest-video-downloader" },
     { label: "Pinterest Image & Carousel Downloader", href: "/pinterest-image-downloader" },
     { label: "YouTube Video Downloader", href: "/youtube-video-downloader" },
+    { label: "Facebook Video Downloader", href: "/facebook-video-downloader" },
   ];
 
   const RESOURCE_LINKS = [

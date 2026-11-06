@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Globe, HelpCircle, Download, Menu, X, Check, Home as HomeIcon, Film, Video, Image as ImageIcon, Music2, Clock, Shield, FileText, ChevronDown, Info, Scale, ScrollText, Newspaper, Pin, ImagePlay, Play } from "lucide-react";
 import { useLanguage, LANGUAGES } from "@/i18n";
 import type { DownloaderTab } from "@/components/HeroDownloader";
-import ToolCategoryDropdown from "@/components/ToolCategoryDropdown";
+import ToolCategoryDropdown, { FacebookIcon } from "@/components/ToolCategoryDropdown";
 
 interface HeaderProps {
   activeDownloaderTab?: DownloaderTab | null;
@@ -246,6 +246,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             ["/pinterest-video-downloader", "Pinterest Video Downloader", Pin, "bg-rose-500/10"] as const,
             ["/pinterest-image-downloader", "Pinterest Image & Carousel Downloader", ImagePlay, "bg-rose-500/10"] as const,
             ["/youtube-video-downloader", "YouTube Video Downloader", Play, "bg-red-500/10"] as const,
+            ["/facebook-video-downloader", "Facebook Video Downloader", FacebookIcon, "bg-blue-500/10"] as const,
           ]).map(([href, label, Icon, bg]) => {
             const active = pathname === href;
             return (
