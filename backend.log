@@ -1,17 +1,17 @@
-
-> downloadit@0.1.0 dev:backend
-> cd backend && npm run dev
-
-
-> downloadit-backend@0.1.0 dev
-> tsx watch src/server.ts
-
-[2026-10-15T19:40:49.248Z] [INFO] [background] scheduled provider-cache-sweep {"intervalMs":60000}
-[2026-10-15T19:40:49.257Z] [INFO] [background] scheduled rate-limit-sweep {"intervalMs":60000}
-[2026-10-15T19:40:49.261Z] [INFO] [background] scheduled audio-temp-sweep {"intervalMs":600000}
-[2026-10-15T19:40:49.267Z] [INFO] Downloadit backend running on port 3001
-[2026-10-15T19:40:49.269Z] [INFO] Configuration loaded {"NODE_ENV":"development","PORT":3001,"RESOLVER_PROVIDER":"puppeteer","CORS_ORIGIN":"http://localhost:3000","RESOLVER_TIMEOUT_MS":"60000","dotenvLoaded":true}
-[2026-10-15T19:40:49.270Z] [INFO] Puppeteer provider active — headless Chrome will resolve Instagram URLs
-[2026-10-15T19:40:49.270Z] [INFO] Audio provider status {"audioProvider":"not-configured","detail":"Set AUDIO_PROVIDER_URL + AUDIO_PROVIDER_KEY to enable direct audio-page resolution"}
-[2026-10-15T19:40:49.270Z] [INFO] Story provider status {"storyProvider":"auto","storyProviderConfigured":true,"detail":"Set STORY_PROVIDER_URL + STORY_PROVIDER_API_KEY to resolve Stories via an external provider"}
-[2026-10-15T19:40:49.271Z] [INFO] Workload capacity {"capacity":{"workloads":[{"name":"request","limit":256,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"resolve","limit":64,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"provider","limit":24,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"puppeteer","limit":6,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"audio","limit":4,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"ffmpeg","limit":2,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"stream","limit":128,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"download","limit":64,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"probe","limit":12,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0}],"memory":{"rssMb":89,"heapUsedMb":14.3,"heapTotalMb":32.8},"draining":false,"uptimeSeconds":1}}
+[2026-11-07T11:30:21.374Z] [INFO] [background] scheduled provider-cache-sweep {"intervalMs":60000}
+[2026-11-07T11:30:21.382Z] [INFO] [background] scheduled rate-limit-sweep {"intervalMs":60000}
+[2026-11-07T11:30:21.384Z] [INFO] [background] scheduled audio-temp-sweep {"intervalMs":600000}
+◇ injected env (1) from ..\config\.env
+◇ injected env (0) from config\.env
+◇ injected env (15) from .env
+[2026-11-07T11:30:21.392Z] [INFO] Downloadit backend running on port 3001
+[2026-11-07T11:30:21.392Z] [INFO] Configuration loaded {"NODE_ENV":"development","PORT":3001,"RESOLVER_PROVIDER":"puppeteer","CORS_ORIGIN":"http://localhost:3000","RESOLVER_TIMEOUT_MS":"60000","dotenvLoaded":true}
+[2026-11-07T11:30:21.392Z] [INFO] Puppeteer provider active — headless Chrome will resolve Instagram URLs
+[2026-11-07T11:30:21.392Z] [INFO] Audio provider status {"audioProvider":"not-configured","detail":"Set AUDIO_PROVIDER_URL + AUDIO_PROVIDER_KEY to enable direct audio-page resolution"}
+[2026-11-07T11:30:21.392Z] [INFO] Story provider status {"storyProvider":"auto","storyProviderConfigured":true,"detail":"Set STORY_PROVIDER_URL + STORY_PROVIDER_API_KEY to resolve Stories via an external provider"}
+[2026-11-07T11:30:21.393Z] [INFO] Workload capacity {"capacity":{"workloads":[{"name":"request","limit":256,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"resolve","limit":64,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"provider","limit":24,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"puppeteer","limit":6,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"audio","limit":4,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"ffmpeg","limit":2,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"stream","limit":128,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"download","limit":64,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"probe","limit":12,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"youtubeResolve","limit":4,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0},{"name":"youtube","limit":2,"inFlight":0,"queued":0,"peak":0,"admitted":0,"rejected":0,"reclaimed":0,"utilization":0}],"memory":{"rssMb":74,"heapUsedMb":21.2,"heapTotalMb":32.3},"draining":false,"uptimeSeconds":0}}
+[2026-11-07T11:30:21.393Z] [INFO] YouTube media engine startup {"platform":"win32","arch":"x64","ytdlpPathConfigured":false,"ffmpegPathConfigured":false}
+[2026-11-07T11:30:21.406Z] [WARN] Environment configuration {"warning":"Instagram session is configured without a csrftoken (set INSTAGRAM_CSRFTOKEN or include csrftoken= in INSTAGRAM_COOKIE from the same browser session): authenticated Instagram reads will likely fail and Story resolution will stay anonymous."}
+[2026-11-07T11:30:21.442Z] [INFO] [FFMPEG] executable resolved {"available":true,"version":"6.1.1-essentials_build-www.gyan.dev","source":"staged"}
+[2026-11-07T11:30:24.057Z] [INFO] [YOUTUBE] yt-dlp executable resolved {"path":"C:\\Users\\ansar\\Desktop\\test apper\\backend\\bin\\yt-dlp.exe","version":"2026.08.19","source":"bundled"}
+[2026-11-07T11:30:24.057Z] [INFO] YouTube media engine status {"platform":"win32","ytDlpAvailable":true,"ytDlpPath":"C:\\Users\\ansar\\Desktop\\test apper\\backend\\bin\\yt-dlp.exe","ytDlpVersion":"2026.08.19","ytDlpOutdated":false,"ffmpegAvailable":true,"ffmpegPath":"C:\\Users\\ansar\\Desktop\\test apper\\backend\\bin\\ffmpeg.exe","ffmpegVersion":"6.1.1-essentials_build-www.gyan.dev"}

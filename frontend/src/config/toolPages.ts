@@ -95,7 +95,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Reels Downloader · Free & Fast",
     description:
       "Drop a public Instagram Reels link into the downloader and save the original MP4 — preview it first, no login, nothing to install.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Download Reel",
     initialTab: "reels",
     trust: ["No account required", "Public Reels only", "Preview before saving"],
@@ -106,19 +106,19 @@ export const TOOL_PAGES = {
   instagramVideo: {
     platform: "instagram",
     path: "/instagram-video-downloader",
-    name: "Instagram Video Downloader",
-    titleA: "Instagram Video ",
+    name: "Instagram Video, Reels & Photo Downloader",
+    titleA: "Instagram Video, Reels & Photo ",
     titleB: "Downloader",
-    badge: "Instagram Video Downloader · Free & Fast",
+    badge: "Instagram Downloader · Free & Fast",
     description:
-      "Save public Instagram videos and long clips as MP4 for offline watching — preview the file first, no account needed.",
-    placeholder: "Paste URL",
-    buttonLabel: "Download Video",
+      "Download supported public Instagram media quickly and easily with Downloadit.",
+    placeholder: "Paste link",
+    buttonLabel: "Download Media",
     initialTab: "videos",
     trust: ["No account required", "Public videos only", "Preview before saving"],
-    seoTitle: "Instagram Video Downloader – Reels, Photos & Carousels | Downloadit",
+    seoTitle: "Instagram Downloader – Reels, Videos & Photos | Downloadit",
     seoDescription:
-      "Download public Instagram videos and Reels as MP4 in original quality. Paste a link, preview in HD and save — free, no login required.",
+      "Download supported public Instagram media quickly and easily with Downloadit. Paste a link, preview in HD and save — free, no login required.",
   },
   instagramPhoto: {
     platform: "instagram",
@@ -129,7 +129,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Photo Downloader · Free & Fast",
     description:
       "Download public Instagram photos and full carousels at original resolution — flip through the slides and save the ones you want.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Download Photo",
     initialTab: "photos",
     trust: ["No account required", "Public posts only", "Original image quality"],
@@ -146,7 +146,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Story Downloader · Free & Fast",
     description:
       "Save a public Instagram story as image or MP4 while it's still live — after 24 hours the link goes dead.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Download Story",
     initialTab: "stories",
     trust: ["No account required", "Live public Stories only", "Save within 24 hours"],
@@ -163,7 +163,7 @@ export const TOOL_PAGES = {
     badge: "Instagram Audio Downloader · Free & Fast",
     description:
       "Extract the sound from a public Reel or video and save it as one full-length MP3 — Audio mode is preselected for you.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Extract Audio",
     initialTab: "audio",
     trust: ["No account required", "Public Reels and videos only", "Full track as MP3"],
@@ -180,7 +180,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Video Downloader · Free & Easy",
     description:
       "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Download Pin",
     modes: ["any"],
     trust: [
@@ -202,7 +202,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Image Downloader · Free & Easy",
     description:
       "Paste a public Pinterest image pin link, preview the available media, and download the pictures in their original format. The same pin link also works as a Pinterest carousel downloader — no account needed.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Download Pin",
     modes: ["any"],
     trust: [
@@ -224,7 +224,7 @@ export const TOOL_PAGES = {
     badge: "YouTube Video Downloader · Free & Easy",
     description:
       "Paste a public YouTube video link, choose an available quality up to 1080p, and download MP4 — or extract the audio as MP3 or M4A. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste URL",
+    placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: [
       "Free to use",
@@ -245,7 +245,7 @@ export const TOOL_PAGES = {
     badge: "Facebook Video Downloader · Free & Easy",
     description:
       "Save publicly accessible Facebook videos, Reels and Watch videos as MP4. Paste a link, preview it, and download without a Facebook login.",
-    placeholder: "Paste a public Facebook video, Reel or Watch URL",
+    placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: ["Public videos only", "No login required", "Preview before saving"],
     seoTitle: "Facebook Video Downloader – Download Public Videos & Reels | Downloadit",
@@ -261,7 +261,7 @@ export const TOOL_PAGES = {
     badge: "Twitter/X Video Downloader · Free & Easy",
     description:
       "Download publicly accessible Twitter/X videos as MP4. Paste a public post link, preview the available video, and save it without a login.",
-    placeholder: "Paste a public Twitter or X post URL",
+    placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: ["Public posts only", "No login required", "Preview before saving"],
     seoTitle: "Twitter Video Downloader – Download X Videos Online | Downloadit",
@@ -277,7 +277,7 @@ export const TOOL_PAGES = {
     badge: "Threads Video Downloader · Free & Easy",
     description:
       "Download videos and images from public Threads posts. Paste a link, preview supported media, and save it without a login.",
-    placeholder: "Paste a public Threads post URL",
+    placeholder: "Paste link",
     buttonLabel: "Get Media",
     trust: ["Public posts only", "No login required", "Video and images supported"],
     seoTitle: "Threads Video Downloader – Download Threads Videos Online | Downloadit",

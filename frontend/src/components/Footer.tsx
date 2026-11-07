@@ -1,196 +1,195 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
 import Link from "next/link";
-import { SUPPORT_EMAIL, supportMailto } from "@/config/site";
-import { useLanguage } from "@/i18n";
+import { Download, Globe } from "lucide-react";
+import { useLanguage, LANGUAGES } from "@/i18n";
+import {
+  FacebookIcon,
+  InstagramIcon,
+  PinterestIcon,
+  ThreadsIcon,
+  TwitterIcon,
+  YouTubeIcon,
+} from "@/components/ToolCategoryDropdown";
 
-function LinkColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
-  return (
-    <nav aria-label={title}>
-      <p className="text-[14px] font-bold uppercase tracking-[0.1em] text-fg">{title}</p>
-      <ul className="mt-4 space-y-2">
-        {links.map((link) => {
-          const isPage = link.href.startsWith("/");
-          const className = "flex min-h-[44px] items-center gap-2 text-[14px] text-fg-muted transition-colors hover:text-primary";
-          return (
-            <li key={link.label}>
-              {isPage ? (
-                <Link href={link.href} className={className}>
-                  {link.label}
-                </Link>
-              ) : (
-                <a href={link.href} className={className}>
-                  {link.label}
-                </a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
-}
+const POPULAR_DOWNLOADERS = [
+  { label: "Instagram Downloader", href: "/instagram-video-downloader", Icon: InstagramIcon, color: "#ec5fa8" },
+  { label: "Pinterest Downloader", href: "/pinterest-video-downloader", Icon: PinterestIcon, color: "#e60023" },
+  { label: "YouTube Downloader", href: "/youtube-video-downloader", Icon: YouTubeIcon, color: "#ff0000" },
+  { label: "Facebook Downloader", href: "/facebook-video-downloader", Icon: FacebookIcon, color: "#1877f2" },
+  { label: "Twitter/X Downloader", href: "/twitter-video-downloader", Icon: TwitterIcon, color: "#0f172a" },
+  { label: "Threads Downloader", href: "/threads-video-downloader", Icon: ThreadsIcon, color: "#0f172a" },
+] as const;
 
-function SubColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-[13px] font-medium text-fg-muted uppercase tracking-[0.08em]">{title}</p>
-      <ul className="mt-1 space-y-1">
-        {links.map((link) => {
-          const isPage = link.href.startsWith("/");
-          const className = "flex min-h-[40px] items-center gap-2 text-[13px] text-fg-muted transition-colors hover:text-primary";
-          return (
-            <li key={link.label}>
-              {isPage ? (
-                <Link href={link.href} className={className}>
-                  {link.label}
-                </Link>
-              ) : (
-                <a href={link.href} className={className}>
-                  {link.label}
-                </a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
+const COMPANY_LINKS = [
+  { label: "About Us", href: "/about" },
+  { label: "Contact Us", href: "/contact" },
+  { label: "Blog", href: "/blog" },
+  { label: "Help Center", href: "/help" },
+] as const;
+
+const LEGAL_LINKS = [
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Disclaimer", href: "/disclaimer" },
+  { label: "DMCA / Copyright Policy", href: "/dmca" },
+] as const;
+
+const FOOTER_HEADING =
+  "text-[12px] font-bold uppercase tracking-[0.12em] text-fg";
 
 export default function Footer() {
-  const { t } = useLanguage();
-  // Resolved after mount so the statically prerendered HTML (baked at build
-  // time) and the first client render are byte-identical — computing the
-  // year during render would hydrate-mismatch whenever build year and view
-  // year differ.
+  const { t, lang, setLang } = useLanguage();
   const [year, setYear] = useState<number | null>(null);
-  useEffect(() => {
-    // Deferred (repo convention) to avoid a synchronous setState in effect.
-    queueMicrotask(() => {
-      setYear(new Date().getFullYear());
-    });
-  }, []);
-
-  const PRODUCT_LINKS = [
-    { label: "Instagram Reels Downloader", href: "/instagram-reels-downloader" },
-    { label: "Instagram Video Downloader", href: "/instagram-video-downloader" },
-    { label: "Instagram Photo & Carousel Downloader", href: "/instagram-photo-downloader" },
-    { label: "Instagram Story Downloader", href: "/instagram-story-downloader" },
-    { label: "Instagram Audio Downloader", href: "/instagram-audio-downloader" },
-    { label: "Pinterest Video Downloader", href: "/pinterest-video-downloader" },
-    { label: "Pinterest Image & Carousel Downloader", href: "/pinterest-image-downloader" },
-    { label: "YouTube Video Downloader", href: "/youtube-video-downloader" },
-    { label: "Facebook Video Downloader", href: "/facebook-video-downloader" },
-    { label: "Twitter/X Video Downloader", href: "/twitter-video-downloader" },
-    { label: "Threads Video Downloader", href: "/threads-video-downloader" },
-  ];
-
-  const RESOURCE_LINKS = [
-    { label: "How It Works", href: "/#how-it-works" },
-    { label: "Features", href: "/#features" },
-    { label: "FAQ", href: "/#faq" },
-    { label: "Help", href: "/help" },
-    { label: "Blog", href: "/blog" },
-    { label: "About", href: "/about" },
-    { label: "Contact", href: "/contact" },
-  ];
-
-  const LEGAL_LINKS = [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "DMCA / Copyright", href: "/dmca" },
-    { label: "Disclaimer", href: "/disclaimer" },
-    { label: "Advertise", href: "/advertise-with-us" },
-  ];
-
-  // Product links split into two balanced subcolumns
-  const mid = Math.ceil(PRODUCT_LINKS.length / 2);
-  const productLeft = PRODUCT_LINKS.slice(0, mid);
-  const productRight = PRODUCT_LINKS.slice(mid);
-
-  // Resource links split into two columns for tablet/mobile
-  const resMid = Math.ceil(RESOURCE_LINKS.length / 2);
-  const resourceLeft = RESOURCE_LINKS.slice(0, resMid);
-  const resourceRight = RESOURCE_LINKS.slice(resMid);
-
-  // Legal links
-  const legalLinks = LEGAL_LINKS;
 
   useEffect(() => {
-    // Deferred (repo convention) to avoid a synchronous setState in effect.
     queueMicrotask(() => {
       setYear(new Date().getFullYear());
     });
   }, []);
 
   return (
-    <footer className="mt-20 border-t border-border px-4 py-12 sm:px-6 lg:px-8 xl:px-12">
-      <div className="mx-auto max-w-[1200px]">
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_1.2fr_1fr_1fr]">
-          {/* Column 1 — Brand */}
-          <div>
-            <Link href="/" className="inline-flex items-center gap-2.5 hover:text-primary" aria-label={t.footer.homeLabel}>
+    <footer className="mt-14 border-t border-border bg-card/60 px-4 pb-10 pt-12 sm:mt-16 sm:px-6 sm:pt-14 lg:px-8 xl:px-12">
+      <div className="mx-auto max-w-[1240px]">
+        {/* 4-column organized layout */}
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+          {/* Column 1 – Downloadit */}
+          <div className="space-y-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2.5 text-fg no-underline"
+              aria-label={t.footer.homeLabel}
+            >
               <span
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-xs"
                 style={{ background: "var(--brand-gradient)" }}
               >
-                <Download className="h-[18px] w-[18px]" strokeWidth={2.2} />
+                <Download className="h-5 w-5" strokeWidth={2.4} />
               </span>
-              <span className="text-[18px] font-bold text-fg">
-                Download<span className="text-primary">it</span>
+              <span className="text-[20px] font-bold tracking-tight">
+                Download<span className="text-primary">it</span>.pro
               </span>
             </Link>
-            <p className="mt-3 text-[14px] font-semibold text-fg">
-              {t.footer.tagline}
+
+            <p className="text-[13px] leading-[1.7] text-fg-muted max-w-[280px]">
+              Fast, free, and secure multi-platform media downloader. Save public videos, photos, reels, and audio from your favorite platforms in original quality with zero login.
             </p>
-            <p className="mt-2 max-w-[300px] text-[14px] leading-[1.65] text-fg-muted">
-              {t.footer.desc}
-            </p>
-            <div className="mt-4">
-              <p className="text-[14px] font-bold uppercase tracking-[0.1em] text-fg">{t.footer.email}</p>
-              <a
-                href={supportMailto()}
-                aria-label="Email Downloadit support"
-                className="mt-1 inline-flex min-h-[44px] items-center gap-2 break-all text-[14px] font-medium text-fg-muted transition-colors hover:text-primary"
-                style={{ overflowWrap: "anywhere" }}
-              >
-                {SUPPORT_EMAIL}
-              </a>
+
+            {/* Supported platform icons */}
+            <div className="pt-1">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-fg-subtle">
+                Supported Platforms
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {POPULAR_DOWNLOADERS.map(({ label, href, Icon, color }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-label={label}
+                    title={label}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-fg-muted transition-all hover:scale-110 hover:border-primary/40 hover:bg-primary-light"
+                    style={{ color }}
+                  >
+                    <Icon size={17} />
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Column 2 — Product (two subcolumns) */}
-          <div className="flex flex-col lg:flex-row gap-2">
-            <SubColumn title="Instagram" links={productLeft} />
-            <SubColumn title="Other Platforms" links={productRight} />
-          </div>
+          {/* Column 2 – Popular Downloaders */}
+          <nav aria-label="Popular Downloaders" className="space-y-3">
+            <h2 className={FOOTER_HEADING}>Popular Downloaders</h2>
+            <ul className="space-y-2">
+              {POPULAR_DOWNLOADERS.map(({ label, href, Icon, color }) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="group flex items-center gap-2.5 text-[13.5px] text-fg-muted transition-colors hover:text-primary"
+                  >
+                    <span
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-bg transition-colors group-hover:bg-primary-light"
+                      style={{ color }}
+                      aria-hidden="true"
+                    >
+                      <Icon size={13} />
+                    </span>
+                    <span>{label}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-          {/* Column 3 — Resources (two columns on tablet, stacked on mobile) */}
-          <div className="lg:grid lg:grid-cols-2 gap-4">
-            <div>
-              <SubColumn title="Instagram" links={resourceLeft} />
-            </div>
-            <div>
-              <SubColumn title="Other" links={resourceRight} />
-            </div>
-          </div>
+          {/* Column 3 – Company */}
+          <nav aria-label="Company Links" className="space-y-3">
+            <h2 className={FOOTER_HEADING}>Company</h2>
+            <ul className="space-y-2">
+              {COMPANY_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="flex items-center text-[13.5px] text-fg-muted transition-colors hover:text-primary"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-          {/* Column 4 — Legal */}
-          <div>
-            <SubColumn title="Legal" links={legalLinks} />
-          </div>
+          {/* Column 4 – Legal */}
+          <nav aria-label="Legal Links" className="space-y-3">
+            <h2 className={FOOTER_HEADING}>Legal &amp; Policy</h2>
+            <ul className="space-y-2">
+              {LEGAL_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="flex items-center text-[13.5px] text-fg-muted transition-colors hover:text-primary"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="pt-2">
+              <p className="text-[11.5px] leading-relaxed text-fg-subtle">
+                Downloadit is an independent utility and is not affiliated with Instagram, Meta, Pinterest, YouTube, Google, or X Corp.
+              </p>
+            </div>
+          </nav>
         </div>
 
-        {/* Bottom copyright bar */}
-        <div className="mt-6 flex flex-col sm:flex-row gap-4 border-t border-border pt-6">
-          <div className="text-[14px] text-fg-muted">
-            © 2026 Downloadit. All rights reserved.
-          </div>
-          <div className="text-[14px] text-fg-subtle sm:text-right">
-            Made with ♥ for Downloadit.
+        {/* Bottom Section */}
+        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            © {year ?? 2026} Downloadit.pro. All rights reserved.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5 text-fg-muted">
+              <Globe className="h-3.5 w-3.5" />
+              <span>Language:</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  onClick={() => setLang(l.code)}
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                    lang === l.code
+                      ? "bg-primary text-white font-semibold"
+                      : "text-fg-muted hover:bg-primary-light hover:text-primary"
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

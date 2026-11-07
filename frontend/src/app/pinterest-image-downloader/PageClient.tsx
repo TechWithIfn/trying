@@ -1,194 +1,180 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import PinterestDownloader from "@/components/PinterestDownloader";
-import ProseSection from "@/components/ProseSection";
 import { TOOL_PAGES } from "@/config/toolPages";
+import { CheckCircle2, AlertTriangle, Layers } from "lucide-react";
 
 const PAGE = TOOL_PAGES.pinterestImage;
 
 const FAQS = [
   {
-    q: "How do I download Pinterest images?",
-    a: "Open the image pin, tap the share icon and choose Copy link (on desktop you can copy the address bar). Paste that link into the box above and choose Get Media — Auto Detect finds the pictures by default. Preview the result and select Download to save each image.",
+    q: "How do I download Pinterest images in full resolution?",
+    a: "Copy the public pin link, paste it into Downloadit, and tap 'Download Pin'. The tool extracts the highest-resolution original image stored by Pinterest without compressing it.",
   },
   {
-    q: "Does this work as a Pinterest photo downloader and carousel downloader?",
-    a: "Yes. It saves the image behind a public Pinterest image pin, and when a pin exposes more than one image it returns those carousel pictures too — using the same pin link.",
+    q: "Can I download multi-image Pinterest carousel pins?",
+    a: "Yes. When a pin contains multiple photos or slides, Downloadit lets you view and download all the pictures individually or collectively.",
   },
   {
-    q: "Will I get the full-resolution image?",
-    a: "The tool picks the largest image the pin exposes and preserves its original format (JPEG, PNG or WebP) wherever possible, so you get the sharpest available copy rather than a downscaled thumbnail.",
+    q: "What image formats are supported?",
+    a: "Original JPG, PNG, and WebP images are supported in whatever format and aspect ratio the creator uploaded them.",
   },
   {
-    q: "Can I download every picture in a Pinterest carousel?",
-    a: "When a pin exposes more than one image, the result panel shows them one at a time with previous/next controls, and each picture downloads individually. If a pin exposes only a single image, just that one is shown.",
+    q: "Do I need a Pinterest account to download pictures?",
+    a: "No. You never need to log in to Pinterest. Downloadit works anonymously with any publicly viewable pin.",
   },
-  {
-    q: "What if the pin is a video, not an image?",
-    a: "Use the Pinterest Video Downloader to save the MP4. This page handles image and carousel pins only, and it will tell you plainly when a link resolves to a video rather than returning the wrong file.",
-  },
-  {
-    q: "Why did a Pinterest pin image not download?",
-    a: "Deleted pins, private boards, login-walled pins and region-restricted pins cannot be fetched anonymously. The page names the exact reason — invalid link, removed pin, restricted content, or an upstream problem — and never substitutes a placeholder image.",
-  },
-  {
-    q: "Is there a watermark or quality loss?",
-    a: "No. The file is the original Pinterest image served by the public page; Downloadit does not re-encode it or add any branding.",
-  },
-  { q: "Can I use this on an iPhone?", a: "Yes. Open Safari, copy a public pin link, paste it into Downloadit, and save the result to the Files app." },
-  { q: "Can I use this on Android?", a: "Yes. Use a current browser, paste the public pin URL, and find the saved image in Downloads or your file manager." },
-  { q: "Does it work on Windows and Mac?", a: "Yes. A current browser on Windows or Mac can resolve public pins and save the image to its normal download folder." },
-  { q: "What does Auto Detect do?", a: "Auto Detect finds the media by default. It reads the public pin and selects the supported image or carousel media it exposes." },
-  { q: "Can I download a private board?", a: "No. Downloadit only handles public pins that can be viewed without signing in. Private boards and secret pins are not fetched." },
-  { q: "Why does the image preview fail?", a: "The pin may be deleted, restricted, login-walled, or its signed media URL may have expired. Open the pin again and submit its current public link." },
-  { q: "Does the tool change the original image?", a: "No. It does not add a watermark or intentionally re-encode the file. It returns the best available format exposed by the public pin." },
-  { q: "How many carousel images can I save?", a: "The result includes the image items the public pin exposes. Each available item can be previewed and downloaded individually." },
-  { q: "Can this page download Pinterest videos?", a: "No. Use the Pinterest Video Downloader for public video pins. This page is for image and carousel media." },
-  { q: "Where are saved images stored?", a: "Your browser chooses the location. Check Files on iPhone, Downloads on Android, or the browser download folder on Windows and Mac." },
 ];
 
-export default function PinterestImageDownloaderPageClient() {
-  const [expanded, setExpanded] = useState(false);
-
+export default function PinterestImagePageClient() {
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <PinterestDownloader
-          badge={PAGE.badge}
           titleA={PAGE.titleA}
           titleB={PAGE.titleB}
           subtitle={PAGE.description}
+          badge={PAGE.badge}
           placeholder={PAGE.placeholder}
           buttonLabel={PAGE.buttonLabel}
           modes={PAGE.modes}
           benefits={PAGE.trust}
         />
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
-          <Link
-            href="/"
-            className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
-          >
-            ← Back to Home
-          </Link>
-          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
-            What the Pinterest Image &amp; Carousel downloader does
+
+        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
+          <div className="mb-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Back to Home Downloader</span>
+            </Link>
+          </div>
+
+          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+            What the Pinterest Image &amp; Carousel Downloader Does
           </h2>
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
-          >
-            {expanded ? "Show less about Pinterest Images" : "Know more about Pinterest Images"}
-            <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
-          </button>
-          {expanded && (
-            <>
-              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-                Save the picture behind a public Pinterest pin in its original quality — the same link works as a Pinterest carousel downloader when a pin exposes several images.
-              </p>
-              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-                Paste the pin link, preview the exact image, then download it in its original format. No login, no watermark, nothing to install.
-              </p>
 
-              <ProseSection>
-              <h2>How to download Pinterest images, step by step</h2>
-              <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-                <li>Open the image pin you want to keep — tap it so it opens on its own.</li>
-                <li>Use the share icon and choose Copy link (desktop users can copy the address bar).</li>
-                <li>Paste the link into the box at the top of this page. Auto Detect finds the media by default.</li>
-                <li>Select Get Media, then confirm the preview is the correct image.</li>
-                <li>Select Download and the picture is saved in its original format.</li>
-              </ol>
-
-              <h2 className="mt-10">Pinterest photo and carousel support</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                A Pinterest pin can hold a single image or a carousel of several. This Pinterest photo downloader returns the images the pin actually exposes: a single picture for a standard pin, or the carousel items shown one at a time with previous/next controls when the pin has more than one. Nothing is invented — if only one image is published, only one is shown.
+          <div className="mt-6 space-y-8 text-fg">
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Pinterest Image Downloader?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                A Pinterest Image Downloader is a dedicated web tool that extracts the full-resolution source photograph behind any public Pinterest pin or multi-image carousel, saving it in crystal-clear quality without screenshot compression or watermarks.
               </p>
+            </div>
 
-              <h2 className="mt-10">Pinterest pin image download quality and format</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                The Pinterest image saver selects the largest variant the pin publishes and keeps its format — JPEG, PNG or WebP — instead of converting it. That means the sharpest available copy with no added compression or branding.
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                Pinterest displays scaled thumbnails in its feed to save bandwidth. Downloadit queries the underlying pin JSON and metadata to find the uncompressed original asset URL (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">originals/</code> branch), giving you direct access to the full-size photograph.
               </p>
+            </div>
 
-              <h2 className="mt-10">What this Pinterest image downloader cannot fetch</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                Public pins only. Deleted pins, private boards, login-walled and region-restricted pins cannot be resolved anonymously, and the page reports the real reason rather than showing an unrelated image. This page handles image and carousel pins — to save a video pin, use the{" "}
-                <Link href="/pinterest-video-downloader" className="font-bold text-primary-strong hover:underline">
-                  Pinterest Video Downloader
-                </Link>
-                .
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                <Layers className="h-5 w-5 text-primary" />
+                Carousel &amp; Image Board Support
+              </h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                If the pin is a carousel containing a gallery of reference images, recipes, or moodboards, Downloadit extracts every slide in the set. You can flip through the gallery and download whichever slides you need.
               </p>
+            </div>
 
-              <h2 className="mt-10">Using Pinterest images responsibly</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                Most images on Pinterest belong to someone — a photographer, a brand, an illustrator. Keep your own pins freely, save others for private reference, and get permission before reusing anyone else&apos;s image. See the{" "}
-                <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and{" "}
-                <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link> for how to request a review. Only download content you own or have permission to use.
-              </p>
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Pinterest Images, Step by Step</h3>
 
-              <h2 className="mt-10">Devices and browsers this page works on</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                There is nothing to install and no account to create, so the page works wherever a public Pinterest link opens: Chrome, Safari, Firefox, Edge or Samsung Internet on Android; Safari or Chrome on iPhone and iPad; any modern browser on Windows, Mac and Linux. Saved pictures land in the browser&apos;s download location — Files under Downloads on iPhone, Files or Gallery on Android, and your downloads folder on a computer.
-              </p>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Any Mobile or Desktop Browser</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Open the Pinterest app or website and select the image pin.</li>
+                    <li>Copy its share link using the <strong className="text-fg">Share</strong> button.</li>
+                    <li>Paste the link into the download box above and click <strong className="text-fg">Download Pin</strong>.</li>
+                    <li>Verify the preview image and tap <strong className="text-fg">Download</strong> to save the high-res file.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
 
-              <h2 className="mt-10">Your privacy on this page</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                Only the public pin link is submitted. Downloadit asks for no Pinterest account, email or password, and there is no sign-in flow — the request carries the link and nothing that identifies who pasted it. The <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> sets out exactly what is processed.
-              </p>
-              </ProseSection>
-
-              <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
-                  { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save Instagram photos & carousels" },
-                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
-                  { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
-                  { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
-                ].map((l) => (
+                  { title: "Highest Resolution Master", desc: "Downloads original images up to 4K resolution rather than feed thumbnails." },
+                  { title: "No Watermark Stamped", desc: "Clean images without site badges, logos, or author text overlays." },
+                  { title: "Fast & Unlimited", desc: "Save wallpaper ideas, aesthetic moodboards, and design references without limit." },
+                  { title: "Zero Registration", desc: "No email, phone number, or login required." },
+                ].map((item) => (
+                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                    <div>
+                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Troubleshooting Pinterest Images
+              </h3>
+              <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
+                <p>
+                  <strong className="text-fg">Secret Boards:</strong> Private or secret pin boards cannot be downloaded because they require private user permissions.
+                </p>
+                <p>
+                  <strong className="text-fg">Broken Pin Links:</strong> If a pin was removed by its uploader, Pinterest erases the master file and Downloadit cannot retrieve it.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
+              <div className="space-y-3">
+                {FAQS.map((item) => (
+                  <div key={item.q} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                    <h4 className="text-[15.5px] font-bold text-fg mb-2">{item.q}</h4>
+                    <p className="text-[14px] leading-relaxed text-fg-muted">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest video pins" },
+                  { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Download Instagram carousels & photos" },
+                  { href: "/threads-video-downloader", label: "Threads Downloader", desc: "Download Threads photos & videos" },
+                  { href: "/", label: "All Downloaders", desc: "Downloadit home downloader" },
+                ].map((tool) => (
                   <Link
-                    key={l.href}
-                    href={l.href}
-                    className="rounded-2xl p-4 hover:bg-primary-light transition-colors"
-                    style={{ border: "1px solid var(--border)", background: "var(--card)" }}
+                    key={tool.href}
+                    href={tool.href}
+                    className="flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-primary-light/40"
                   >
-                    <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
-                    <span className="mt-1 block text-[14px] text-fg-muted">{l.desc}</span>
+                    <span className="text-[14px] font-bold text-primary">{tool.label}</span>
+                    <span className="text-[12px] text-fg-subtle mt-0.5">{tool.desc}</span>
                   </Link>
                 ))}
               </div>
-
-              <ProseSection>
-              <section className="cv-auto mt-12">
-                <h2>Pinterest image download FAQ</h2>
-                <div className="mt-4">
-                  {FAQS.map((item) => (
-                    <div key={item.q}>
-                      <h3>{item.q}</h3>
-                      <p>{item.a}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              </ProseSection>
-
-              <p className="mt-10 text-[12px] text-fg-subtle">
-                See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the{" "}
-                <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or{" "}
-                <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
-              </p>
-            </>
-          )}
+            </div>
+          </div>
         </section>
       </main>
+
       <Footer />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

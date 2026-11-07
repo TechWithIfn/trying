@@ -486,7 +486,7 @@ export default function HelpClient() {
           </ProseSection>
           {/* ── 7. FAQ ── */}
           <ProseSection>
-            <section className="mt-8">
+            <section id="faq" className="mt-8 scroll-mt-24">
               <div className="mb-5 px-1">
                 <SectionTitle>{h.s7title}</SectionTitle>
               </div>

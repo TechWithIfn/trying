@@ -42,6 +42,51 @@ const nextConfig: NextConfig = {
         destination: "https://www.downloadit.pro/:path*",
         permanent: true,
       },
+      {
+        source: "/instagram-downloader",
+        destination: "/instagram-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/pinterest-downloader",
+        destination: "/pinterest-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/youtube-downloader",
+        destination: "/youtube-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/youtube-shorts-downloader",
+        destination: "/youtube-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/facebook-downloader",
+        destination: "/facebook-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/facebook-reels-downloader",
+        destination: "/facebook-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/twitter-downloader",
+        destination: "/twitter-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/twitter-gif-downloader",
+        destination: "/twitter-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/threads-downloader",
+        destination: "/threads-video-downloader",
+        permanent: true,
+      },
     ];
   },
   // NOTE on dev rebuild loops: this project's file watcher is Turbopack's

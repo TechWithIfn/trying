@@ -1,213 +1,236 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
-import ProseSection from "@/components/ProseSection";
 import { TOOL_PAGES } from "@/config/toolPages";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 const PAGE = TOOL_PAGES.instagramVideo;
 
 const FAQS = [
   {
     q: "What counts as a video post here, as opposed to a reel?",
-    a: "On this page, video means the longer grid posts — talks, interviews, match clips, demonstrations — rather than quick vertical reels. In practice you do not have to sort them yourself: paste any public link and the tool detects what it is and opens the right preview.",
+    a: "On this page, video means longer feed posts, presentations, interviews, product demos, and clips rather than quick 9:16 vertical reels. In practice, you do not need to sort them yourself: paste any public Instagram link and Downloadit automatically detects what it is and resolves the right preview.",
   },
   {
-    q: "How much space should I leave for a long video?",
-    a: "Think in minutes, not seconds. A minute of video is roughly a few dozen megabytes, so a ten-minute talk can be several hundred. Check your free storage before a long download, especially on a phone that is nearly full.",
+    q: "How much storage should I leave for a long video?",
+    a: "Think in minutes, not seconds. A minute of full HD video is roughly 20 to 50 megabytes, so a ten-minute interview can easily reach several hundred megabytes. Check your available storage before downloading, especially on mobile devices.",
   },
   {
-    q: "Can I keep a video for a flight and watch it with no internet?",
-    a: "Yes, that is exactly what the MP4 is for. Save it over Wi-Fi beforehand and it plays offline in your gallery app, VLC, or any desktop player, with no connection needed at all.",
+    q: "Can I keep a video for offline watching without internet?",
+    a: "Yes, that is the core purpose of saving the original MP4. Save the file over Wi-Fi beforehand and it will play offline in your gallery, VLC, Apple Files, or any media player without any active network connection.",
   },
   {
-    q: "The video plays fine in the preview but stops halfway after saving. Why?",
-    a: "Almost always a shaky connection or a full disk on a large file. Move back onto stable Wi-Fi, free up space, then paste the post link again so the media address is fresh, and download in one go.",
+    q: "The video plays in preview but fails or stops during saving. Why?",
+    a: "This is usually caused by an unstable Wi-Fi connection, low local disk space, or an expired CDN token. Re-paste the original post link so Downloadit gets a fresh media URL and download in one uninterrupted session.",
   },
   {
-    q: "I pasted a profile link and got the wrong thing. What did I do wrong?",
-    a: "You copied the grid instead of the post. Open the video itself so it fills the screen, then copy that link — the three-dots menu on desktop or Share on mobile — rather than the address of someone's profile page.",
+    q: "I pasted a profile link and got the wrong media. What happened?",
+    a: "You copied the creator's profile page URL instead of a specific post. Tap or click on the individual video so it opens on its own screen, then use the Share menu to copy the link.",
   },
   {
-    q: "Do downloaded videos work in editing or classroom software?",
-    a: "The MP4 is a plain video file, so most editors, players and classroom tools open it directly. If your editor is picky, import the MP4 and export from there — the downloaded file is the starting point, not locked to any app.",
+    q: "Do downloaded videos work in video editors and presentation tools?",
+    a: "Yes. The downloaded file is a standard progressive MP4 with AAC audio. It works natively in Premiere, Final Cut, CapCut, DaVinci Resolve, PowerPoint, Keynote, and Google Slides.",
   },
 ];
 
 export default function VideoDownloaderPageClient() {
-  const [expanded, setExpanded] = useState(false);
-
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <ToolDownloader page={PAGE} />
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
-          <Link
-            href="/"
-            className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
-          >
-            ← Back to Instagram Downloader
-          </Link>
-          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
-            What the Video downloader does
+
+        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
+          <div className="mb-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Back to Home Downloader</span>
+            </Link>
+          </div>
+
+          {/* Heading required by prompt */}
+          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+            What the Video Downloader Does
           </h2>
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
-          >
-            {expanded ? "Show less about Videos" : "Know more about Videos"}
-            <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
-          </button>
-          {expanded && (
-            <>
-              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-                Some things on Instagram cannot be squeezed into a short reel. Paste the link to a public video post and save the MP4 file to store, rewatch and study at your own pace.
+
+          {/* Complete educational content shown by default without any Read More / Know More button */}
+          <div className="mt-6 space-y-8 text-fg">
+            {/* What is a Video Downloader? */}
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Video Downloader?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                A video downloader is an online utility that allows you to save publicly accessible streaming videos from social networks to your personal device as independent video files (such as MP4). Instead of being forced to re-stream the clip every time you want to view it, a downloader lets you store the master video locally for offline playback, reference, archiving, and study.
               </p>
-              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-                The focus here is reference, not quick entertainment. Reels are for the moment; longer videos are for the second and third viewing — pausing halfway, jumping back thirty seconds, watching on a bigger screen with a notebook open.
+            </div>
+
+            {/* How Does It Work? */}
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                When a public video is shared on Instagram, the platform generates a progressive MP4 media stream hosted on Content Delivery Networks (CDNs). When you paste a public URL into Downloadit, our backend resolver inspects the page metadata, extracts the direct source URL of the video stream, and prepares a high-speed download link. No credentials, cookies, or account sessions are required.
               </p>
+            </div>
 
-              <ProseSection>
-              <h2>Who saves longer Instagram videos, and why</h2>
-              <p>
-                Students are the most natural fit. A revision clip, a worked example, a demonstration you want to slow down and follow step by step. A saved MP4 lets you scrub back and forth and watch on a train with no signal, instead of re-streaming the same ten minutes over and over.
+            {/* Supported Platforms */}
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">Supported Platforms</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted mb-3">
+                While this page is optimized specifically for Instagram video content, Downloadit provides dedicated high-speed download engines for six major platforms:
               </p>
-              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-                Creators and small teams treat it as an archive of their own output — product walkthroughs, class recordings, event recaps from a public business account, with the master copy always on a drive. Marketers and researchers keep videos they have permission to study the same way, watching a full-length clip offline with the ability to stop and take notes.
-              </p>
-
-              <div className="mt-12">
-                <h2>How to download a video, step by step</h2>
-                <h3 className="text-[16px] font-bold text-fg">On Android</h3>
-                <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-                  <li>Open the actual video post in the Instagram app — not the profile grid, the post itself.</li>
-                  <li>Tap Share, then Copy link to copy the address of that post.</li>
-                  <li>Open your browser on this page, paste the link into the box, and tap Get Media.</li>
-                  <li>Confirm the preview is the right video. For long clips, switch onto Wi-Fi now.</li>
-                  <li>Tap Download and give it time. The MP4 appears in Downloads when the transfer finishes.</li>
-                </ol>
-                <h3 className="text-[16px] font-bold text-fg">On iPhone</h3>
-                <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-                  <li>Open the video post in the Instagram app and use Share, then Copy link.</li>
-                  <li>Paste the link into the downloader above using Safari.</li>
-                  <li>Tap Get Media and check the preview carefully — long videos all look alike in a list.</li>
-                  <li>Tap Download and stay on Wi-Fi until it completes. The file lands in Files under Downloads.</li>
-                  <li>Play it from Files, or move it into Photos or VLC for easier scrubbing and offline viewing.</li>
-                </ol>
-                <h3 className="text-[16px] font-bold text-fg">On desktop</h3>
-                <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-                  <li>Open the video post in your browser and copy its address — the three-dots menu and Copy Link works too.</li>
-                  <li>Paste the address into the box at the top of this page and click Get Media.</li>
-                  <li>Preview the video, then click Download. Larger files take visibly longer, so keep the tab open.</li>
-                  <li>Find the MP4 in your downloads folder. It opens in any desktop player and imports into most editing tools.</li>
-                </ol>
-              </div>
-
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <h3 className="text-[16px] font-bold text-fg">Format and quality for long videos</h3>
-                  <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Videos save as MP4 in the original HD Instagram streams — same picture, same sound, no conversion and no watermark. The file keeps whatever shape it was uploaded in: landscape, square or vertical.</p>
-                </div>
-                <div>
-                  <h3 className="text-[16px] font-bold text-fg">Why long videos need planning</h3>
-                  <p className="mt-2 text-[14px] leading-[1.6] text-fg-muted">Length is the whole difference from reels. Save over Wi-Fi, check free space first, and download promptly — Instagram signs media addresses for a short window, so an old link may need pasting again.</p>
-                </div>
-              </div>
-
-              <h2 className="mt-12 text-[24px] font-bold text-fg">Videos this page cannot fetch</h2>
-              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-                Private posts, Close Friends posts, restricted and deleted videos are all outside reach — the page names the actual reason instead of handing you a broken file. Login-walled content stays login-walled. If a video disappears halfway through your week, it was most likely removed by the poster, and no link-based tool can bring it back.
-              </p>
-
-              <h2 className="mt-10 text-[20px] font-bold text-fg">Video troubleshooting</h2>
-              <div className="mt-4">
-                <div>
-                  <p><strong className="text-fg">The download stalls on a long video.</strong> Treat it as a connection or storage problem first. Get onto stable Wi-Fi, clear a few hundred megabytes, re-paste the post link for a fresh media address, and let the transfer run without switching apps away.</p>
-                  <p><strong className="text-fg">The saved file will not play on my phone.</strong> Try a different player such as VLC before assuming the file is broken. Gallery apps on some phones struggle with long MP4s that VLC opens without complaint.</p>
-                  <p><strong className="text-fg">I see an expired-link message.</strong> Normal for video: the signed address died. Paste the original post link once more and download without leaving it sitting.</p>
-                  <p><strong className="text-fg">The preview shows someone&apos;s grid, not a video.</strong> You copied a profile URL. Open one single video post and copy its own link instead.</p>
-                </div>
-              </div>
-
-              <h2 className="mt-10 text-[20px] font-bold text-fg">Devices and browsers this page works on</h2>
-              <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
-                The video downloader runs in your browser without requiring software downloads, browser extensions, or account sign-in. It is fully tested on Chrome, Safari, Firefox, Edge, and Samsung Internet on Android; Safari and Chrome on iOS (iPhone &amp; iPad); and all modern web browsers on macOS, Windows, Linux, and ChromeOS. On iOS devices, downloads save to the Files app under Downloads. On Android and desktop devices, videos download directly to your default Downloads folder or Photos/Gallery app.
-              </p>
-
-              <h2 className="mt-10 text-[20px] font-bold text-fg">Your privacy on this page</h2>
-              <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
-                Nothing you paste is tied to you. Downloadit never asks for an Instagram username or password and never asks you to connect an account — you submit a public post link and the file is resolved from it. No login exists to be breached, and the link alone identifies nothing about who requested it. See the <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> for the full details of what is processed.
-              </p>
-
-              <h2 className="mt-10 text-[20px] font-bold text-fg">A note on using other people&apos;s videos</h2>
-              <p className="mt-3 text-[14px] leading-[1.7] text-fg-muted">
-                Long videos often represent real work — a filmed class, an edited interview, a paid production. Keep your own posts freely, save other people&apos;s work for private study, and get written permission before re-uploading or using anyone else&apos;s video in your own channel or ads. If you hold the rights to a video, the <Link href="/dmca" className="font-bold text-primary-strong hover:underline">DMCA page</Link> and <Link href="/terms" className="font-bold text-primary-strong hover:underline">Terms</Link> describe how to ask for a review. Only download content you own or have permission to reuse.
-              </p>
-              </ProseSection>
-
-              <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
-                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
-                  { href: "/instagram-photo-downloader", label: "Instagram Photo & Carousel Downloader", desc: "Save photos and carousels to your gallery" },
-                  { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
-                  { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract MP3 from videos" },
-                  { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest videos as MP4" },
-                  { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images & carousels" },
-                  { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
-                  { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
-                ].map((l) => (
-                  <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
-                    <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
-                    <span className="mt-1 block text-[14px] text-fg-muted">{l.desc}</span>
-                  </Link>
+                  { name: "Instagram", desc: "Videos, Reels, Stories, Photos" },
+                  { name: "Pinterest", desc: "Video pins, Idea pins, Images" },
+                  { name: "YouTube", desc: "Standard videos, Shorts, Audio" },
+                  { name: "Facebook", desc: "Watch videos, Feed clips, Reels" },
+                  { name: "Twitter / X", desc: "Tweet videos, Looped GIFs" },
+                  { name: "Threads", desc: "Post videos and high-res images" },
+                ].map((item) => (
+                  <div key={item.name} className="rounded-xl border border-border bg-card p-3">
+                    <span className="block text-[13.5px] font-bold text-primary">{item.name}</span>
+                    <span className="block text-[11.5px] text-fg-subtle">{item.desc}</span>
+                  </div>
                 ))}
               </div>
+            </div>
 
-              <h2 className="mt-10 text-[18px] font-bold text-fg">Related guides</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {[
-                  { href: "/blog/downloaded-video-no-sound", label: "Why Your Downloaded Video Has No Sound" },
-                  { href: "/blog/instagram-link-expired-not-found", label: "What to Do When a Link Says Expired" },
-                  { href: "/blog/free-phone-storage-saved-videos", label: "How to Free Up Phone Storage" },
-                  { href: "/blog/trim-videos-whatsapp-status", label: "Trimming Videos for WhatsApp Status" },
-                ].map((l) => (
-                  <Link key={l.href} href={l.href} className="rounded-2xl p-4 hover:bg-primary-light transition-colors" style={{ border: "1px solid var(--border)", background: "var(--card)" }}>
-                    <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
-                    <span className="mt-1 block text-[14px] text-fg-muted">Downloadit Blog guide</span>
-                  </Link>
-                ))}
+            {/* What Types of Videos Can Be Downloaded? */}
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">What Types of Videos Can Be Downloaded?</h3>
+              <ul className="list-disc pl-5 space-y-2 text-[15px] sm:text-[16px] leading-[1.7] text-fg-muted">
+                <li><strong className="text-fg">Long-form video posts:</strong> Educational tutorials, demonstrations, speeches, and interviews.</li>
+                <li><strong className="text-fg">Short video clips:</strong> Standard landscape, square, or vertical clips published in user feeds.</li>
+                <li><strong className="text-fg">High-Definition MP4:</strong> Original resolutions including 1080p and 720p with clean audio tracks.</li>
+                <li><strong className="text-fg">Public account media:</strong> Any video visible to a logged-out web visitor without permission barriers.</li>
+              </ul>
+            </div>
+
+            {/* How to Download Videos */}
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Videos, Step by Step</h3>
+
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Android Devices</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Open the Instagram app and navigate to the video post you want to save.</li>
+                    <li>Tap the <strong className="text-fg">Share</strong> button and select <strong className="text-fg">Copy Link</strong>.</li>
+                    <li>Open your web browser (Chrome, Firefox, Samsung Internet), paste the link into Downloadit, and tap <strong className="text-fg">Get Media</strong>.</li>
+                    <li>Confirm the preview matches your video, tap <strong className="text-fg">Download</strong>, and find your MP4 in your Gallery or Downloads folder.</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On iPhone &amp; iPad (iOS)</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Open the Instagram app, tap the three dots or Share icon on the video, and tap <strong className="text-fg">Copy Link</strong>.</li>
+                    <li>Open <strong className="text-fg">Safari</strong> or Chrome, paste the link into the download box above, and tap <strong className="text-fg">Get Media</strong>.</li>
+                    <li>Preview the video, tap <strong className="text-fg">Download</strong>, and confirm the Safari download prompt.</li>
+                    <li>The video is saved to the <strong className="text-fg">Files</strong> app under Downloads, where you can watch it offline or save it to your Photos app.</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Desktop (Windows, Mac, Linux)</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Open Instagram in your web browser and copy the URL from the browser address bar.</li>
+                    <li>Paste the URL into Downloadit and click <strong className="text-fg">Get Media</strong>.</li>
+                    <li>Check the preview, click <strong className="text-fg">Download</strong>, and choose where to save the MP4 file on your hard drive.</li>
+                  </ol>
+                </div>
               </div>
+            </div>
 
-              <ProseSection>
-              <section className="cv-auto mt-12">
-                <h2>Video downloading FAQ</h2>
-                <div className="mt-4">
-                  {FAQS.map((item) => (
-                    <div key={item.q}>
-                      <h3>{item.q}</h3>
-                      <p>{item.a}</p>
+            {/* Features and Benefits */}
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-4">Features and Benefits</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { title: "No Watermarks Added", desc: "Get pure original video streams without promotional logos, stamps, or watermarks." },
+                  { title: "Preserved Audio Quality", desc: "Original stereo audio encoded in standard AAC at optimal bitrate." },
+                  { title: "Universal Compatibility", desc: "MP4 container files play natively on iOS, Android, Windows, Mac, and Smart TVs." },
+                  { title: "Zero Software Installation", desc: "100% web-based. No sketchy desktop software, APK files, or browser extensions needed." },
+                ].map((feat) => (
+                  <div key={feat.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                    <div>
+                      <h4 className="text-[14.5px] font-bold text-fg">{feat.title}</h4>
+                      <p className="text-[13px] text-fg-muted mt-0.5">{feat.desc}</p>
                     </div>
-                  ))}
-                </div>
-              </section>
-              </ProseSection>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              <p className="mt-10 text-[12px] text-fg-subtle">
-                See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
-              </p>
-            </>
-          )}
+            {/* Common Video Download Problems */}
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Common Video Download Problems &amp; Solutions
+              </h3>
+              <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
+                <p>
+                  <strong className="text-fg">Private Account Restrictions:</strong> Downloadit only accesses public media. If an account is set to private, the platform refuses all logged-out requests, and the video cannot be downloaded.
+                </p>
+                <p>
+                  <strong className="text-fg">Expired Media URLs:</strong> Instagram signs CDN addresses with time-sensitive authorization tokens. If you let a resolved page sit idle for hours before clicking download, the token may expire. Simply paste the link again to refresh the token.
+                </p>
+                <p>
+                  <strong className="text-fg">Profile Grid vs. Single Post:</strong> Pasting a profile URL like <code className="text-xs bg-bg px-1.5 py-0.5 rounded">instagram.com/username</code> will fail because it does not specify which video to download. Always open the individual post first.
+                </p>
+              </div>
+            </div>
+
+            {/* Frequently Asked Questions */}
+            <div className="pt-4">
+              <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
+              <div className="space-y-3">
+                {FAQS.map((item) => (
+                  <div key={item.q} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                    <h4 className="text-[15.5px] font-bold text-fg mb-2">{item.q}</h4>
+                    <p className="text-[14px] leading-relaxed text-fg-muted">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Related Downloaders */}
+            <div className="pt-4">
+              <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Download public vertical Reels" },
+                  { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Save photos and swipe carousels" },
+                  { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save active 24h stories" },
+                  { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract background music to MP3" },
+                  { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Save Pinterest video pins" },
+                  { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and Shorts" },
+                ].map((tool) => (
+                  <Link
+                    key={tool.href}
+                    href={tool.href}
+                    className="flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-primary-light/40"
+                  >
+                    <span className="text-[14px] font-bold text-primary">{tool.label}</span>
+                    <span className="text-[12px] text-fg-subtle mt-0.5">{tool.desc}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
       </main>
+
       <Footer />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

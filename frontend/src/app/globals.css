@@ -1718,3 +1718,167 @@ html:not(.js) .readmore-toggle {
     transform: translateX(-125%);
   }
 }
+
+/* ─────────────────────────────────────────────
+   Premium homepage hero + responsive vertical alignment
+   ───────────────────────────────────────────── */
+.home-hero {
+  margin-bottom: 0 !important;
+  min-height: calc(100vh - 68px);
+  min-height: calc(100dvh - 68px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-top: 2rem;
+  padding-bottom: 2.5rem;
+  box-sizing: border-box;
+}
+
+.home-hero .hero-title-a,
+.home-hero .hero-title-b {
+  display: inline;
+}
+
+/* ─────────────────────────────────────────────
+   Dedicated Downloader Tool Page Hero
+   ───────────────────────────────────────────── */
+.tool-hero {
+  margin-bottom: 0 !important;
+  padding-top: 0.5rem;
+  padding-bottom: 1.75rem;
+}
+
+@media (min-width: 640px) {
+  .tool-hero {
+    padding-top: 0.75rem;
+    padding-bottom: 2.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .tool-hero {
+    padding-top: 1rem;
+    padding-bottom: 2.5rem;
+  }
+}
+
+.url-card--home {
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.url-card--home:focus-within {
+  border-color: rgba(124, 77, 245, 0.45) !important;
+  box-shadow: 0 0 0 4px rgba(124, 77, 245, 0.12), var(--shadow-card) !important;
+}
+
+/* Horizontal chip rows: buttery on touch, no visible scrollbar. */
+.media-chip-scroll,
+.home-platforms {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.media-chip-scroll::-webkit-scrollbar,
+.home-platforms::-webkit-scrollbar {
+  display: none;
+}
+
+.media-chip-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  padding-left: 2px;
+  padding-right: 2px;
+  justify-content: flex-start;
+}
+
+@media (min-width: 480px) {
+  .media-chip-scroll {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 640px) {
+  .home-hero {
+    min-height: calc(100vh - 68px);
+    min-height: calc(100dvh - 68px);
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+  }
+  .media-chip-scroll {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 639.98px) {
+  .home-hero {
+    min-height: calc(100vh - 64px);
+    min-height: calc(100dvh - 64px);
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+    margin-bottom: 0 !important;
+  }
+
+  .home-hero .hero-title-a,
+  .home-hero .hero-title-b {
+    display: inline;
+    font-size: clamp(1.7rem, 7.6vw, 2.1rem) !important;
+    line-height: 1.16 !important;
+  }
+
+  .home-hero .hero-subtitle {
+    margin-top: 0.55rem !important;
+    font-size: 0.95rem !important;
+    line-height: 1.55 !important;
+  }
+
+  /* Paste + Get Media sit side by side inside the same card on phones. */
+  .home-hero .url-actions {
+    flex-direction: row !important;
+  }
+  .home-hero .url-actions > button {
+    min-width: 0;
+  }
+  .home-hero .url-actions > button:first-child {
+    flex: 0 0 37%;
+  }
+  .home-hero .url-actions > button:last-child {
+    flex: 1 1 63%;
+  }
+  .home-hero .url-actions .gradient-btn {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .home-hero .url-actions .btn-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Keep the redesigned footer compact on phones. */
+  footer {
+    margin-top: 2rem !important;
+    padding-top: 1.75rem !important;
+    padding-bottom: calc(2rem + var(--sab)) !important;
+  }
+}
+
+/* Categories Dropdown Mega Menu & Mobile Responsive Utilities */
+.categories-dropdown-menu {
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+@media (max-width: 840px) {
+  .categories-dropdown-menu {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: calc(100vw - 1.5rem) !important;
+  }
+}

@@ -61,7 +61,7 @@ function corsOriginSetting(): cors.CorsOptions["origin"] {
     .filter(Boolean);
   // Unset stays same-origin-only: reflecting any origin would let a
   // third-party page drive the resolver from a visitor's browser.
-  return origins.length > 0 && !origins.includes("*") ? origins : false;
+  return origins.length > 0 ? origins : false;
 }
 
 app.use(

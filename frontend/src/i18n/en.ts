@@ -36,17 +36,16 @@ export const en: Strings = {
     carousel: "Carousel",
   },
   hero: {
-    badge: "Fast · Free · No login required",
+    badge: "Fast · Free · No Login Required",
     // Trailing space keeps the concatenated <h1> text readable for assistive
-    // tech and crawlers ("Instagram Downloader Reels, ..." — the two spans are
-    // separate blocks, so the space would otherwise vanish).
-    titleA: "Free Online Video Downloader for ",
-    titleB: "Instagram, Pinterest, YouTube, Facebook, Twitter/X & Threads",
-    subtitle: "Download supported public media from Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads with Downloadit. Paste a link, preview what is available, and save it without an account.",
+    // tech and crawlers ("Download Media Easily").
+    titleA: "Download Media ",
+    titleB: "Easily",
+    subtitle: "Your favorite public media, all in one place.",
     cardTitle: "Paste an Instagram Link",
-    placeholder: "Paste URL",
-    audioPlaceholder: "Paste URL",
-    inputLabel: "Instagram URL input",
+    placeholder: "Paste link",
+    audioPlaceholder: "Paste link",
+    inputLabel: "Media URL input",
     foot1: "No account required",
     foot2: "Public content only",
     foot3: "No download history",

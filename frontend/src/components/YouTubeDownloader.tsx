@@ -145,7 +145,7 @@ export default function YouTubeDownloader({
   titleB,
   subtitle,
   badge,
-  placeholder = "Paste URL",
+  placeholder = "Paste link",
   buttonLabel,
   benefits,
 }: YouTubeDownloaderProps) {
@@ -536,7 +536,7 @@ export default function YouTubeDownloader({
   };
 
   return (
-    <section id="hero" className="hero-section relative mb-12 overflow-hidden scroll-mt-24 pt-6 pb-16 sm:mb-16 sm:pt-8 sm:pb-20 lg:mb-20 lg:pt-10 lg:pb-24">
+    <section id="hero" className="hero-section tool-hero relative overflow-hidden scroll-mt-24">
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         <div
           className="absolute left-1/2 top-0 h-[420px] w-full max-w-[1000px] -translate-x-1/2 -translate-y-1/3 rounded-full sm:h-[700px]"
@@ -582,7 +582,7 @@ export default function YouTubeDownloader({
             {subtitle}
           </p>
 
-          <div className="mt-7 w-full">
+          <div className="mt-5 sm:mt-6 w-full">
             <form onSubmit={handleSubmit} className="relative min-w-0" noValidate>
               <div
                 className="url-card rounded-[20px] p-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/25"

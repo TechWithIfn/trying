@@ -138,7 +138,7 @@ export default function FacebookDownloader({
   return (
     <section
       id="hero"
-      className="hero-section relative mb-12 overflow-hidden scroll-mt-24 pt-6 pb-16 sm:mb-16 sm:pt-8 sm:pb-20 lg:mb-20 lg:pt-10 lg:pb-24"
+      className="hero-section tool-hero relative overflow-hidden scroll-mt-24"
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         <div
@@ -184,7 +184,7 @@ export default function FacebookDownloader({
 
           <p className="hero-subtitle mx-auto mt-4 max-w-2xl text-[16px] leading-[1.65] text-fg-muted">{subtitle}</p>
 
-          <form onSubmit={submit} className="mt-7 w-full" noValidate>
+          <form onSubmit={submit} className="mt-5 sm:mt-6 w-full" noValidate>
             <div
               className="url-card rounded-[20px] p-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/25"
               style={{

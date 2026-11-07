@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Film, Video, Image as ImageIcon, Clock, Music2, Pin, ImagePlay, Play } from "lucide-react";
+import { ChevronDown, ArrowRight } from "lucide-react";
+import { PLATFORM_CATEGORIES } from "@/config/categories";
 
 export function FacebookIcon({ className, size = 24 }: { className?: string; size?: number; strokeWidth?: number }) {
   return (
@@ -55,116 +56,27 @@ export function ThreadsIcon({ className, size = 24 }: { className?: string; size
   );
 }
 
-export type DropdownToolItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string; size?: number; strokeWidth?: number }>;
-  iconBg: string;
-  iconColor: string;
-};
-
-export const DROPDOWN_TOOLS: DropdownToolItem[] = [
-  {
-    href: "/instagram-reels-downloader",
-    label: "Instagram Reels Downloader",
-    icon: Film,
-    iconBg: "rgba(236, 95, 168, 0.12)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/instagram-video-downloader",
-    label: "Instagram Video Downloader",
-    icon: Video,
-    iconBg: "rgba(124, 77, 245, 0.12)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/instagram-photo-downloader",
-    label: "Instagram Photo & Carousel Downloader",
-    icon: ImageIcon,
-    iconBg: "rgba(245, 142, 91, 0.14)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/instagram-story-downloader",
-    label: "Instagram Story Downloader",
-    icon: Clock,
-    iconBg: "rgba(14, 165, 233, 0.12)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/instagram-audio-downloader",
-    label: "Instagram Audio Downloader",
-    icon: Music2,
-    iconBg: "rgba(16, 185, 129, 0.12)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/pinterest-video-downloader",
-    label: "Pinterest Video Downloader",
-    icon: Pin,
-    iconBg: "rgba(230, 0, 35, 0.10)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/pinterest-image-downloader",
-    label: "Pinterest Image & Carousel Downloader",
-    icon: ImagePlay,
-    iconBg: "rgba(230, 0, 35, 0.10)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/youtube-video-downloader",
-    label: "YouTube Video Downloader",
-    icon: Play,
-    iconBg: "rgba(255, 0, 0, 0.09)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/facebook-video-downloader",
-    label: "Facebook Video Downloader",
-    icon: FacebookIcon,
-    iconBg: "rgba(24, 119, 242, 0.10)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/twitter-video-downloader",
-    label: "Twitter/X Video Downloader",
-    icon: TwitterIcon,
-    iconBg: "rgba(15, 23, 42, 0.10)",
-    iconColor: "var(--primary)",
-  },
-  {
-    href: "/threads-video-downloader",
-    label: "Threads Video Downloader",
-    icon: ThreadsIcon,
-    iconBg: "rgba(15, 23, 42, 0.10)",
-    iconColor: "var(--primary)",
-  },
-];
-
 export default function ToolCategoryDropdown() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  // Stable plain ID (no useId): guaranteed resolvable by aria-controls and
-  // stable across SSR/hydration without framework-mangled characters.
-  const menuId = "downloadit-tool-menu";
+  const menuId = "downloadit-categories-dropdown";
 
-  const isToolActive =
-    pathname === "/" || DROPDOWN_TOOLS.some((tool) => tool.href === pathname);
-  const activeTool = DROPDOWN_TOOLS.find((tool) => tool.href === pathname);
-  const triggerLabel =
-    activeTool?.label ?? (pathname === "/" ? "Downloaders" : "Tools");
-
-  const close = useCallback((refocusToggle = false) => {
+  const close = useCallback((refocus = false) => {
     setOpen(false);
-    if (refocusToggle) toggleRef.current?.focus({ preventScroll: true });
+    if (refocus) toggleRef.current?.focus({ preventScroll: true });
   }, []);
 
-  // Close on outside click / touch
+  // Close on route change
+  useEffect(() => {
+    queueMicrotask(() => {
+      setOpen(false);
+    });
+  }, [pathname]);
+
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
@@ -180,7 +92,7 @@ export default function ToolCategoryDropdown() {
     };
   }, [open]);
 
-  // Close on Escape (anywhere) and return focus to the toggle
+  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -193,134 +105,130 @@ export default function ToolCategoryDropdown() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, close]);
 
-  // Arrow-key navigation inside the menu: Up/Down/Home/End move between
-  // items, Tab closes the menu (focus moves naturally, no trap).
-  const onMenuKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const items = Array.from(
-        menuRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? []
-      );
-      if (items.length === 0) return;
-      const active = document.activeElement as HTMLElement | null;
-      const idx = active ? items.indexOf(active) : -1;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        items[(idx + 1 + items.length) % items.length]?.focus({ preventScroll: true });
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        items[(idx - 1 + items.length) % items.length]?.focus({ preventScroll: true });
-      } else if (e.key === "Home") {
-        e.preventDefault();
-        items[0]?.focus({ preventScroll: true });
-      } else if (e.key === "End") {
-        e.preventDefault();
-        items[items.length - 1]?.focus({ preventScroll: true });
-      } else if (e.key === "Tab") {
-        close();
-      }
-    },
-    [close]
-  );
-
   const toggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setOpen((prev) => !prev);
   };
 
-  // ArrowDown on the toggle opens the menu and focuses the first item.
-  const onToggleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
-      if (!open && (e.key === "ArrowDown" || e.key === " ")) e.preventDefault();
-      if (e.key === "ArrowDown" && !open) {
-        setOpen(true);
-        requestAnimationFrame(() => {
-          menuRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus({ preventScroll: true });
-        });
-      }
-    }
-  };
-
   return (
     <div ref={containerRef} className="relative inline-flex items-center">
-      {/* Single tool-menu trigger: label + chevron in one control. The label
-          follows the current tool page, with the Instagram Reels downloader
-          as the homepage/default label. */}
       <button
         ref={toggleRef}
         type="button"
         onClick={toggle}
-        onKeyDown={onToggleKeyDown}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label="Downloader tools menu"
-        className={`inline-flex items-center gap-1 rounded-full border py-1.5 pl-3 pr-2 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-          isToolActive || open
-            ? "bg-primary-light text-primary-strong border-primary/25 shadow-xs"
-            : "border-transparent text-fg-muted hover:bg-primary-light hover:text-primary"
-        }`}
+        aria-label="Categories menu"
+        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${open
+            ? "bg-primary-light text-primary-strong shadow-xs"
+            : "text-fg-muted hover:bg-primary-light hover:text-primary"
+          }`}
       >
-        <span>{triggerLabel}</span>
+        <span>Categories</span>
         <ChevronDown
-          className="h-4 w-4 shrink-0 transition-transform duration-200"
+          className="h-3.5 w-3.5 shrink-0 transition-transform duration-200"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
           strokeWidth={2.2}
           aria-hidden="true"
         />
       </button>
 
-      {/* Clean, compact white dropdown directly below the trigger. Geometry
-          (width/max-height/scroll) lives in the scoped `.tool-category-menu`
-          class so it stays aligned to the trigger yet never overflows the
-          viewport. Always mounted so open/close animates smoothly (opacity +
-          transform only — never layout geometry, never a layout shift). */}
+      {/* Categories Dropdown Mega Menu */}
       <div
         ref={menuRef}
         id={menuId}
         role="menu"
-        aria-label="Downloader tools"
+        aria-label="Downloader Categories"
         aria-hidden={!open}
-        onKeyDown={onMenuKeyDown}
-        className={`tool-category-menu absolute left-0 top-full z-50 rounded-2xl p-1 transition-all duration-200 ease-out ${
-          open
-            ? "visible mt-2 translate-y-0 scale-100 opacity-100"
-            : "invisible mt-2 -translate-y-1 scale-[0.98] opacity-0 pointer-events-none"
-        }`}
+        className={`categories-dropdown-menu absolute left-1/2 -translate-x-1/2 top-full z-50 mt-2.5 w-[760px] max-w-[calc(100vw-2rem)] rounded-2xl p-4 transition-all duration-200 ease-out ${open
+            ? "visible translate-y-0 scale-100 opacity-100"
+            : "invisible -translate-y-1 scale-[0.98] opacity-0 pointer-events-none"
+          }`}
         style={{
           background: "var(--card)",
           border: "1px solid var(--border)",
-          boxShadow: "0 14px 40px rgba(60, 40, 120, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)",
+          boxShadow: "0 18px 50px rgba(60, 40, 120, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06)",
         }}
       >
-          <div className="space-y-0.5">
-            {DROPDOWN_TOOLS.map((tool) => {
-              const Icon = tool.icon;
-              const isSelected = pathname === tool.href;
-              return (
+        <div className="mb-3 flex items-center justify-between border-b border-border/60 pb-2.5 px-1">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary-strong">
+              Downloadit Hub
+            </p>
+            <h3 className="text-[15px] font-bold text-fg">Explore All Downloaders by Platform</h3>
+          </div>
+          <span className="text-[12px] font-medium text-fg-subtle">
+            6 Platforms · Fast & Free
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[75vh] overflow-y-auto p-1">
+          {PLATFORM_CATEGORIES.map((cat) => {
+            const CatIcon = cat.icon;
+            return (
+              <div
+                key={cat.id}
+                className="group/card flex flex-col rounded-xl border border-border/70 p-3 transition-colors hover:border-primary/30 hover:bg-bg/50"
+                style={{ background: "var(--card)" }}
+              >
+                {/* Platform Header */}
                 <Link
-                  key={tool.href}
-                  href={tool.href}
+                  href={cat.mainHref}
                   role="menuitem"
                   tabIndex={open ? 0 : -1}
                   onClick={() => close()}
-                  className={`flex min-h-[44px] items-start gap-2.5 rounded-xl px-2.5 py-2.5 text-[14px] font-medium leading-6 transition-all duration-150 ${
-                    isSelected
-                      ? "bg-primary-light text-primary-strong font-semibold"
-                      : "text-fg hover:bg-primary-light hover:text-primary"
-                  }`}
+                  className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-border/40 group-hover/card:text-primary transition-colors"
                 >
-                  <span
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-                    style={{ background: tool.iconBg, color: tool.iconColor }}
-                  >
-                    <Icon size={14} strokeWidth={2.2} />
-                  </span>
-                  <span className="min-w-0 flex-1 break-words">{tool.label}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: cat.badgeBg, color: cat.color }}
+                    >
+                      <CatIcon size={16} />
+                    </span>
+                    <span className="font-bold text-[13.5px] text-fg group-hover/card:text-primary truncate">
+                      {cat.name}
+                    </span>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-40 group-hover/card:opacity-100 group-hover/card:translate-x-0.5 transition-all text-primary" />
                 </Link>
-              );
-            })}
-          </div>
+
+                {/* Sub items */}
+                <div className="space-y-1">
+                  {cat.items.map((sub) => {
+                    const SubIcon = sub.icon;
+                    const isSubSelected = pathname === sub.href;
+                    return (
+                      <Link
+                        key={sub.name}
+                        href={sub.href}
+                        role="menuitem"
+                        tabIndex={open ? 0 : -1}
+                        onClick={() => close()}
+                        className={`flex flex-col rounded-lg px-2 py-1.5 transition-colors ${isSubSelected
+                            ? "bg-primary-light text-primary-strong"
+                            : "hover:bg-primary-light/60 text-fg"
+                          }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <SubIcon size={13} className="shrink-0 text-primary opacity-80" strokeWidth={2.2} />
+                          <span className="text-[12.5px] font-semibold text-fg leading-snug">
+                            {sub.name}
+                          </span>
+                        </div>
+                        <span className="text-[11px] leading-tight text-fg-subtle line-clamp-1 pl-4">
+                          {sub.desc}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

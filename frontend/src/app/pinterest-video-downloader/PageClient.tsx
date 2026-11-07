@@ -1,180 +1,203 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import PinterestDownloader from "@/components/PinterestDownloader";
-import ProseSection from "@/components/ProseSection";
 import { TOOL_PAGES } from "@/config/toolPages";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 const PAGE = TOOL_PAGES.pinterestVideo;
 
 const FAQS = [
   {
-    q: "How do I download a Pinterest video?",
-    a: "Open a publicly accessible Pinterest video pin, copy its link, paste it into the box above, and choose Get Media. When the media is successfully resolved you can preview it and select Download to save a supported file.",
+    q: "How do I download Pinterest videos?",
+    a: "Open the Pinterest video pin, tap the share icon, and select 'Copy link'. Paste the link into the URL field on this page and click 'Download Pin'. Once the preview appears, tap Download to save the MP4 to your phone or computer.",
   },
   {
-    q: "Do I need a Pinterest account?",
-    a: "No. Downloadit needs no account and no login. It only works with publicly accessible pins, so there is nothing to sign in to.",
+    q: "Does Downloadit support Pinterest Idea Pins?",
+    a: "Yes. Many Idea pins contain video clips and animations. As long as the pin is publicly viewable without a login, Downloadit will extract the available MP4 video stream.",
   },
   {
-    q: "Why might a video link not work?",
-    a: "A link can fail when the pin is deleted, private, region-restricted, login-walled, or is only served as a streaming playlist that cannot be fetched anonymously. Availability depends entirely on the pin and the source, and no downloader can guarantee it.",
+    q: "Can I download Pinterest images from here?",
+    a: "Yes, our Pinterest resolver automatically detects whether your pin is an image or video. You can also use our dedicated Pinterest Image & Carousel Downloader for high-resolution picture boards.",
   },
   {
-    q: "Can I download private Pinterest content?",
-    a: "No. Only publicly accessible pins can be resolved. Private boards, secret pins, and anything behind a login cannot be downloaded, and the tool reports the real reason instead of returning an unrelated file.",
+    q: "Are the downloaded Pinterest videos watermarked?",
+    a: "No. Downloadit extracts the original MP4 file directly from Pinterest's media delivery servers without stamping watermarks or altering the audio.",
   },
-  { q: "Does the downloader add a watermark?", a: "No. Downloadit does not add a watermark. It returns the best available public media file exposed by the pin." },
-  { q: "Can I use the downloader on an iPhone?", a: "Yes. Open this page in Safari, copy a public pin link, paste it, and use Get Media. The saved MP4 appears in the Files app." },
-  { q: "Can I use it on Android?", a: "Yes. Use a current browser such as Chrome, paste the public pin URL, and find the downloaded MP4 in the browser Downloads folder." },
-  { q: "Does it work on Windows and Mac?", a: "Yes. It works in a current desktop browser on Windows or Mac and saves the file to the browser's normal download folder." },
-  { q: "What does Auto Detect do?", a: "Auto Detect finds the media by default. It reads the public pin and selects the supported media it exposes without requiring a media type choice." },
-  { q: "Why is the preview unavailable?", a: "The pin may have expired, been deleted, become restricted, or returned a media URL that is no longer fresh. Open the pin and submit its link again." },
-  { q: "Is a Pinterest login required?", a: "No. Downloadit does not request a Pinterest login. The pin must be viewable publicly without signing in." },
-  { q: "Can I download any Pinterest video?", a: "Only public videos that Pinterest exposes as a downloadable progressive media file can be fetched. Streaming-only, private, deleted, or restricted pins may not work." },
-  { q: "Where is my downloaded video saved?", a: "It is saved by your browser in its normal Downloads location. On iPhone, check the Files app; on Android, check Downloads." },
+  {
+    q: "Does Downloadit support Pinterest boards or secret pins?",
+    a: "Downloadit only works with individual public pins. Secret boards, group boards requiring invites, and private pins cannot be accessed.",
+  },
 ];
 
-export default function PinterestVideoDownloaderPageClient() {
-  const [expanded, setExpanded] = useState(false);
-
+export default function PinterestVideoPageClient() {
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <PinterestDownloader
-          badge={PAGE.badge}
           titleA={PAGE.titleA}
           titleB={PAGE.titleB}
           subtitle={PAGE.description}
+          badge={PAGE.badge}
           placeholder={PAGE.placeholder}
           buttonLabel={PAGE.buttonLabel}
           modes={PAGE.modes}
           benefits={PAGE.trust}
         />
-        <section className="mx-auto max-w-[900px] px-5 sm:px-6 lg:px-12 pb-12">
-          <Link
-            href="/"
-            className="inline-flex min-h-[44px] items-center text-[14px] font-semibold text-fg-muted transition-colors hover:text-primary"
-          >
-            ← Back to Home
-          </Link>
-          <h2 className="mt-4 text-[24px] font-bold tracking-[-0.01em] text-fg sm:text-[28px] leading-[1.2]">
-            What the Pinterest Video downloader does
+
+        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
+          <div className="mb-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Back to Home Downloader</span>
+            </Link>
+          </div>
+
+          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+            What the Pinterest Video Downloader Does
           </h2>
-          <button
-            type="button"
-            onClick={() => setExpanded((e) => !e)}
-            className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary-strong hover:text-primary transition-colors"
-          >
-            {expanded ? "Show less about Pinterest Video" : "Know more about Pinterest Video"}
-            <span aria-hidden="true">{expanded ? " ↑" : " ↓"}</span>
-          </button>
-          {expanded && (
-            <>
-              <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-                Save publicly accessible Pinterest video pins as MP4 files you can watch offline, on any device. Paste the URL of a public Pinterest video pin, and the tool reads the pin page and returns the video it exposes.
-              </p>
-              <p className="mt-3 text-[16px] leading-[1.7] text-fg-muted">
-                Copy the pin link, paste it into the downloader above, preview the result when it is available, then download the file the pin exposes — no watermark, no login, nothing to install.
-              </p>
 
-              <ProseSection>
-              <h2>How to download a Pinterest video, step by step</h2>
-              <ol className="list-decimal pl-5 space-y-2 text-[14px] leading-[1.7] text-fg-muted">
-                <li>Open the video pin you want to keep — tap it so it fills the screen, not the board grid.</li>
-                <li>Use the share icon and choose Copy link (desktop users can copy the address bar).</li>
-                <li>Paste the link into the box at the top of this page and select Get Media. Auto Detect finds the media by default.</li>
-                <li>Check that the preview is the correct video.</li>
-                <li>Select Download and let the transfer finish. The MP4 lands in your Downloads folder.</li>
-              </ol>
+          <div className="mt-6 space-y-8 text-fg">
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Pinterest Video Downloader?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                A Pinterest Video Downloader is a web application that enables you to save publicly accessible Pinterest video pins, DIY tutorials, recipe clips, and Idea pins directly to your device as high-definition MP4 video files with audio.
+              </p>
+            </div>
 
-              <h2 className="mt-10">What this Pinterest video downloader can fetch</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                It works on public video pins — the same content a visitor sees without signing in. Deleted pins, private boards, login-walled pins, region-restricted pins and pins served only as streaming playlists are outside what an anonymous tool can download, and the page reports the exact reason when that happens. It never fabricates a download or hands back an unrelated file.
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                Pinterest hosts media using short URLs (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">pin.it</code>) and standard web links (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">pinterest.com/pin/...</code>). Downloadit expands and validates the pin URL, parses the HTML metadata for the master progressive video stream, and gives you a direct download link.
               </p>
+            </div>
 
-              <h2 className="mt-10">Pinterest video quality and format</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                Videos are saved as MP4 using the best progressive rendition the pin exposes, so the picture and sound match what plays on Pinterest. Because Pinterest signs its media links, save the file soon after resolving it; if a link has gone stale, paste the pin link again for a fresh address.
-              </p>
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">What Types of Pinterest Media Can Be Downloaded?</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <span className="block text-[14px] font-bold text-primary">Standard Video Pins</span>
+                  <span className="block text-[12px] text-fg-subtle mt-1">Full 720p and 1080p MP4 videos with sound</span>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <span className="block text-[14px] font-bold text-primary">Idea Pins &amp; Shorts</span>
+                  <span className="block text-[12px] text-fg-subtle mt-1">Multi-page story videos and animated pins</span>
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <span className="block text-[14px] font-bold text-primary">High-Res Photos</span>
+                  <span className="block text-[12px] text-fg-subtle mt-1">Original full-size JPG/PNG images</span>
+                </div>
+              </div>
+            </div>
 
-              <h2 className="mt-10">Troubleshooting Pinterest video downloads</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                <strong className="text-fg">“No downloadable video.”</strong> The pin is an image-only pin. Use the{" "}
-                <Link href="/pinterest-image-downloader" className="font-bold text-primary-strong hover:underline">
-                  Pinterest Image &amp; Carousel Downloader
-                </Link>{" "}
-                to save its picture instead.
-              </p>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                <strong className="text-fg">“Pin not found.”</strong> The pin was likely deleted or the link is incomplete — open it in Pinterest first to confirm it still exists.
-              </p>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                <strong className="text-fg">“Restricted.”</strong> Pinterest may be limiting automated access at that moment, or the pin needs a login. Try again shortly or open the pin directly.
-              </p>
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Pinterest Videos, Step by Step</h3>
 
-              <h2 className="mt-10">Devices and browsers this page works on</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                Nothing is installed and nothing is account-bound, so the page works wherever a public Pinterest link opens: Chrome, Safari, Firefox, Edge or Samsung Internet on Android; Safari or Chrome on iPhone and iPad; any modern browser on Windows, Mac and Linux. Downloads land in the browser&apos;s normal download location — Files under Downloads on iPhone, the Downloads folder or Gallery on Android, and your downloads folder on a computer. The only firm requirements are a current browser and a public pin link.
-              </p>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Android &amp; iPhone (Mobile)</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Open the Pinterest app and tap the video pin you want to download.</li>
+                    <li>Tap the <strong className="text-fg">Share</strong> button (or three dots) and select <strong className="text-fg">Copy link</strong>.</li>
+                    <li>Open Downloadit in your browser, paste the pin link into the input field above, and tap <strong className="text-fg">Download Pin</strong>.</li>
+                    <li>Preview the video and tap <strong className="text-fg">Download</strong> to save the MP4 to your device.</li>
+                  </ol>
+                </div>
 
-              <h2 className="mt-10">Your privacy on this page</h2>
-              <p className="mt-2 text-[14px] leading-[1.7] text-fg-muted">
-                The pin link is the only thing you submit. Downloadit never asks for a Pinterest account, email or password, and there is no login flow to go through — the request carries the public link and nothing that identifies who pasted it. The <Link href="/privacy" className="font-bold text-primary-strong hover:underline">Privacy Policy</Link> explains exactly what is processed.
-              </p>
-              </ProseSection>
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Desktop (PC &amp; Mac)</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Navigate to the video pin on pinterest.com and copy the URL from your address bar.</li>
+                    <li>Paste the URL into Downloadit and click <strong className="text-fg">Download Pin</strong>.</li>
+                    <li>Preview the video, click <strong className="text-fg">Download</strong>, and save the MP4 file to your computer.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
 
-              <h2 className="mt-10 text-[18px] font-bold text-fg">Related downloaders</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { href: "/pinterest-image-downloader", label: "Pinterest Image & Carousel Downloader", desc: "Save Pinterest images and carousels" },
-                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save Instagram videos as MP4" },
-                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save Reels as MP4" },
-                  { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Save YouTube videos and audio" },
-                  { href: "/", label: "Downloadit Home", desc: "All-in-one media downloader" },
-                ].map((l) => (
+                  { title: "No Watermark Added", desc: "Save clean Pinterest videos without promotional stamps or overlays." },
+                  { title: "Supports Short pin.it Links", desc: "Easily handles both pin.it mobile share links and full desktop URLs." },
+                  { title: "Universal MP4 Playback", desc: "Videos play effortlessly on iPhone, Android, Windows, Mac, and TVs." },
+                  { title: "100% Free & Unlimited", desc: "Download as many recipe, aesthetic, and tutorial pins as you need." },
+                ].map((item) => (
+                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                    <div>
+                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Common Pinterest Download Problems
+              </h3>
+              <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
+                <p>
+                  <strong className="text-fg">Secret Boards:</strong> Pins saved to secret boards or shared via private messaging are protected by authentication cookies and cannot be accessed.
+                </p>
+                <p>
+                  <strong className="text-fg">Deleted or Removed Pins:</strong> If a creator deletes a pin or Pinterest removes it for community guideline reasons, the video is erased from CDN storage and cannot be downloaded.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
+              <div className="space-y-3">
+                {FAQS.map((item) => (
+                  <div key={item.q} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                    <h4 className="text-[15.5px] font-bold text-fg mb-2">{item.q}</h4>
+                    <p className="text-[14px] leading-relaxed text-fg-muted">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { href: "/pinterest-image-downloader", label: "Pinterest Image Downloader", desc: "Download high-res photos & boards" },
+                  { href: "/youtube-video-downloader", label: "YouTube Downloader", desc: "Download YouTube videos & Shorts" },
+                  { href: "/instagram-video-downloader", label: "Instagram Downloader", desc: "Save Instagram Reels & videos" },
+                  { href: "/facebook-video-downloader", label: "Facebook Downloader", desc: "Download Facebook feed & Watch videos" },
+                  { href: "/twitter-video-downloader", label: "Twitter/X Downloader", desc: "Download Twitter/X videos & GIFs" },
+                  { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
+                ].map((tool) => (
                   <Link
-                    key={l.href}
-                    href={l.href}
-                    className="rounded-2xl p-4 hover:bg-primary-light transition-colors"
-                    style={{ border: "1px solid var(--border)", background: "var(--card)" }}
+                    key={tool.href}
+                    href={tool.href}
+                    className="flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-primary-light/40"
                   >
-                    <span className="text-[14px] font-semibold text-primary-strong">{l.label}</span>
-                    <span className="mt-1 block text-[14px] text-fg-muted">{l.desc}</span>
+                    <span className="text-[14px] font-bold text-primary">{tool.label}</span>
+                    <span className="text-[12px] text-fg-subtle mt-0.5">{tool.desc}</span>
                   </Link>
                 ))}
               </div>
-
-              <ProseSection>
-              <section className="cv-auto mt-12">
-                <h2>Pinterest video download FAQ</h2>
-                <div className="mt-4">
-                  {FAQS.map((item) => (
-                    <div key={item.q}>
-                      <h3>{item.q}</h3>
-                      <p>{item.a}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              </ProseSection>
-
-              <p className="mt-10 text-[12px] text-fg-subtle">
-                See <Link href="/#how-it-works" className="text-primary-strong hover:underline">How It Works</Link>, the{" "}
-                <Link href="/help" className="text-primary-strong hover:underline">Help page</Link> or{" "}
-                <Link href="/privacy" className="text-primary-strong hover:underline">Privacy</Link>.
-              </p>
-            </>
-          )}
+            </div>
+          </div>
         </section>
       </main>
+
       <Footer />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -189,15 +212,6 @@ export default function PinterestVideoDownloaderPageClient() {
           }),
         }}
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        name: "Pinterest Video Downloader",
-        url: "https://www.downloadit.pro/pinterest-video-downloader",
-        applicationCategory: "MultimediaApplication",
-        operatingSystem: "Web",
-        description: PAGE.description,
-      }) }} />
     </>
   );
 }

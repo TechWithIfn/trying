@@ -205,7 +205,7 @@ export default function PinterestDownloader({
   badge,
   modes,
   benefits,
-  placeholder = "Paste URL",
+  placeholder = "Paste link",
   buttonLabel,
 }: PinterestDownloaderProps) {
   const { t } = useLanguage();
@@ -600,7 +600,7 @@ export default function PinterestDownloader({
   return (
     <section
       id="hero"
-      className="hero-section relative mb-12 overflow-hidden scroll-mt-24 pt-6 pb-16 sm:mb-16 sm:pt-8 sm:pb-20 lg:mb-20 lg:pt-10 lg:pb-24"
+      className="hero-section tool-hero relative overflow-hidden scroll-mt-24"
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         <div
@@ -649,7 +649,7 @@ export default function PinterestDownloader({
           </p>
 
           {/* Input Bar */}
-          <div className="mt-7 w-full">
+          <div className="mt-5 sm:mt-6 w-full">
             <form onSubmit={handleSubmit} className="relative min-w-0" noValidate>
               <div
                 className="url-card rounded-[20px] p-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/25"

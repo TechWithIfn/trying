@@ -5,30 +5,42 @@ import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import ThreadsDownloader from "@/components/ThreadsDownloader";
 import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
+import { CheckCircle2, AlertTriangle, Layers } from "lucide-react";
 
 const PAGE = TOOL_PAGES.threadsVideo;
 export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
-  ["How do I download a Threads video?", "Copy the link to a public Threads post, paste it above, select Get Media, preview the available video, and select Download."],
-  ["Can this download images from Threads?", "Yes. The same Threads Video Downloader detects supported public images and displays them for individual download."],
-  ["Can I download multiple images from one Threads post?", "When Threads exposes multiple public image items, Downloadit shows the supported images and the existing download-all option."],
-  ["Which Threads URLs are supported?", "Public post URLs on threads.net, www.threads.net, threads.com and www.threads.com are supported when the post is accessible without signing in."],
-  ["Do I need a Threads account?", "No account, password, cookie, or session token is requested. The post must be publicly accessible to logged-out visitors."],
-  ["Can I download a private Threads post?", "No. Downloadit does not bypass private profiles, login walls, authentication, DRM, or other access controls."],
-  ["Why does my Threads post fail?", "The post may be private, deleted, unavailable, rate-limited, unsupported, or temporarily inaccessible. Try the original public link again later."],
-  ["What media formats are supported?", "Videos are returned as the supported MP4 rendition exposed by Threads. Images keep the available image format and dimensions."],
-  ["Does it work on mobile?", "Yes. The Threads downloader works in current mobile and desktop browsers."],
+  {
+    q: "How do I download public Threads videos?",
+    a: "Open the public Threads post containing the video. Tap Share and select 'Copy link'. Paste that URL into Downloadit above, tap 'Get Media', verify the preview, and download the MP4.",
+  },
+  {
+    q: "Can I download Threads photos and carousel images?",
+    a: "Yes. When a Threads post includes one or more photos, Downloadit extracts the high-resolution image files and lets you save them individually or as a complete set.",
+  },
+  {
+    q: "Which Threads URLs are supported?",
+    a: "Public post URLs on threads.net and threads.com are supported whenever the post is accessible without logging in.",
+  },
+  {
+    q: "Do I need a Threads or Instagram account?",
+    a: "No. Downloadit does not ask for credentials, cookies, or account sessions. It works completely anonymously with public links.",
+  },
+  {
+    q: "Can I download media from private Threads profiles?",
+    a: "No. Private Threads posts require follower authorization and cannot be retrieved by an anonymous downloader.",
+  },
 ];
 
 export default function ThreadsVideoDownloaderPage() {
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: FAQS.map(([question, answer]) => ({
+    mainEntity: FAQS.map((item) => ({
       "@type": "Question",
-      name: question,
-      acceptedAnswer: { "@type": "Answer", text: answer },
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
   };
 
@@ -46,47 +58,142 @@ export default function ThreadsVideoDownloaderPage() {
           buttonLabel={PAGE.buttonLabel}
           benefits={PAGE.trust}
         />
-        <section className="mx-auto max-w-[900px] px-5 pb-16 sm:px-6 lg:px-12">
-          <Link href="/" className="font-semibold text-primary hover:underline">← Back to Home</Link>
-          <h2 className="mt-8 text-2xl font-bold text-fg">Threads Video Downloader for public posts</h2>
-          <p className="mt-3 text-base leading-7 text-fg-muted">
-            Download videos and images from public Threads posts online. Paste a Threads post link and Downloadit detects the supported media, prepares a real preview, and lets you save the available file without a login.
-          </p>
-          <h2 className="mt-8 text-2xl font-bold text-fg">Download Threads videos</h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-base leading-7 text-fg-muted">
-            <li>Open the public Threads post containing the video.</li>
-            <li>Copy the post URL from the Share menu.</li>
-            <li>Paste the URL into this Threads Video Downloader.</li>
-            <li>Select Get Media, review the actual preview, and select Download.</li>
-          </ol>
-          <h2 className="mt-8 text-2xl font-bold text-fg">Download images from Threads</h2>
-          <p className="mt-3 text-base leading-7 text-fg-muted">
-            Public Threads image posts are detected automatically. A single image is shown at its available aspect ratio, while supported multi-image posts display each available image with the existing individual and download-all controls.
-          </p>
-          <h2 className="mt-8 text-2xl font-bold text-fg">Supported URLs and limitations</h2>
-          <p className="mt-3 text-base leading-7 text-fg-muted">
-            Use a public post URL from threads.net or threads.com. Private, deleted, login-walled, region-restricted, DRM-protected, or otherwise inaccessible content cannot be fetched. Downloadit never requests Threads credentials or imports personal cookies.
-          </p>
-          <h2 className="mt-8 text-2xl font-bold text-fg">Troubleshooting</h2>
-          <p className="mt-3 text-base leading-7 text-fg-muted">
-            Confirm the link is a post rather than a profile page and that it opens in a private browser window while logged out. A temporary upstream failure or rate limit may require trying again later. Only save media you own or have permission to reuse.
-          </p>
-          <p className="mt-4 text-base leading-7 text-fg-muted">
-            Downloadit also supports <Link href="/twitter-video-downloader" className="font-semibold text-primary hover:underline">Twitter/X videos</Link>, <Link href="/instagram-video-downloader" className="font-semibold text-primary hover:underline">Instagram videos</Link>, <Link href="/pinterest-video-downloader" className="font-semibold text-primary hover:underline">Pinterest videos</Link>, <Link href="/youtube-video-downloader" className="font-semibold text-primary hover:underline">YouTube videos</Link>, and <Link href="/facebook-video-downloader" className="font-semibold text-primary hover:underline">Facebook videos</Link>.
-          </p>
-          <h2 className="mt-8 text-2xl font-bold text-fg">Threads downloader FAQ</h2>
-          <div className="mt-4 space-y-4">
-            {FAQS.map(([question, answer]) => (
-              <details key={question} className="rounded-xl border border-border-light bg-card px-4 py-3">
-                <summary className="cursor-pointer font-semibold text-fg">{question}</summary>
-                <p className="mt-2 text-sm leading-6 text-fg-muted">{answer}</p>
-              </details>
-            ))}
+
+        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
+          <div className="mb-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Back to Home Downloader</span>
+            </Link>
+          </div>
+
+          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+            What the Threads Downloader Does
+          </h2>
+
+          <div className="mt-6 space-y-8 text-fg">
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Threads Downloader?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                A Threads Downloader is an online service that enables you to save public videos and high-resolution photos shared on the Threads social platform directly to your mobile phone or desktop computer.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                When a post is published publicly on Threads, its media streams are served from Meta&apos;s global CDN infrastructure. Downloadit resolves the post link, extracts the highest quality MP4 video or original image files, and gives you clean, direct download links.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                <Layers className="h-5 w-5 text-primary" />
+                Both Video and Photo Posts Supported
+              </h3>
+              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                Whether the post contains a single video, an idea clip, a landscape photo, or a multi-image gallery, Downloadit automatically identifies all available media assets in the post and allows you to download them in original quality.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Threads Media, Step by Step</h3>
+
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Any Device (Mobile or Desktop)</h4>
+                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
+                    <li>Open the Threads app or visit threads.net in your browser and locate the post.</li>
+                    <li>Tap or click the <strong className="text-fg">Share</strong> icon and select <strong className="text-fg">Copy link</strong>.</li>
+                    <li>Paste the link into the download field above and tap <strong className="text-fg">Get Media</strong>.</li>
+                    <li>Preview the video or image and select <strong className="text-fg">Download</strong> to save the file.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { title: "No Watermark Added", desc: "Downloads original media streams without stamps, tags, or logos." },
+                  { title: "Videos & Photos", desc: "Supports both video posts and full-resolution photograph galleries." },
+                  { title: "Fast Cloud Extraction", desc: "Instantly connects to the nearest CDN edge node for prompt downloading." },
+                  { title: "100% Free & Anonymous", desc: "No registration, logins, or tracking cookies required." },
+                ].map((item) => (
+                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                    <div>
+                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Troubleshooting Threads Downloads
+              </h3>
+              <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
+                <p>
+                  <strong className="text-fg">Private Threads Accounts:</strong> Media posted by private accounts cannot be retrieved because Meta requires authenticated follower permissions.
+                </p>
+                <p>
+                  <strong className="text-fg">Deleted Posts:</strong> If a creator removes their post or their account is suspended, the media is deleted from CDN servers and cannot be downloaded.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
+              <div className="space-y-3">
+                {FAQS.map((item) => (
+                  <div key={item.q} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+                    <h4 className="text-[15.5px] font-bold text-fg mb-2">{item.q}</h4>
+                    <p className="text-[14px] leading-relaxed text-fg-muted">{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { href: "/twitter-video-downloader", label: "Twitter/X Downloader", desc: "Download Twitter videos & GIFs" },
+                  { href: "/instagram-video-downloader", label: "Instagram Downloader", desc: "Save Instagram Reels & videos" },
+                  { href: "/facebook-video-downloader", label: "Facebook Downloader", desc: "Download Facebook feed & Watch videos" },
+                  { href: "/youtube-video-downloader", label: "YouTube Downloader", desc: "Save YouTube videos and Shorts" },
+                  { href: "/pinterest-video-downloader", label: "Pinterest Downloader", desc: "Download Pinterest video pins" },
+                  { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
+                ].map((tool) => (
+                  <Link
+                    key={tool.href}
+                    href={tool.href}
+                    className="flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-primary-light/40"
+                  >
+                    <span className="text-[14px] font-bold text-primary">{tool.label}</span>
+                    <span className="text-[12px] text-fg-subtle mt-0.5">{tool.desc}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       </main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+
       <Footer />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
     </>
   );
 }

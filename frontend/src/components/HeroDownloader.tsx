@@ -18,14 +18,29 @@ import dynamic from "next/dynamic";
 import {
   resolveInstagramUrl,
   startResolveStream,
+  resolveFacebookUrl,
+  resolveTwitterUrl,
+  resolveThreadsUrl,
+  resolvePinterestUrl,
+  resolveYouTubeUrl,
   getApiBase,
   logApiFailure,
   isBrowserOffline,
   storyErrorMessage,
   type ResolveData,
   type ResolveStreamHandle,
+  type YouTubeResolveData,
+  type MediaItem,
 } from "@/services/api";
 import { useLanguage } from "@/i18n";
+import {
+  FacebookIcon,
+  InstagramIcon,
+  PinterestIcon,
+  ThreadsIcon,
+  TwitterIcon,
+  YouTubeIcon,
+} from "@/components/ToolCategoryDropdown";
 
 // Post-resolve UI (players + result card) loads on demand: it is not part of
 // the initial page bundle. SSR stays enabled so markup is identical; the
@@ -90,6 +105,65 @@ const HERO_CATEGORIES = [
     iconColor: "#10b981",
   },
 ];
+
+export const HOME_PLATFORMS = [
+  { href: "/instagram-video-downloader", label: "Instagram", Icon: InstagramIcon, color: "#ec5fa8" },
+  { href: "/pinterest-video-downloader", label: "Pinterest", Icon: PinterestIcon, color: "#e60023" },
+  { href: "/youtube-video-downloader", label: "YouTube", Icon: YouTubeIcon, color: "#ff0000" },
+  { href: "/facebook-video-downloader", label: "Facebook", Icon: FacebookIcon, color: "#1877f2" },
+  { href: "/twitter-video-downloader", label: "Twitter/X", Icon: TwitterIcon, color: "#0f172a" },
+  { href: "/threads-video-downloader", label: "Threads", Icon: ThreadsIcon, color: "#0f172a" },
+] as const;
+
+function convertYouTubeToResolveData(yt: YouTubeResolveData): ResolveData {
+  const mediaItems: MediaItem[] = yt.qualities.map((q) => ({
+    url: `${getApiBase()}/api/youtube/stream?v=${encodeURIComponent(yt.videoId)}&height=${q.height}`,
+    type: "video",
+    width: null,
+    height: q.height,
+    duration: yt.duration,
+    thumbnail: yt.thumbnail,
+    format: `${q.label} MP4`,
+  }));
+
+  if (yt.audioAvailable && yt.audioOptions) {
+    for (const opt of yt.audioOptions) {
+      mediaItems.push({
+        url: `${getApiBase()}/api/youtube/audio?v=${encodeURIComponent(yt.videoId)}&format=${encodeURIComponent(opt.format)}`,
+        type: "audio",
+        width: null,
+        height: null,
+        duration: yt.duration,
+        thumbnail: yt.thumbnail,
+        format: opt.format.toUpperCase(),
+      });
+    }
+  }
+
+  return {
+    type: "VIDEO",
+    sourceUrl: yt.sourceUrl,
+    thumbnail: yt.thumbnail,
+    title: yt.title,
+    author: yt.author,
+    mediaId: yt.videoId,
+    media: mediaItems,
+  };
+}
+
+export type SupportedPlatform = "instagram" | "pinterest" | "youtube" | "facebook" | "twitter" | "threads";
+
+export function detectPlatformFromUrl(raw: string): SupportedPlatform | null {
+  const val = raw.trim().toLowerCase();
+  if (!val) return null;
+  if (val.includes("instagram.com") || val.includes("instagr.am")) return "instagram";
+  if (val.includes("pinterest.") || val.includes("pin.it")) return "pinterest";
+  if (val.includes("youtube.com") || val.includes("youtu.be")) return "youtube";
+  if (val.includes("facebook.com") || val.includes("fb.watch")) return "facebook";
+  if (val.includes("twitter.com") || val.includes("x.com")) return "twitter";
+  if (val.includes("threads.net") || val.includes("threads.com")) return "threads";
+  return null;
+}
 
 import { useAutoScrollFlow, type FlowStatus } from "@/hooks/useAutoScrollFlow";
 
@@ -254,6 +328,12 @@ interface HeroDownloaderProps {
   mediaNote?: string;
   /** Trust indicators under the input. Omitted = the shared three. */
   trust?: string[];
+  /**
+   * "home" renders the compact mobile-first homepage hero (short heading,
+   * prominent URL card, horizontal media chips, platform strip). Omitted /
+   * "default" keeps the standard layout used by the focused tool pages.
+   */
+  variant?: "default" | "home";
 }
 
 const DEFAULT_SUBTITLE =
@@ -266,18 +346,24 @@ export default function HeroDownloader({
   titleB = "Downloader",
   subtitle = DEFAULT_SUBTITLE,
   titleAs = "h1",
-  placeholder = "Paste URL",
+  placeholder = "Paste link",
   badge,
   buttonLabel,
   tabs,
   mediaNote,
   trust,
+  variant = "default",
 }: HeroDownloaderProps) {
   const { t } = useLanguage();
+  const isHome = variant === "home";
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [state, setState] = useState<UIState>("IDLE");
   const [result, setResult] = useState<ResolveData | null>(null);
+  const [resolvedVariant, setResolvedVariant] = useState<
+    "default" | "pinterest" | "facebook" | "twitter" | "threads" | "youtube"
+  >("default");
+  const detectedPlatform = isHome ? detectPlatformFromUrl(url) : null;
   // Default to the primary mode (Reels). The tab is ONLY ever changed by an
   // explicit user click — resolve results, validation and errors never touch it.
   // Real processing progress: updated exclusively from backend SSE stage
@@ -392,6 +478,7 @@ export default function HeroDownloader({
     setError("");
     setState("IDLE");
     setResult(null);
+    setResolvedVariant("default");
     setAudioExtractionRequested(false);
     setProgress(0);
     setProgressStage("");
@@ -423,8 +510,14 @@ export default function HeroDownloader({
         setState("ERROR");
         return;
       }
-      if (!isValidInstagramUrl(trimmed)) {
+      const platform = detectPlatformFromUrl(trimmed);
+      if (!isHome && !isValidInstagramUrl(trimmed)) {
         setError(t.errors.invalid);
+        setState("ERROR");
+        return;
+      }
+      if (isHome && !platform && !isValidInstagramUrl(trimmed)) {
+        setError("Please paste a valid public link from Instagram, Pinterest, YouTube, Facebook, Twitter/X, or Threads.");
         setState("ERROR");
         return;
       }
@@ -458,6 +551,64 @@ export default function HeroDownloader({
       // Single active request: supersede anything still in flight so rapid
       // clicks can never spawn parallel resolutions.
       invalidateRequest();
+
+      // Non-Instagram multi-platform branch for homepage:
+      if (isHome && platform && platform !== "instagram") {
+        setResolvedVariant(platform);
+        const seq = ++requestSeqRef.current;
+        inFlightUrlRef.current = trimmed;
+        maxProgressRef.current = 0;
+        setResult(null);
+        setError("");
+        setProgress(35);
+        setProgressStage(`Connecting to ${platform.charAt(0).toUpperCase() + platform.slice(1)}...`);
+        setState("PREPARING");
+
+        const controller = new AbortController();
+        postAbortRef.current = controller;
+
+        let resolverPromise;
+        if (platform === "pinterest") {
+          resolverPromise = resolvePinterestUrl(trimmed, "any", controller.signal);
+        } else if (platform === "youtube") {
+          resolverPromise = resolveYouTubeUrl(trimmed, controller.signal);
+        } else if (platform === "facebook") {
+          resolverPromise = resolveFacebookUrl(trimmed, controller.signal);
+        } else if (platform === "twitter") {
+          resolverPromise = resolveTwitterUrl(trimmed, controller.signal);
+        } else {
+          resolverPromise = resolveThreadsUrl(trimmed, controller.signal);
+        }
+
+        resolverPromise
+          .then((res) => {
+            if (requestSeqRef.current !== seq) return;
+            inFlightUrlRef.current = null;
+            if (res.success) {
+              setProgress(100);
+              setProgressStage("");
+              if (platform === "youtube") {
+                setResult(convertYouTubeToResolveData(res.data as YouTubeResolveData));
+              } else {
+                setResult(res.data as ResolveData);
+              }
+              setState("SUCCESS");
+            } else {
+              setError(res.error?.message || `Unable to resolve media from this ${platform} post. Please verify it is public.`);
+              setState("ERROR");
+            }
+          })
+          .catch(() => {
+            if (requestSeqRef.current !== seq) return;
+            inFlightUrlRef.current = null;
+            if (controller.signal.aborted) return;
+            setError(`Could not fetch media from ${platform}. Please check the link and try again.`);
+            setState("ERROR");
+          });
+        return;
+      }
+
+      setResolvedVariant("default");
       // Audio is an output preference, not an input type selector. Preserve
       // it for Reel/Video -> MP3 while still updating the detected source tab.
       setAudioExtractionRequested(activeTab === "audio");
@@ -630,7 +781,7 @@ export default function HeroDownloader({
       });
       streamRef.current = handle;
     },
-    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange, storyFlowLog, blurForKeyboard]
+    [url, t, activeTab, invalidateRequest, clearWatchdog, closeStream, onActiveTabChange, storyFlowLog, blurForKeyboard, isHome]
   );
 
   const isAudioMode = activeTab === "audio" || (audioExtractionRequested && state === "SUCCESS");
@@ -680,7 +831,11 @@ export default function HeroDownloader({
   return (
     <section
       id="hero"
-      className="hero-section relative mb-12 overflow-hidden scroll-mt-24 pt-6 pb-16 sm:mb-16 sm:pt-8 sm:pb-20 lg:mb-20 lg:pt-10 lg:pb-24"
+      className={`hero-section relative overflow-hidden scroll-mt-24 ${
+        isHome
+          ? "home-hero"
+          : "tool-hero"
+      }`}
     >
       <div className="absolute inset-0 -z-10" aria-hidden="true">
         {/* Static radial wash instead of a filter-blurred layer: a 160px
@@ -703,7 +858,9 @@ export default function HeroDownloader({
               animation or delay here — animating the LCP element (or holding
               it at opacity 0 during a delay) directly inflates LCP. */}
           <div
-            className="mb-4 inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-fg-muted sm:mb-5 sm:gap-2 sm:px-4 sm:text-xs"
+            className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-fg-muted sm:gap-2 sm:px-4 sm:text-xs ${
+              isHome ? "mb-3 sm:mb-4" : "mb-4 sm:mb-5"
+            }`}
             style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}
           >
             <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-accent" />
@@ -713,13 +870,17 @@ export default function HeroDownloader({
 
           <TitleTag className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
             <span
-              className="hero-title-a block text-balance break-words text-[32px] sm:text-[42px] font-extrabold text-fg tracking-tight"
+              className={`hero-title-a ${
+                isHome ? "inline text-[28px] sm:text-[42px]" : "block text-[32px] sm:text-[42px]"
+              } text-balance break-words font-extrabold text-fg tracking-tight`}
               style={{ fontFamily: "var(--font-sans)" }}
             >
               {titleA}
             </span>
             <span
-              className="hero-title-b block text-balance break-words text-[28px] sm:text-[38px] font-semibold italic"
+              className={`hero-title-b ${
+                isHome ? "inline text-[26px] sm:text-[38px]" : "block text-[28px] sm:text-[38px]"
+              } text-balance break-words font-semibold italic`}
               style={{
                 fontFamily: "var(--font-accent)",
                 background: "var(--brand-gradient-text)",
@@ -732,7 +893,11 @@ export default function HeroDownloader({
             </span>
           </TitleTag>
 
-          <p className="hero-subtitle mt-4 text-[16px] leading-[1.65] text-fg-muted mx-auto max-w-2xl">
+          <p
+            className={`hero-subtitle mx-auto text-[16px] leading-[1.65] text-fg-muted ${
+              isHome ? "mt-2.5 max-w-[520px] text-[15px] sm:mt-3 sm:text-[17px]" : "mt-4 max-w-2xl"
+            }`}
+          >
             {subtitle}
           </p>
 
@@ -742,7 +907,7 @@ export default function HeroDownloader({
               chip — a single-button tab bar would look broken, and listing
               another route's media here is exactly how pages ended up with
               controls that did not match them. */}
-          {mediaCategories.length > 1 && (
+          {!isHome && mediaCategories.length > 1 && (
             <div className="mt-6 w-full">
               <div
                 role="tablist"
@@ -795,9 +960,42 @@ export default function HeroDownloader({
 
           {/* Input Bar */}
           <div className="mt-5 w-full">
+            {detectedPlatform && (
+              <div className="mb-2.5 flex items-center justify-center gap-1.5 animate-fade-in">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-bold shadow-xs transition-all"
+                  style={{
+                    background:
+                      detectedPlatform === "instagram"
+                        ? "rgba(236,95,168,0.12)"
+                        : detectedPlatform === "pinterest"
+                        ? "rgba(230,0,35,0.10)"
+                        : detectedPlatform === "youtube"
+                        ? "rgba(255,0,0,0.10)"
+                        : detectedPlatform === "facebook"
+                        ? "rgba(24,119,242,0.10)"
+                        : "rgba(15,23,42,0.08)",
+                    color:
+                      detectedPlatform === "instagram"
+                        ? "#ec5fa8"
+                        : detectedPlatform === "pinterest"
+                        ? "#e60023"
+                        : detectedPlatform === "youtube"
+                        ? "#ff0000"
+                        : detectedPlatform === "facebook"
+                        ? "#1877f2"
+                        : "var(--fg)",
+                    border: "1px solid currentColor",
+                  }}
+                >
+                  <span className="h-2 w-2 rounded-full animate-pulse-soft" style={{ background: "currentColor" }} />
+                  <span>{detectedPlatform.toUpperCase()} DETECTED</span>
+                </span>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="relative min-w-0" noValidate>
               <div
-                className="url-card rounded-[20px] p-2.5 transition-shadow"
+                className={`url-card rounded-[20px] p-2.5 transition-shadow ${isHome ? "url-card--home" : ""}`}
                 style={{
                   background: "var(--card)",
                   boxShadow: "var(--shadow-card), 0 0 40px rgba(124,77,245,0.06)",
@@ -853,7 +1051,8 @@ export default function HeroDownloader({
 
                   <button
                     type="submit"
-                    disabled={state === "PREPARING"}
+                    disabled={state === "PREPARING" || !url.trim()}
+                    aria-busy={state === "PREPARING"}
                     className="gradient-btn h-13 shrink-0 px-7 text-[16px]"
                   >
                     {state === "PREPARING" ? (
@@ -887,7 +1086,7 @@ export default function HeroDownloader({
                         if (error) setError("");
                       }}
                       placeholder={placeholder}
-                      className="h-13 w-full rounded-xl border-0 bg-transparent pl-12 pr-20 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
+                      className="h-12 w-full rounded-xl border-0 bg-transparent pl-11 pr-11 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
                       style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
                       aria-label={t.hero.inputLabel}
                       aria-invalid={error ? true : undefined}
@@ -900,11 +1099,10 @@ export default function HeroDownloader({
                       <button
                         type="button"
                         onClick={handleClear}
-                        className="absolute right-3 top-1/2 flex h-8 -translate-y-1/2 items-center gap-1 rounded-xl border border-border px-2.5 text-xs font-medium text-fg-muted"
-                        style={{ background: "var(--bg)" }}
+                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-primary-light hover:text-primary"
                         aria-label={t.common.clear}
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-4 w-4" />
                       </button>
                     )}
                   </div>
@@ -922,7 +1120,8 @@ export default function HeroDownloader({
                     </button>
                     <button
                       type="submit"
-                      disabled={state === "PREPARING"}
+                      disabled={state === "PREPARING" || !url.trim()}
+                      aria-busy={state === "PREPARING"}
                       className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-4 text-[16px]"
                     >
                       {state === "PREPARING" ? (
@@ -945,15 +1144,50 @@ export default function HeroDownloader({
               </div>
             </form>
 
-            {/* Trust indicators */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 text-[12px] text-fg-subtle sm:mt-4 sm:gap-x-5 sm:text-[14px]">
-              {trustItems.map((item) => (
-                <span key={item} className="flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-                  {item}
-                </span>
-              ))}
-            </div>
+            {/* Homepage: compact media-type chips directly under the card */}
+            {isHome && mediaCategories.length > 1 && (
+              <div
+                role="tablist"
+                aria-label="Supported media types"
+                className="media-chip-scroll mt-4 w-full justify-start sm:flex-wrap sm:justify-center sm:overflow-visible"
+              >
+                {mediaCategories.map((cat) => {
+                  const active = activeTab === cat.id;
+                  const Icon = cat.icon;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => onActiveTabChange(cat.id)}
+                      className={`flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                        active
+                          ? "border-primary/40 bg-primary-light text-primary-strong"
+                          : "border-border bg-card text-fg-muted hover:border-primary/30 hover:bg-primary-light/50 hover:text-primary"
+                      }`}
+                    >
+                      <Icon size={14} strokeWidth={2.2} aria-hidden="true" />
+                      <span className="whitespace-nowrap">{cat.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Trust indicators (shown inside hero only on tool pages; homepage moves them below the initial hero viewport) */}
+            {!isHome && (
+              <div
+                className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 text-[12px] text-fg-subtle sm:mt-4 sm:gap-x-5 sm:text-[14px]"
+              >
+                {trustItems.map((item) => (
+                  <span key={item} className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         {/* Result / Error Area */}
@@ -968,6 +1202,7 @@ export default function HeroDownloader({
               result={result}
               mode={isAudioMode ? "audio" : "video"}
               onReset={handleClear}
+              variant={resolvedVariant}
             />
           )}
 
