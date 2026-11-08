@@ -1742,24 +1742,38 @@ html:not(.js) .readmore-toggle {
 
 /* ─────────────────────────────────────────────
    Dedicated Downloader Tool Page Hero
+   Matches home-hero viewport discipline so the initial screen focuses
+   cleanly on the downloader, keeping all educational and lower content
+   naturally below the fold on both desktop and mobile.
    ───────────────────────────────────────────── */
 .tool-hero {
   margin-bottom: 0 !important;
-  padding-top: 0.5rem;
-  padding-bottom: 1.75rem;
+  min-height: calc(100vh - 120px);
+  min-height: calc(100dvh - 120px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  padding-top: 1rem;
+  padding-bottom: 2rem;
 }
 
 @media (min-width: 640px) {
   .tool-hero {
-    padding-top: 0.75rem;
-    padding-bottom: 2.25rem;
+    min-height: calc(100vh - 120px);
+    min-height: calc(100dvh - 120px);
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .tool-hero {
-    padding-top: 1rem;
-    padding-bottom: 2.5rem;
+    min-height: calc(100vh - 120px);
+    min-height: calc(100dvh - 120px);
+    padding-top: 2rem;
+    padding-bottom: 3rem;
   }
 }
 

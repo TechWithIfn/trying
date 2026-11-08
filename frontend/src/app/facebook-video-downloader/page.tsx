@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import FacebookDownloader from "@/components/FacebookDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -66,54 +67,49 @@ export default function FacebookVideoDownloaderPage() {
           benefits={PAGE.trust}
         />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
-
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Facebook Video Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Facebook Video Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                A Facebook Video Downloader is an online service that enables you to save publicly accessible Facebook videos, Reels, and Watch streams directly to your phone or computer as MP4 video files for offline watching.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                When a public video is posted on Facebook, Facebook distributes a progressive video stream. When you submit a Facebook link to Downloadit, our engine resolves the public stream address and presents a direct MP4 download link without requesting your Facebook login.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">Supported Facebook Media Types</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Facebook Watch</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Full-length videos, shows, and interviews</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Facebook Reels</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Vertical 9:16 viral short videos</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Feed Videos</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Standard video posts from public pages</span>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">Supported Facebook Media Types</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Facebook Watch</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Full-length videos, shows, and interviews</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Facebook Reels</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Vertical 9:16 viral short videos</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Feed Videos</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Standard video posts from public pages</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermark Added", desc: "Downloads original progressive MP4 streams without branding stamps." },
+                    { title: "Watch, Feed & Reels Supported", desc: "One unified downloader for all public Facebook video types." },
+                    { title: "Fast & Lightweight", desc: "No bulky APKs, desktop applications, or browser plugins required." },
+                    { title: "100% Free & Anonymous", desc: "Never requires Facebook sign-in or session sharing." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Facebook Videos, Step by Step</h3>
 
@@ -129,27 +125,8 @@ export default function FacebookVideoDownloaderPage() {
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Watermark Added", desc: "Downloads original progressive MP4 streams without branding stamps." },
-                  { title: "Watch, Feed & Reels Supported", desc: "One unified downloader for all public Facebook video types." },
-                  { title: "Fast & Lightweight", desc: "No bulky APKs, desktop applications, or browser plugins required." },
-                  { title: "100% Free & Anonymous", desc: "Never requires Facebook sign-in or session sharing." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -164,7 +141,29 @@ export default function FacebookVideoDownloaderPage() {
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Facebook Video Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Facebook Video Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  A Facebook Video Downloader is an online service that enables you to save publicly accessible Facebook videos, Reels, and Watch streams directly to your phone or computer as MP4 video files for offline watching.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  When a public video is posted on Facebook, Facebook distributes a progressive video stream. When you submit a Facebook link to Downloadit, our engine resolves the public stream address and presents a direct MP4 download link without requesting your Facebook login.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -176,7 +175,8 @@ export default function FacebookVideoDownloaderPage() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -199,8 +199,8 @@ export default function FacebookVideoDownloaderPage() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

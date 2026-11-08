@@ -829,6 +829,7 @@ export default function HeroDownloader({
     trust && trust.length > 0 ? trust : [t.hero.foot1, t.hero.foot2, t.hero.foot3];
 
   return (
+    <>
     <section
       id="hero"
       className={`hero-section relative overflow-hidden scroll-mt-24 ${
@@ -1175,19 +1176,6 @@ export default function HeroDownloader({
               </div>
             )}
 
-            {/* Trust indicators (shown inside hero only on tool pages; homepage moves them below the initial hero viewport) */}
-            {!isHome && (
-              <div
-                className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 text-[12px] text-fg-subtle sm:mt-4 sm:gap-x-5 sm:text-[14px]"
-              >
-                {trustItems.map((item) => (
-                  <span key={item} className="flex items-center gap-1.5">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-                    {item}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
         {/* Result / Error Area */}
@@ -1231,7 +1219,24 @@ export default function HeroDownloader({
         </div>
       </div>
     </section>
-  );
+
+    {/* Trust indicators – rendered outside the hero section so they appear
+        below the fold on first load. Homepage does not use this block; it
+        moves trust indicators into the #supported-platforms section. */}
+    {!isHome && (
+      <div className="mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="mx-auto flex max-w-[840px] flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 pb-6 pt-3 text-[12px] text-fg-subtle sm:gap-x-5 sm:pb-8 sm:pt-4 sm:text-[14px]">
+          {trustItems.map((item) => (
+            <span key={item} className="flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
+  </>
+);
 }
 
 const RESERVED_PROFILE_SEGMENTS = new Set([

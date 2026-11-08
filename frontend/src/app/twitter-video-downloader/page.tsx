@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import TwitterDownloader from "@/components/TwitterDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle, Repeat } from "lucide-react";
 
@@ -59,46 +60,41 @@ export default function TwitterVideoDownloaderPage() {
           benefits={PAGE.trust}
         />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                  <Repeat className="h-5 w-5 text-primary" />
+                  Animated GIFs &amp; Video Clips
+                </h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Twitter/X handles GIFs as looping MP4 files. Downloadit lets you download both standard user-uploaded videos and animated GIF loops in identical high clarity.
+                </p>
+              </div>
 
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Twitter/X Video Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Twitter/X Video Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                A Twitter/X Video Downloader is an online tool that saves video clips and animated GIFs posted on Twitter (now X) directly to your local device as standard MP4 files for offline playback.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                When a video tweet is shared publicly on X or Twitter, the platform packages the video into multiple bitrate renditions. Downloadit parses the status ID, selects the highest supported video resolution available, and delivers a fast, direct download link without watermarks.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
-                <Repeat className="h-5 w-5 text-primary" />
-                Animated GIFs &amp; Video Clips
-              </h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                Twitter converts all uploaded GIFs into lightweight looped MP4 video streams. Downloadit preserves these animated clips in their original loop-ready format so you can share them across WhatsApp, Telegram, or Discord.
-              </p>
-            </div>
-
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermark Added", desc: "Downloads clean MP4 video streams without overlaid account stamps." },
+                    { title: "Supports twitter.com & x.com", desc: "Easily parses links whether they use the new x.com or legacy twitter.com domain." },
+                    { title: "Fast Direct Downloads", desc: "Streams directly from edge CDN servers for immediate download speeds." },
+                    { title: "Completely Anonymous", desc: "No Twitter session, auth token, or login credentials required." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Twitter/X Videos, Step by Step</h3>
 
@@ -106,35 +102,16 @@ export default function TwitterVideoDownloaderPage() {
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Any Mobile or Desktop Browser</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Find the public tweet containing the video or GIF you want to save.</li>
-                    <li>Click or tap the <strong className="text-fg">Share</strong> icon and select <strong className="text-fg">Copy link to Tweet / Post</strong>.</li>
-                    <li>Paste the link into the download box above and click <strong className="text-fg">Get Video</strong>.</li>
-                    <li>Verify the video preview and click <strong className="text-fg">Download</strong> to save the MP4 to your device.</li>
+                    <li>Locate the tweet or post on Twitter / X that features the video you want.</li>
+                    <li>Click or tap <strong className="text-fg">Share</strong> and select <strong className="text-fg">Copy link</strong>.</li>
+                    <li>Paste the URL into Downloadit above and tap <strong className="text-fg">Get Video</strong>.</li>
+                    <li>Preview the video, click <strong className="text-fg">Download</strong>, and save the MP4 to your device.</li>
                   </ol>
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Watermark Added", desc: "Saves the pristine video stream with zero forced branding or watermarks." },
-                  { title: "Twitter.com & X.com Compatible", desc: "Fully supports old twitter.com URLs and modern x.com post addresses." },
-                  { title: "High-Quality Progressive MP4", desc: "Picks the highest available resolution up to 1080p." },
-                  { title: "100% Free & Unlimited", desc: "No download throttles, subscription fees, or account logins." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -142,14 +119,36 @@ export default function TwitterVideoDownloaderPage() {
               </h3>
               <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
                 <p>
-                  <strong className="text-fg">Protected Accounts:</strong> Tweets from protected accounts require follower authentication and cannot be downloaded by public tools.
+                  <strong className="text-fg">Protected Accounts:</strong> Tweets posted by protected accounts or private communities cannot be fetched because Twitter gates them behind follower authentication.
                 </p>
                 <p>
-                  <strong className="text-fg">Deleted Tweets:</strong> If the author or X removes a post, its video stream is deleted from CDN servers and cannot be downloaded.
+                  <strong className="text-fg">Deleted Tweets:</strong> If an author or moderator deletes a post, the media stream is revoked from CDN access.
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Twitter/X Video Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Twitter/X Video Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  A Twitter/X Video Downloader is an online tool that saves video clips and animated GIFs posted on Twitter (now X) directly to your local device as standard MP4 files for offline playback.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  When a video tweet is shared publicly on X or Twitter, the platform packages the video into multiple bitrate renditions. Downloadit parses the status ID, selects the highest supported video resolution available, and delivers a fast, direct download link without watermarks.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -161,16 +160,17 @@ export default function TwitterVideoDownloaderPage() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
                   { href: "/threads-video-downloader", label: "Threads Downloader", desc: "Download Threads videos & photos" },
-                  { href: "/facebook-video-downloader", label: "Facebook Downloader", desc: "Download Facebook feed & Watch videos" },
-                  { href: "/instagram-video-downloader", label: "Instagram Downloader", desc: "Save Instagram Reels & videos" },
+                  { href: "/instagram-video-downloader", label: "Instagram Downloader", desc: "Download Instagram Reels & videos" },
                   { href: "/youtube-video-downloader", label: "YouTube Downloader", desc: "Save YouTube videos and Shorts" },
-                  { href: "/pinterest-video-downloader", label: "Pinterest Downloader", desc: "Save Pinterest video pins" },
+                  { href: "/facebook-video-downloader", label: "Facebook Downloader", desc: "Download Facebook feed & Watch videos" },
+                  { href: "/pinterest-video-downloader", label: "Pinterest Downloader", desc: "Download Pinterest video pins" },
                   { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
                 ].map((tool) => (
                   <Link
@@ -184,8 +184,8 @@ export default function TwitterVideoDownloaderPage() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

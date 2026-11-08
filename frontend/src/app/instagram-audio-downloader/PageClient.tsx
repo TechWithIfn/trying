@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle, Music } from "lucide-react";
 
@@ -37,46 +38,41 @@ export default function AudioDownloaderPageClient() {
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <ToolDownloader page={PAGE} />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                  <Music className="h-5 w-5 text-primary" />
+                  Audio Quality &amp; Compatibility
+                </h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Audio tracks are extracted at the maximum bit-rate provided by the source clip (typically 128 to 256 kbps stereo). Downloaded files use standard MP3 containers that play universally on all smartphone players, desktop media software, and car audio systems.
+                </p>
+              </div>
 
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Audio Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is an Audio Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                An Instagram Audio Downloader is a dedicated tool that extracts audio tracks, music, voiceovers, podcasts, and speeches from public Instagram Reels and videos, saving them as standalone MP3 files onto your device.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                When you paste a Reel or video URL, Downloadit inspects the post&apos;s audio channels, decouples the audio track from the video stream, and packages it into an MP3 file ready for immediate offline listening or audio production.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
-                <Music className="h-5 w-5 text-primary" />
-                Audio Quality &amp; Compatibility
-              </h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                All audio tracks are saved with original sample rates and stereo separation. The resulting MP3 is universally compatible with Spotify local files, Apple Music, VLC, car audio systems, and digital audio workstations (DAWs).
-              </p>
-            </div>
-
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "Universal MP3 Compatibility", desc: "Plays on all devices, audio editing software, and sound players." },
+                    { title: "Pure Sound Extraction", desc: "Isolates the audio stream directly without re-compression degradation." },
+                    { title: "Unlimited Audio Saves", desc: "Extract trending sounds, speeches, and podcast clips without restrictions." },
+                    { title: "100% Free & No Sign-In", desc: "No registration, subscription fees, or account sessions required." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Extract Audio from Instagram, Step by Step</h3>
 
@@ -84,35 +80,16 @@ export default function AudioDownloaderPageClient() {
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Any Mobile or Desktop Browser</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Find the public Reel or video with the soundtrack or speech you want to keep.</li>
-                    <li>Copy its link using the <strong className="text-fg">Share</strong> button.</li>
-                    <li>Paste the link into the box above and tap <strong className="text-fg">Extract Audio</strong>.</li>
-                    <li>Preview the sound waveform or player, tap <strong className="text-fg">Download MP3</strong>, and save the audio file.</li>
+                    <li>Find the public Reel or video with the soundtrack or speech you want to extract.</li>
+                    <li>Copy its share link using the <strong className="text-fg">Share</strong> button.</li>
+                    <li>Paste the link into the URL field above and tap <strong className="text-fg">Get Audio</strong>.</li>
+                    <li>Preview the audio track and click <strong className="text-fg">Download MP3</strong> to save the sound file.</li>
                   </ol>
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "Direct MP3 Delivery", desc: "No second conversion step needed. Download ready-to-play MP3 audio." },
-                  { title: "Saves Storage Space", desc: "MP3 files are 90% smaller than full video files, saving valuable phone memory." },
-                  { title: "Clean Metadata", desc: "Proper track naming derived from post title or author handle." },
-                  { title: "No Sign-In Required", desc: "Extract sound clips completely anonymously with zero account creation." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -120,14 +97,36 @@ export default function AudioDownloaderPageClient() {
               </h3>
               <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
                 <p>
-                  <strong className="text-fg">Muted or Silent Reels:</strong> Some creators post video clips without audio or with copyright-restricted soundtracks that Instagram mutes. If a video has no audio on Instagram, no sound can be extracted.
+                  <strong className="text-fg">Silent Videos:</strong> Some videos and carousels contain no audio track. Downloadit will notify you if no audio stream is detected in the source media.
                 </p>
                 <p>
-                  <strong className="text-fg">Photo Posts:</strong> Static photos and photo carousels do not contain audio tracks. Make sure your link points to a video or Reel.
+                  <strong className="text-fg">Muted Copyright Tracks:</strong> If Instagram muted the video in your country for licensing reasons, the CDN audio stream is unavailable and cannot be extracted.
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Audio Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is an Audio Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  An Instagram Audio Downloader is a dedicated tool that extracts audio tracks, music, voiceovers, podcasts, and speeches from public Instagram Reels and videos, saving them as standalone MP3 files onto your device.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  When you paste a Reel or video URL, Downloadit inspects the post&apos;s audio channels, decouples the audio track from the video stream, and packages it into an MP3 file ready for immediate offline listening or audio production.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -139,15 +138,18 @@ export default function AudioDownloaderPageClient() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
-                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Download public vertical Reels" },
-                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save longer Instagram video clips" },
-                  { href: "/youtube-video-downloader", label: "YouTube Downloader", desc: "Download YouTube videos and audio" },
-                  { href: "/", label: "All Downloaders", desc: "Downloadit home downloader" },
+                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Download full Instagram videos" },
+                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Save vertical 9:16 Instagram Reels" },
+                  { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Download photos and carousels" },
+                  { href: "/youtube-video-downloader", label: "YouTube Audio Downloader", desc: "Extract MP3 sound from YouTube" },
+                  { href: "/pinterest-video-downloader", label: "Pinterest Downloader", desc: "Download Pinterest videos with sound" },
+                  { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
                 ].map((tool) => (
                   <Link
                     key={tool.href}
@@ -160,8 +162,8 @@ export default function AudioDownloaderPageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

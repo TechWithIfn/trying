@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import YouTubeDownloader from "@/components/YouTubeDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -49,54 +50,49 @@ export default function YouTubeVideoPageClient() {
           benefits={PAGE.trust}
         />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
-
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the YouTube Video Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a YouTube Video Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                A YouTube Video Downloader is a high-speed web utility that allows you to download public YouTube videos, viral Shorts, and audio tracks to your computer or phone as playable MP4 or MP3 files. It lets you enjoy your favorite lectures, tutorials, and music offline without internet buffering or ads.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                When you paste a YouTube link, Downloadit analyzes the video metadata via our robust server backend, queries YouTube&apos;s available DASH and progressive media streams, and merges high-resolution video with AAC audio into a clean MP4 file ready for download.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">Supported Media Formats &amp; Resolutions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">MP4 Video</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">1080p, 720p, 480p, and 360p resolutions</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">YouTube Shorts</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Full 9:16 vertical clips with original sound</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">MP3 / M4A Audio</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">High-bitrate audio tracks for music &amp; talks</span>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">Supported Media Formats &amp; Resolutions</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">MP4 Video</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">1080p, 720p, 480p, and 360p resolutions</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">YouTube Shorts</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Full 9:16 vertical clips with original sound</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">MP3 / M4A Audio</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">High-bitrate audio tracks for music &amp; talks</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermarks or Overlays", desc: "Enjoy clean video without promotional branding or altered pixels." },
+                    { title: "Shorts & Standard Videos", desc: "Seamlessly handles youtube.com/watch, youtu.be, and youtube.com/shorts URLs." },
+                    { title: "Audio Extraction Included", desc: "Easily extract high-quality MP3 sound without needing separate audio tools." },
+                    { title: "Private & Free", desc: "No registration, no tracking cookies, and no download limits." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download YouTube Videos, Step by Step</h3>
 
@@ -112,27 +108,8 @@ export default function YouTubeVideoPageClient() {
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Watermarks or Overlays", desc: "Enjoy clean video without promotional branding or altered pixels." },
-                  { title: "Shorts & Standard Videos", desc: "Seamlessly handles youtube.com/watch, youtu.be, and youtube.com/shorts URLs." },
-                  { title: "Audio Extraction Included", desc: "Easily extract high-quality MP3 sound without needing separate audio tools." },
-                  { title: "Private & Free", desc: "No registration, no tracking cookies, and no download limits." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -147,7 +124,29 @@ export default function YouTubeVideoPageClient() {
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the YouTube Video Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a YouTube Video Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  A YouTube Video Downloader is a high-speed web utility that allows you to download public YouTube videos, viral Shorts, and audio tracks to your computer or phone as playable MP4 or MP3 files. It lets you enjoy your favorite lectures, tutorials, and music offline without internet buffering or ads.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  When you paste a YouTube link, Downloadit analyzes the video metadata via our robust server backend, queries YouTube&apos;s available DASH and progressive media streams, and merges high-resolution video with AAC audio into a clean MP4 file ready for download.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -159,7 +158,8 @@ export default function YouTubeVideoPageClient() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -182,8 +182,8 @@ export default function YouTubeVideoPageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

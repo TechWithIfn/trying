@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -45,57 +46,49 @@ export default function ReelsDownloaderPageClient() {
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <ToolDownloader page={PAGE} />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
-
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Reels Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is an Instagram Reels Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                An Instagram Reels Downloader is a specialized web tool built to download vertical 9:16 short-form video clips from Instagram to your device as standard MP4 video files. It saves the original audio, visuals, and timing without adding watermarks or reducing video resolution.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                When a creator publishes a Reel publicly, Instagram distributes the clip across global media servers. By copying the link to the Reel and pasting it into Downloadit, our engine locates the progressive media stream and provides a direct download link that saves the complete video file onto your smartphone, tablet, or desktop computer.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">Supported Formats &amp; Quality</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted mb-3">
-                Downloadit preserves the exact quality that Instagram serves to viewers:
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Original 1080p / 720p</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">High-definition vertical format (1080x1920)</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">MP4 Container</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Universal video format playing on any modern device</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Synchronized Audio</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Full soundtrack and vocal track merged seamlessly</span>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">Supported Formats &amp; Quality</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Vertical 9:16 MP4</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Full-screen mobile video aspect ratio</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Stereo Audio (AAC)</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Original mixed-in music and speech tracks</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">High Bitrate 1080p</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Highest resolution supplied by Instagram</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermark Stamped", desc: "Clean reels without app logos, account stamps, or overlays." },
+                    { title: "Original Frame Rate", desc: "Fluid 30fps and 60fps playback matching the creator's upload." },
+                    { title: "Fast Streaming Direct", desc: "Direct download links directly from edge CDNs for max download speeds." },
+                    { title: "Free & Unlimited", desc: "Download as many reels as you need with zero daily quotas." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Instagram Reels, Step by Step</h3>
 
@@ -103,56 +96,34 @@ export default function ReelsDownloaderPageClient() {
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Android</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Open Instagram and scroll to the Reel you want to save.</li>
-                    <li>Tap the <strong className="text-fg">Share</strong> icon (the paper airplane) on the right side.</li>
-                    <li>Tap <strong className="text-fg">Copy Link</strong>.</li>
-                    <li>Open Downloadit in your browser, paste the link into the URL field, and tap <strong className="text-fg">Download Reel</strong>.</li>
-                    <li>Confirm the preview and tap <strong className="text-fg">Download</strong> to save the MP4 into your Downloads.</li>
+                    <li>Open Instagram, find the Reel you want to save, and tap the <strong className="text-fg">Share</strong> icon.</li>
+                    <li>Tap <strong className="text-fg">Copy link</strong>.</li>
+                    <li>Open Downloadit in Chrome or any browser, paste the link in the input field above, and click <strong className="text-fg">Get Reel</strong>.</li>
+                    <li>Preview the reel and click <strong className="text-fg">Download</strong> to save the MP4 to your gallery.</li>
                   </ol>
                 </div>
 
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On iPhone &amp; iPad</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Open the Instagram app and tap the Share button on the Reel.</li>
-                    <li>Select <strong className="text-fg">Copy Link</strong> from the sharing options.</li>
-                    <li>Launch <strong className="text-fg">Safari</strong>, paste the link above, and tap <strong className="text-fg">Download Reel</strong>.</li>
-                    <li>Preview the clip, tap <strong className="text-fg">Download</strong>, and accept the download dialog.</li>
-                    <li>Access your saved video anytime inside the <strong className="text-fg">Files</strong> app under Downloads.</li>
+                    <li>In the Instagram app, tap the three dots or Share button on the Reel and tap <strong className="text-fg">Copy link</strong>.</li>
+                    <li>Open <strong className="text-fg">Safari</strong>, paste the URL into Downloadit, and tap <strong className="text-fg">Get Reel</strong>.</li>
+                    <li>Tap <strong className="text-fg">Download</strong> and confirm the Safari download prompt. The video is saved into your Files app.</li>
                   </ol>
                 </div>
 
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Desktop</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Open the Reel in your desktop browser and copy the address from your browser bar.</li>
-                    <li>Paste the address into Downloadit and click <strong className="text-fg">Download Reel</strong>.</li>
-                    <li>Preview the Reel and click <strong className="text-fg">Download</strong> to save the MP4 directly to your PC or Mac.</li>
+                    <li>Copy the URL from your browser address bar while viewing the Reel on instagram.com.</li>
+                    <li>Paste the URL into Downloadit and click <strong className="text-fg">Get Reel</strong>.</li>
+                    <li>Click <strong className="text-fg">Download</strong> to save the MP4 video directly to your computer.</li>
                   </ol>
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Watermark Stamped", desc: "Keep the original video clean without forced stamps, handles, or overlays." },
-                  { title: "Full Original Audio", desc: "Music and original audio tracks are preserved with perfect lip-sync." },
-                  { title: "Lightning Fast Extraction", desc: "Real-time SSE streaming delivers media previews in a split second." },
-                  { title: "Completely Anonymous", desc: "No login, no cookies stored, and no notifications sent to the creator." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -160,17 +131,36 @@ export default function ReelsDownloaderPageClient() {
               </h3>
               <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
                 <p>
-                  <strong className="text-fg">Private Account Reels:</strong> If a creator has a private account, Instagram restricts their Reels strictly to approved followers. These clips cannot be retrieved anonymously.
+                  <strong className="text-fg">Private Account Reels:</strong> If a creator has set their account to private, logged-out users and tools cannot access the media. Downloadit only downloads public Reels.
                 </p>
                 <p>
-                  <strong className="text-fg">Audio-Restricted Reels:</strong> In rare cases, third-party music publishers mute or restrict licensed music in specific geographic areas. The video will still download, but the music track may reflect Instagram&apos;s regional restrictions.
-                </p>
-                <p>
-                  <strong className="text-fg">Stale Links:</strong> Instagram expires direct media links after a few hours. If your download stalls, paste the original post link again to generate fresh streaming tokens.
+                  <strong className="text-fg">Audio-Only Reels or Removed Sounds:</strong> If a creator or copyright owner removes an audio track, Instagram silences the reel on their CDN. Downloadit delivers the exact video track stored by Instagram.
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Reels Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is an Instagram Reels Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  An Instagram Reels Downloader is a specialized web tool built to download vertical 9:16 short-form video clips from Instagram to your device as standard MP4 video files. It saves the original audio, visuals, and timing without adding watermarks or reducing video resolution.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Instagram hosts public Reels on globally distributed content delivery networks. When you paste a Reel URL (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">instagram.com/reel/...</code>), Downloadit resolves the master MP4 media stream from the page metadata and provides a direct, one-click download link.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -182,17 +172,18 @@ export default function ReelsDownloaderPageClient() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
-                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save longer feed videos" },
-                  { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Download photos and carousels" },
-                  { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
-                  { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract Reel sound as MP3" },
-                  { href: "/pinterest-video-downloader", label: "Pinterest Video Downloader", desc: "Download Pinterest videos" },
-                  { href: "/youtube-video-downloader", label: "YouTube Video Downloader", desc: "Download YouTube Shorts & videos" },
+                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Download regular Instagram feed videos" },
+                  { href: "/instagram-photo-downloader", label: "Instagram Photo Downloader", desc: "Download full-res photos and carousels" },
+                  { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save active 24-hour stories" },
+                  { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract background music & audio MP3" },
+                  { href: "/youtube-video-downloader", label: "YouTube Shorts Downloader", desc: "Download YouTube Shorts & videos" },
+                  { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
                 ].map((tool) => (
                   <Link
                     key={tool.href}
@@ -205,8 +196,8 @@ export default function ReelsDownloaderPageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

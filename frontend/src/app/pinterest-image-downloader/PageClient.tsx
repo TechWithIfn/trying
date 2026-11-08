@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import PinterestDownloader from "@/components/PinterestDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle, Layers } from "lucide-react";
 
@@ -46,46 +47,41 @@ export default function PinterestImagePageClient() {
           benefits={PAGE.trust}
         />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Carousel &amp; Image Board Support
+                </h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  If the pin is a carousel containing a gallery of reference images, recipes, or moodboards, Downloadit extracts every slide in the set. You can flip through the gallery and download whichever slides you need.
+                </p>
+              </div>
 
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Pinterest Image &amp; Carousel Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Pinterest Image Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                A Pinterest Image Downloader is a dedicated web tool that extracts the full-resolution source photograph behind any public Pinterest pin or multi-image carousel, saving it in crystal-clear quality without screenshot compression or watermarks.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                Pinterest displays scaled thumbnails in its feed to save bandwidth. Downloadit queries the underlying pin JSON and metadata to find the uncompressed original asset URL (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">originals/</code> branch), giving you direct access to the full-size photograph.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
-                <Layers className="h-5 w-5 text-primary" />
-                Carousel &amp; Image Board Support
-              </h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                If the pin is a carousel containing a gallery of reference images, recipes, or moodboards, Downloadit extracts every slide in the set. You can flip through the gallery and download whichever slides you need.
-              </p>
-            </div>
-
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "Highest Resolution Master", desc: "Downloads original images up to 4K resolution rather than feed thumbnails." },
+                    { title: "No Watermark Stamped", desc: "Clean images without site badges, logos, or author text overlays." },
+                    { title: "Fast & Unlimited", desc: "Save wallpaper ideas, aesthetic moodboards, and design references without limit." },
+                    { title: "Zero Registration", desc: "No email, phone number, or login required." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Pinterest Images, Step by Step</h3>
 
@@ -101,27 +97,8 @@ export default function PinterestImagePageClient() {
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "Highest Resolution Master", desc: "Downloads original images up to 4K resolution rather than feed thumbnails." },
-                  { title: "No Watermark Stamped", desc: "Clean images without site badges, logos, or author text overlays." },
-                  { title: "Fast & Unlimited", desc: "Save wallpaper ideas, aesthetic moodboards, and design references without limit." },
-                  { title: "Zero Registration", desc: "No email, phone number, or login required." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -136,7 +113,29 @@ export default function PinterestImagePageClient() {
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Pinterest Image &amp; Carousel Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Pinterest Image Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  A Pinterest Image Downloader is a dedicated web tool that extracts the full-resolution source photograph behind any public Pinterest pin or multi-image carousel, saving it in crystal-clear quality without screenshot compression or watermarks.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Pinterest displays scaled thumbnails in its feed to save bandwidth. Downloadit queries the underlying pin JSON and metadata to find the uncompressed original asset URL (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">originals/</code> branch), giving you direct access to the full-size photograph.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -148,7 +147,8 @@ export default function PinterestImagePageClient() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -169,8 +169,8 @@ export default function PinterestImagePageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

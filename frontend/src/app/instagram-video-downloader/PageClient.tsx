@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -45,75 +46,63 @@ export default function VideoDownloaderPageClient() {
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <ToolDownloader page={PAGE} />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
-
-          {/* Heading required by prompt */}
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Video Downloader Does
-          </h2>
-
-          {/* Complete educational content shown by default without any Read More / Know More button */}
-          <div className="mt-6 space-y-8 text-fg">
-            {/* What is a Video Downloader? */}
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Video Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                A video downloader is an online utility that allows you to save publicly accessible streaming videos from social networks to your personal device as independent video files (such as MP4). Instead of being forced to re-stream the clip every time you want to view it, a downloader lets you store the master video locally for offline playback, reference, archiving, and study.
-              </p>
-            </div>
-
-            {/* How Does It Work? */}
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                When a public video is shared on Instagram, the platform generates a progressive MP4 media stream hosted on Content Delivery Networks (CDNs). When you paste a public URL into Downloadit, our backend resolver inspects the page metadata, extracts the direct source URL of the video stream, and prepares a high-speed download link. No credentials, cookies, or account sessions are required.
-              </p>
-            </div>
-
-            {/* Supported Platforms */}
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">Supported Platforms</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted mb-3">
-                While this page is optimized specifically for Instagram video content, Downloadit provides dedicated high-speed download engines for six major platforms:
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {[
-                  { name: "Instagram", desc: "Videos, Reels, Stories, Photos" },
-                  { name: "Pinterest", desc: "Video pins, Idea pins, Images" },
-                  { name: "YouTube", desc: "Standard videos, Shorts, Audio" },
-                  { name: "Facebook", desc: "Watch videos, Feed clips, Reels" },
-                  { name: "Twitter / X", desc: "Tweet videos, Looped GIFs" },
-                  { name: "Threads", desc: "Post videos and high-res images" },
-                ].map((item) => (
-                  <div key={item.name} className="rounded-xl border border-border bg-card p-3">
-                    <span className="block text-[13.5px] font-bold text-primary">{item.name}</span>
-                    <span className="block text-[11.5px] text-fg-subtle">{item.desc}</span>
-                  </div>
-                ))}
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">Supported Platforms</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted mb-3">
+                  While this page is optimized specifically for Instagram video content, Downloadit provides dedicated high-speed download engines for six major platforms:
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {[
+                    { name: "Instagram", desc: "Videos, Reels, Stories, Photos" },
+                    { name: "Pinterest", desc: "Video pins, Idea pins, Images" },
+                    { name: "YouTube", desc: "Standard videos, Shorts, Audio" },
+                    { name: "Facebook", desc: "Watch videos, Feed clips, Reels" },
+                    { name: "Twitter / X", desc: "Tweet videos, Looped GIFs" },
+                    { name: "Threads", desc: "Post videos and high-res images" },
+                  ].map((item) => (
+                    <div key={item.name} className="rounded-xl border border-border bg-card p-3">
+                      <span className="block text-[13.5px] font-bold text-primary">{item.name}</span>
+                      <span className="block text-[11.5px] text-fg-subtle">{item.desc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* What Types of Videos Can Be Downloaded? */}
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What Types of Videos Can Be Downloaded?</h3>
-              <ul className="list-disc pl-5 space-y-2 text-[15px] sm:text-[16px] leading-[1.7] text-fg-muted">
-                <li><strong className="text-fg">Long-form video posts:</strong> Educational tutorials, demonstrations, speeches, and interviews.</li>
-                <li><strong className="text-fg">Short video clips:</strong> Standard landscape, square, or vertical clips published in user feeds.</li>
-                <li><strong className="text-fg">High-Definition MP4:</strong> Original resolutions including 1080p and 720p with clean audio tracks.</li>
-                <li><strong className="text-fg">Public account media:</strong> Any video visible to a logged-out web visitor without permission barriers.</li>
-              </ul>
-            </div>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What Types of Videos Can Be Downloaded?</h3>
+                <ul className="list-disc pl-5 space-y-2 text-[15px] sm:text-[16px] leading-[1.7] text-fg-muted">
+                  <li><strong className="text-fg">Long-form video posts:</strong> Educational tutorials, demonstrations, speeches, and interviews.</li>
+                  <li><strong className="text-fg">Short video clips:</strong> Standard landscape, square, or vertical clips published in user feeds.</li>
+                  <li><strong className="text-fg">High-Definition MP4:</strong> Original resolutions including 1080p and 720p with clean audio tracks.</li>
+                  <li><strong className="text-fg">Public account media:</strong> Any video visible to a logged-out web visitor without permission barriers.</li>
+                </ul>
+              </div>
 
-            {/* How to Download Videos */}
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features and Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermarks Added", desc: "Get pure original video streams without promotional logos, stamps, or watermarks." },
+                    { title: "Preserved Audio Quality", desc: "Original stereo audio encoded in standard AAC at optimal bitrate." },
+                    { title: "Universal Compatibility", desc: "MP4 container files play natively on iOS, Android, Windows, Mac, and Smart TVs." },
+                    { title: "Zero Software Installation", desc: "100% web-based. No sketchy desktop software, APK files, or browser extensions needed." },
+                  ].map((feat) => (
+                    <div key={feat.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{feat.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{feat.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Videos, Step by Step</h3>
 
@@ -148,29 +137,8 @@ export default function VideoDownloaderPageClient() {
                 </div>
               </div>
             </div>
-
-            {/* Features and Benefits */}
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features and Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Watermarks Added", desc: "Get pure original video streams without promotional logos, stamps, or watermarks." },
-                  { title: "Preserved Audio Quality", desc: "Original stereo audio encoded in standard AAC at optimal bitrate." },
-                  { title: "Universal Compatibility", desc: "MP4 container files play natively on iOS, Android, Windows, Mac, and Smart TVs." },
-                  { title: "Zero Software Installation", desc: "100% web-based. No sketchy desktop software, APK files, or browser extensions needed." },
-                ].map((feat) => (
-                  <div key={feat.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{feat.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{feat.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Common Video Download Problems */}
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -188,8 +156,29 @@ export default function VideoDownloaderPageClient() {
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Video Downloader Does
+              </h2>
 
-            {/* Frequently Asked Questions */}
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Video Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  A video downloader is an online utility that allows you to save publicly accessible streaming videos from social networks to your personal device as independent video files (such as MP4). Instead of being forced to re-stream the clip every time you want to view it, a downloader lets you store the master video locally for offline playback, reference, archiving, and study.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  When a public video is shared on Instagram, the platform generates a progressive MP4 media stream hosted on Content Delivery Networks (CDNs). When you paste a public URL into Downloadit, our backend resolver inspects the page metadata, extracts the direct source URL of the video stream, and prepares a high-speed download link. No credentials, cookies, or account sessions are required.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -201,8 +190,8 @@ export default function VideoDownloaderPageClient() {
                 ))}
               </div>
             </div>
-
-            {/* Related Downloaders */}
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -225,8 +214,8 @@ export default function VideoDownloaderPageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

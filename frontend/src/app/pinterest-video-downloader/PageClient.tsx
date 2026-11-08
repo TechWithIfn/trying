@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import PinterestDownloader from "@/components/PinterestDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -50,54 +51,49 @@ export default function PinterestVideoPageClient() {
           benefits={PAGE.trust}
         />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
-
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Pinterest Video Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Pinterest Video Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                A Pinterest Video Downloader is a web application that enables you to save publicly accessible Pinterest video pins, DIY tutorials, recipe clips, and Idea pins directly to your device as high-definition MP4 video files with audio.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                Pinterest hosts media using short URLs (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">pin.it</code>) and standard web links (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">pinterest.com/pin/...</code>). Downloadit expands and validates the pin URL, parses the HTML metadata for the master progressive video stream, and gives you a direct download link.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What Types of Pinterest Media Can Be Downloaded?</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Standard Video Pins</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Full 720p and 1080p MP4 videos with sound</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Idea Pins &amp; Shorts</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Multi-page story videos and animated pins</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">High-Res Photos</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Original full-size JPG/PNG images</span>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What Types of Pinterest Media Can Be Downloaded?</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Standard Video Pins</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Full 720p and 1080p MP4 videos with sound</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Idea Pins &amp; Shorts</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Multi-page story videos and animated pins</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">High-Res Photos</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Original full-size JPG/PNG images</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermark Added", desc: "Save clean Pinterest videos without promotional stamps or overlays." },
+                    { title: "Supports Short pin.it Links", desc: "Easily handles both pin.it mobile share links and full desktop URLs." },
+                    { title: "Universal MP4 Playback", desc: "Videos play effortlessly on iPhone, Android, Windows, Mac, and TVs." },
+                    { title: "100% Free & Unlimited", desc: "Download as many recipe, aesthetic, and tutorial pins as you need." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Pinterest Videos, Step by Step</h3>
 
@@ -122,27 +118,8 @@ export default function PinterestVideoPageClient() {
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Watermark Added", desc: "Save clean Pinterest videos without promotional stamps or overlays." },
-                  { title: "Supports Short pin.it Links", desc: "Easily handles both pin.it mobile share links and full desktop URLs." },
-                  { title: "Universal MP4 Playback", desc: "Videos play effortlessly on iPhone, Android, Windows, Mac, and TVs." },
-                  { title: "100% Free & Unlimited", desc: "Download as many recipe, aesthetic, and tutorial pins as you need." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -157,7 +134,29 @@ export default function PinterestVideoPageClient() {
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Pinterest Video Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Pinterest Video Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  A Pinterest Video Downloader is a web application that enables you to save publicly accessible Pinterest video pins, DIY tutorials, recipe clips, and Idea pins directly to your device as high-definition MP4 video files with audio.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Pinterest hosts media using short URLs (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">pin.it</code>) and standard web links (<code className="text-xs bg-bg px-1.5 py-0.5 rounded">pinterest.com/pin/...</code>). Downloadit expands and validates the pin URL, parses the HTML metadata for the master progressive video stream, and gives you a direct download link.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -169,7 +168,8 @@ export default function PinterestVideoPageClient() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -192,8 +192,8 @@ export default function PinterestVideoPageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

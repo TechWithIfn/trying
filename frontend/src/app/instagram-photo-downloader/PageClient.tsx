@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import ToolDownloader from "@/components/ToolDownloader";
+import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
@@ -41,54 +42,49 @@ export default function CarouselDownloaderPageClient() {
         <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <ToolDownloader page={PAGE} />
 
-        <section className="mx-auto max-w-[920px] px-5 sm:px-6 lg:px-12 pt-2 pb-16 sm:pt-4">
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
-            >
-              <span aria-hidden="true">←</span>
-              <span>Back to Home Downloader</span>
-            </Link>
-          </div>
-
-          <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-            What the Photo &amp; Carousel Downloader Does
-          </h2>
-
-          <div className="mt-6 space-y-8 text-fg">
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">What is a Photo &amp; Carousel Downloader?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                An Instagram Photo and Carousel Downloader is an online tool that saves full-resolution photos, single images, and multi-slide carousels from public Instagram posts directly to your storage. Instead of capturing low-quality screenshots that clip borders and lose clarity, this tool downloads the original uncompressed image files.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-              <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                Instagram carousels bundle up to 10 photos and videos in a single swipeable gallery. When you enter a post link, Downloadit inspects the gallery container, resolves every individual slide at maximum display quality, and provides single-click download buttons for each image or the entire gallery.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-3">Supported Image Formats &amp; Resolutions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Original Resolution</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Full 1080px to 1440px wide master files</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">JPEG &amp; WebP</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Direct from upstream CDN with zero re-encoding</span>
-                </div>
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <span className="block text-[14px] font-bold text-primary">Complete Carousels</span>
-                  <span className="block text-[12px] text-fg-subtle mt-1">Download slide-by-slide or all at once</span>
+        <DownloaderContentLayout
+          supportedFeatures={
+            <>
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">Supported Image Formats &amp; Resolutions</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Full-Res JPEG &amp; WebP</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Up to 1080×1350 resolution (4:5 portrait)</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Multi-Slide Carousels</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Download each slide or the full collection</span>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <span className="block text-[14px] font-bold text-primary">Single Image Posts</span>
+                    <span className="block text-[12px] text-fg-subtle mt-1">Direct uncompressed source photographs</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { title: "No Watermark Added", desc: "Get clean pictures with zero stamps, overlays, or modified pixels." },
+                    { title: "Full Carousel Resolution", desc: "Every slide in a gallery post is resolved at its highest available pixel size." },
+                    { title: "Fast Single-Click Saving", desc: "No complex software; works right inside your mobile or desktop browser." },
+                    { title: "Completely Anonymous", desc: "No Instagram login or personal credentials required." },
+                  ].map((item) => (
+                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
+                      <div>
+                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
+                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          }
+          howToUse={
             <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
               <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Instagram Photos, Step by Step</h3>
 
@@ -96,44 +92,25 @@ export default function CarouselDownloaderPageClient() {
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Mobile (Android &amp; iOS)</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Find the public photo or carousel post in your Instagram app.</li>
-                    <li>Tap <strong className="text-fg">Share</strong> and select <strong className="text-fg">Copy Link</strong>.</li>
-                    <li>Paste the link into the URL input above and tap <strong className="text-fg">Download Photo</strong>.</li>
-                    <li>Swipe through the carousel slides and tap Download on the slide you want to save.</li>
+                    <li>Open Instagram, find the post with the photo or carousel you want, and tap <strong className="text-fg">Share</strong>.</li>
+                    <li>Tap <strong className="text-fg">Copy link</strong>.</li>
+                    <li>Open Downloadit in your browser, paste the link in the input box, and tap <strong className="text-fg">Get Photos</strong>.</li>
+                    <li>Preview the photos, swipe through carousel slides, and tap <strong className="text-fg">Download</strong> on the ones you want.</li>
                   </ol>
                 </div>
 
                 <div>
                   <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Desktop</h4>
                   <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Copy the URL of the photo post from your browser address bar.</li>
-                    <li>Paste the link into Downloadit and click <strong className="text-fg">Download Photo</strong>.</li>
-                    <li>Preview the high-resolution images and save them directly to your hard drive.</li>
+                    <li>Copy the URL of the Instagram post directly from your browser&apos;s address bar.</li>
+                    <li>Paste it into Downloadit above and click <strong className="text-fg">Get Photos</strong>.</li>
+                    <li>View the resolved images and click <strong className="text-fg">Download</strong> to save the high-resolution files.</li>
                   </ol>
                 </div>
               </div>
             </div>
-
-            <div>
-              <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { title: "No Screenshot Artifacts", desc: "Say goodbye to battery icons, cropped edges, and fuzzy screenshot compression." },
-                  { title: "Carousel Slide Selection", desc: "Save only the slides you actually want, or download the complete collection." },
-                  { title: "Color & Aspect Ratio Preservation", desc: "Maintains true square, portrait 4:5, and landscape proportions as uploaded." },
-                  { title: "Completely Free", desc: "No watermarks, no user limits, and no registration required." },
-                ].map((item) => (
-                  <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                    <div>
-                      <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                      <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          }
+          educationalContent={
             <div className="rounded-2xl border border-border bg-card p-6">
               <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -141,14 +118,36 @@ export default function CarouselDownloaderPageClient() {
               </h3>
               <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
                 <p>
-                  <strong className="text-fg">Private Posts:</strong> Posts from private Instagram profiles cannot be resolved because Instagram requires session cookies to view them.
+                  <strong className="text-fg">Private Posts:</strong> Posts published by private accounts cannot be retrieved because Instagram restricts unauthenticated access to their CDN files.
                 </p>
                 <p>
-                  <strong className="text-fg">Single Slide vs. Whole Post:</strong> Make sure to copy the share link for the post as a whole rather than copying an image URL from an external embed.
+                  <strong className="text-fg">Mixed Video &amp; Photo Carousels:</strong> When a carousel contains both videos and photos, Downloadit extracts both formats so you can download video slides as MP4 and photo slides as JPG.
                 </p>
               </div>
             </div>
+          }
+          whatItDoes={
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
+              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
+                What the Photo &amp; Carousel Downloader Does
+              </h2>
 
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Photo &amp; Carousel Downloader?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  An Instagram Photo and Carousel Downloader is an online tool that saves full-resolution photos, single images, and multi-slide carousels from public Instagram posts directly to your storage. Instead of capturing low-quality screenshots that clip borders and lose clarity, this tool downloads the original uncompressed image files.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Instagram carousels bundle up to 10 photos and videos in a single swipeable gallery. When you enter a post link, Downloadit inspects the gallery container, resolves every individual slide at maximum display quality, and provides single-click download buttons for each image or the entire gallery.
+                </p>
+              </div>
+            </div>
+          }
+          faqs={
             <div className="pt-4">
               <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
               <div className="space-y-3">
@@ -160,17 +159,18 @@ export default function CarouselDownloaderPageClient() {
                 ))}
               </div>
             </div>
-
+          }
+          relatedDownloaders={
             <div className="pt-4">
               <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
-                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Download public Reels as MP4" },
-                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Save longer Instagram video clips" },
-                  { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Save stories before they expire" },
-                  { href: "/pinterest-image-downloader", label: "Pinterest Image Downloader", desc: "Save Pinterest pins & boards" },
-                  { href: "/threads-video-downloader", label: "Threads Downloader", desc: "Download Threads videos & photos" },
-                  { href: "/", label: "All Downloaders", desc: "Downloadit home downloader" },
+                  { href: "/instagram-video-downloader", label: "Instagram Video Downloader", desc: "Download high-definition videos" },
+                  { href: "/instagram-reels-downloader", label: "Instagram Reels Downloader", desc: "Download vertical Instagram Reels" },
+                  { href: "/instagram-story-downloader", label: "Instagram Story Downloader", desc: "Download 24-hour stories" },
+                  { href: "/instagram-audio-downloader", label: "Instagram Audio Downloader", desc: "Extract audio and background tracks" },
+                  { href: "/pinterest-image-downloader", label: "Pinterest Image Downloader", desc: "Download Pinterest pictures & boards" },
+                  { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
                 ].map((tool) => (
                   <Link
                     key={tool.href}
@@ -183,8 +183,8 @@ export default function CarouselDownloaderPageClient() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
+          }
+        />
       </main>
 
       <Footer />

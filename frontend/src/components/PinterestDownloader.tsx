@@ -598,6 +598,7 @@ export default function PinterestDownloader({
   const busy = state === "PREPARING";
 
   return (
+    <>
     <section
       id="hero"
       className="hero-section tool-hero relative overflow-hidden scroll-mt-24"
@@ -831,15 +832,6 @@ export default function PinterestDownloader({
                 </div>
               </form>
 
-              {/* Honest, factual reassurances — replaces the plain trust dots */}
-              <ul className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 px-1">
-                {benefitItems.map(({ icon: Icon, label }) => (
-                  <li key={label} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted">
-                    <Icon size={15} strokeWidth={2.2} className="shrink-0" style={{ color: "var(--primary-strong)" }} />
-                    {label}
-                  </li>
-                ))}
-              </ul>
             </div>
         </div>
 
@@ -896,5 +888,18 @@ export default function PinterestDownloader({
         </div>
       </div>
     </section>
+
+    {/* Trust indicators rendered outside the hero so they appear below the fold */}
+    <div className="mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12">
+      <ul className="mx-auto flex max-w-[840px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-1 pb-6 pt-3 sm:pb-8 sm:pt-4">
+        {benefitItems.map(({ icon: Icon, label }) => (
+          <li key={label} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted">
+            <Icon size={15} strokeWidth={2.2} className="shrink-0" style={{ color: "var(--primary-strong)" }} />
+            {label}
+          </li>
+        ))}
+      </ul>
+    </div>
+    </>
   );
 }

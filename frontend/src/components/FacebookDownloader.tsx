@@ -136,6 +136,7 @@ export default function FacebookDownloader({
   }
 
   return (
+    <>
     <section
       id="hero"
       className="hero-section tool-hero relative overflow-hidden scroll-mt-24"
@@ -266,15 +267,6 @@ export default function FacebookDownloader({
             </div>
           </form>
 
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 text-[12px] text-fg-subtle sm:mt-4 sm:gap-x-5 sm:text-[14px]">
-            {benefits.map((benefit) => (
-              <span key={benefit} className="flex items-center gap-1.5">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-                {benefit}
-              </span>
-            ))}
-          </div>
-
           {flowStatus && (
             <div ref={anchorRef} className="scroll-mt-[calc(80px+env(safe-area-inset-top,0px))]" aria-live="polite" aria-atomic="true">
               {busy && (
@@ -302,5 +294,18 @@ export default function FacebookDownloader({
         </div>
       </div>
     </section>
+
+    {/* Trust indicators rendered outside the hero so they appear below the fold */}
+    <div className="mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12">
+      <div className="mx-auto flex max-w-[840px] flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 pb-6 pt-3 text-[12px] text-fg-subtle sm:gap-x-5 sm:pb-8 sm:pt-4 sm:text-[14px]">
+        {benefits.map((benefit) => (
+          <span key={benefit} className="flex items-center gap-1.5">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+            {benefit}
+          </span>
+        ))}
+      </div>
+    </div>
+    </>
   );
 }
