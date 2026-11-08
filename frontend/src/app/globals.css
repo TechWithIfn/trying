@@ -765,6 +765,12 @@ body {
 }
 
 /* Important mobile containers respect safe-area with 16px floor (spec 3) */
+.hero-section {
+  width: 100% !important;
+  margin-inline: auto !important;
+  box-sizing: border-box;
+}
+
 .hero-section,
 .site-header-inner {
   padding-left: max(16px, env(safe-area-inset-left));
@@ -1721,6 +1727,10 @@ html:not(.js) .readmore-toggle {
 
 /* ─────────────────────────────────────────────
    Premium homepage hero + responsive vertical alignment
+   The hero uses flex-start + controlled padding-top so content sits
+   comfortably close to the navbar with balanced visual weight.
+   justify-content: center on a full-viewport container causes the content
+   to sit too low because equal empty space is added above AND below.
    ───────────────────────────────────────────── */
 .home-hero {
   margin-bottom: 0 !important;
@@ -1728,10 +1738,14 @@ html:not(.js) .readmore-toggle {
   min-height: calc(100dvh - 68px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  padding-top: 2rem;
-  padding-bottom: 2.5rem;
+  width: 100% !important;
+  margin-inline: auto !important;
+  /* padding-top pushes content off the navbar; padding-bottom fills remaining
+     space so the section still occupies the full viewport height cleanly. */
+  padding-top: clamp(2.5rem, 7vh, 5rem);
+  padding-bottom: clamp(3rem, 10vh, 7rem);
   box-sizing: border-box;
 }
 
@@ -1742,9 +1756,9 @@ html:not(.js) .readmore-toggle {
 
 /* ─────────────────────────────────────────────
    Dedicated Downloader Tool Page Hero
-   Matches home-hero viewport discipline so the initial screen focuses
-   cleanly on the downloader, keeping all educational and lower content
-   naturally below the fold on both desktop and mobile.
+   Same flex-start + padding approach for all tool pages.
+   The breadcrumb adds ~44px above the section, so we account for it
+   with a slightly smaller padding-top than the home hero.
    ───────────────────────────────────────────── */
 .tool-hero {
   margin-bottom: 0 !important;
@@ -1752,28 +1766,26 @@ html:not(.js) .readmore-toggle {
   min-height: calc(100dvh - 120px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
+  width: 100% !important;
+  margin-inline: auto !important;
   box-sizing: border-box;
-  padding-top: 1rem;
-  padding-bottom: 2rem;
+  padding-top: clamp(1.5rem, 5vh, 3.5rem);
+  padding-bottom: clamp(2.5rem, 8vh, 6rem);
 }
 
 @media (min-width: 640px) {
   .tool-hero {
-    min-height: calc(100vh - 120px);
-    min-height: calc(100dvh - 120px);
-    padding-top: 1.5rem;
-    padding-bottom: 2.5rem;
+    padding-top: clamp(2rem, 6vh, 4rem);
+    padding-bottom: clamp(3rem, 9vh, 6.5rem);
   }
 }
 
 @media (min-width: 1024px) {
   .tool-hero {
-    min-height: calc(100vh - 120px);
-    min-height: calc(100dvh - 120px);
-    padding-top: 2rem;
-    padding-bottom: 3rem;
+    padding-top: clamp(2.5rem, 7vh, 4.5rem);
+    padding-bottom: clamp(3.5rem, 10vh, 7rem);
   }
 }
 
@@ -1818,10 +1830,8 @@ html:not(.js) .readmore-toggle {
 
 @media (min-width: 640px) {
   .home-hero {
-    min-height: calc(100vh - 68px);
-    min-height: calc(100dvh - 68px);
-    padding-top: 2.5rem;
-    padding-bottom: 3rem;
+    padding-top: clamp(3rem, 8vh, 5.5rem);
+    padding-bottom: clamp(3.5rem, 11vh, 7.5rem);
   }
   .media-chip-scroll {
     overflow: visible;
@@ -1832,9 +1842,15 @@ html:not(.js) .readmore-toggle {
   .home-hero {
     min-height: calc(100vh - 64px);
     min-height: calc(100dvh - 64px);
-    padding-top: 1.5rem !important;
-    padding-bottom: 2rem !important;
+    /* On mobile, start content closer to the top — 1.75rem off the navbar */
+    padding-top: 1.75rem !important;
+    padding-bottom: 2.5rem !important;
     margin-bottom: 0 !important;
+  }
+
+  .tool-hero {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
   }
 
   .home-hero .hero-title-a,
@@ -1850,24 +1866,25 @@ html:not(.js) .readmore-toggle {
     line-height: 1.55 !important;
   }
 
-  /* Paste + Get Media sit side by side inside the same card on phones. */
-  .home-hero .url-actions {
+  /* Paste + Get Media button group responsive layout across home and tool heroes */
+  .url-actions {
     flex-direction: row !important;
+    width: 100% !important;
   }
-  .home-hero .url-actions > button {
+  .url-actions > button {
     min-width: 0;
   }
-  .home-hero .url-actions > button:first-child {
-    flex: 0 0 37%;
+  .url-actions > button:first-child {
+    flex: 0 0 36% !important;
   }
-  .home-hero .url-actions > button:last-child {
-    flex: 1 1 63%;
+  .url-actions > button:last-child {
+    flex: 1 1 64% !important;
   }
-  .home-hero .url-actions .gradient-btn {
+  .url-actions .gradient-btn {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
-  .home-hero .url-actions .btn-label {
+  .url-actions .btn-label {
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -1877,6 +1894,17 @@ html:not(.js) .readmore-toggle {
     margin-top: 2rem !important;
     padding-top: 1.75rem !important;
     padding-bottom: calc(2rem + var(--sab)) !important;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .url-actions {
+    flex-direction: column !important;
+  }
+  .url-actions > button {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: 1 1 auto !important;
   }
 }
 

@@ -10,6 +10,8 @@ interface BreadcrumbProps {
   items: BreadcrumbItem[];
   /** Container CSS classes to match the layout width of the hosting page. */
   containerClassName?: string;
+  /** Alignment of breadcrumb items ("center" | "left"). Defaults to "center". */
+  align?: "center" | "left";
 }
 
 /**
@@ -22,7 +24,8 @@ interface BreadcrumbProps {
  */
 export default function Breadcrumb({
   items,
-  containerClassName = "mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 xl:px-12",
+  containerClassName = "mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12 text-center",
+  align = "center",
 }: BreadcrumbProps) {
   // Filter out any items with missing or whitespace-only names to prevent GSC "N/A" errors
   const validItems = items.filter((item) => item && typeof item.name === "string" && item.name.trim().length > 0);
@@ -47,16 +50,22 @@ export default function Breadcrumb({
   };
 
   return (
-    <div className={containerClassName}>
+    <div className={containerClassName} style={{ marginInline: "auto" }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <nav
         aria-label="Breadcrumb"
-        className="py-2.5 text-[13px] sm:text-[14px] leading-tight text-fg-muted"
+        className={`py-2.5 text-[13px] sm:text-[14px] leading-tight text-fg-muted flex ${
+          align === "center" ? "justify-center text-center" : "justify-start text-left"
+        }`}
       >
-        <ol className="flex flex-wrap items-center gap-1.5 list-none p-0 m-0">
+        <ol
+          className={`flex flex-wrap items-center gap-1.5 list-none p-0 m-0 ${
+            align === "center" ? "justify-center" : "justify-start"
+          }`}
+        >
           {validItems.map((item, index) => {
             const isLast = index === validItems.length - 1;
             return (

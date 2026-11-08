@@ -185,16 +185,17 @@ export default function FacebookDownloader({
 
           <p className="hero-subtitle mx-auto mt-4 max-w-2xl text-[16px] leading-[1.65] text-fg-muted">{subtitle}</p>
 
-          <form onSubmit={submit} className="mt-5 sm:mt-6 w-full" noValidate>
-            <div
-              className="url-card rounded-[20px] p-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/25"
-              style={{
-                background: "var(--card)",
-                boxShadow: "var(--shadow-card), 0 0 40px rgba(124,77,245,0.06)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <div className="hidden sm:flex sm:flex-row sm:gap-2">
+          <div className="mt-5 sm:mt-6 w-full max-w-[760px] mx-auto" style={{ marginInline: "auto" }}>
+            <form onSubmit={submit} className="relative w-full min-w-0" noValidate>
+              <div
+                className="url-card rounded-[20px] p-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary/25"
+                style={{
+                  background: "var(--card)",
+                  boxShadow: "var(--shadow-card), 0 0 40px rgba(124,77,245,0.06)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-center sm:gap-2">
                 <div className="relative min-w-0 flex-1">
                   <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
                   <input
@@ -256,16 +257,19 @@ export default function FacebookDownloader({
                     </button>
                   )}
                 </div>
-                <button type="button" onClick={() => void paste()} disabled={busy} className="flex h-12 min-h-[48px] w-full items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50" style={{ background: "var(--bg)" }}>
-                  <Clipboard className="h-4 w-4 shrink-0" />
-                  Paste
-                </button>
-                <button type="submit" disabled={busy || !url.trim()} className="gradient-btn flex h-12 min-h-[48px] w-full items-center justify-center gap-2 text-[16px]">
-                  {busy ? <><Loader2 className="h-5 w-5 animate-spin" />Processing…</> : <><DownloadIcon className="h-5 w-5" />{buttonLabel || "Get Video"}</>}
-                </button>
+                <div className="url-actions flex min-w-0 flex-col gap-2 w-full">
+                  <button type="button" onClick={() => void paste()} disabled={busy} className="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50" style={{ background: "var(--bg)" }} aria-label="Paste">
+                    <Clipboard className="h-4 w-4 shrink-0" />
+                    <span className="btn-label truncate">Paste</span>
+                  </button>
+                  <button type="submit" disabled={busy || !url.trim()} className="gradient-btn flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-2 px-4 text-[16px]">
+                    {busy ? <><Loader2 className="h-5 w-5 animate-spin" />Processing…</> : <><DownloadIcon className="h-5 w-5" /><span>{buttonLabel || "Get Video"}</span></>}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
+        </div>
 
           {flowStatus && (
             <div ref={anchorRef} className="scroll-mt-[calc(80px+env(safe-area-inset-top,0px))]" aria-live="polite" aria-atomic="true">

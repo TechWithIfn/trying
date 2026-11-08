@@ -960,7 +960,7 @@ export default function HeroDownloader({
           )}
 
           {/* Input Bar */}
-          <div className="mt-5 w-full">
+          <div className="mt-5 sm:mt-6 w-full max-w-[760px] mx-auto" style={{ marginInline: "auto" }}>
             {detectedPlatform && (
               <div className="mb-2.5 flex items-center justify-center gap-1.5 animate-fade-in">
                 <span
@@ -994,7 +994,7 @@ export default function HeroDownloader({
                 </span>
               </div>
             )}
-            <form onSubmit={handleSubmit} className="relative min-w-0" noValidate>
+            <form onSubmit={handleSubmit} className="relative w-full min-w-0" noValidate>
               <div
                 className={`url-card rounded-[20px] p-2.5 transition-shadow ${isHome ? "url-card--home" : ""}`}
                 style={{
@@ -1004,7 +1004,7 @@ export default function HeroDownloader({
                 }}
               >
                 {/* Desktop: horizontal */}
-                <div className="hidden sm:flex sm:flex-row sm:gap-2">
+                <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-center sm:gap-2">
                   <div className="relative min-w-0 flex-1">
                     <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
                     <input
