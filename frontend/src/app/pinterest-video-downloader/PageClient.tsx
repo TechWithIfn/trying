@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import Breadcrumb from "@/components/Breadcrumb";
 import PinterestDownloader from "@/components/PinterestDownloader";
 import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES } from "@/config/toolPages";
@@ -39,7 +38,6 @@ export default function PinterestVideoPageClient() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <PinterestDownloader
           titleA={PAGE.titleA}
           titleB={PAGE.titleB}

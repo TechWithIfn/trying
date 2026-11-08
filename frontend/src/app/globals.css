@@ -1756,14 +1756,14 @@ html:not(.js) .readmore-toggle {
 
 /* ─────────────────────────────────────────────
    Dedicated Downloader Tool Page Hero
-   Same flex-start + padding approach for all tool pages.
-   The breadcrumb adds ~44px above the section, so we account for it
-   with a slightly smaller padding-top than the home hero.
+   Unified flex-start + proportional padding matching home-hero now that
+   breadcrumbs below the header are removed. Content starts at the ideal
+   vertical position directly below the sticky header.
    ───────────────────────────────────────────── */
 .tool-hero {
   margin-bottom: 0 !important;
-  min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
+  min-height: calc(100vh - 68px);
+  min-height: calc(100dvh - 68px);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -1771,21 +1771,21 @@ html:not(.js) .readmore-toggle {
   width: 100% !important;
   margin-inline: auto !important;
   box-sizing: border-box;
-  padding-top: clamp(1.5rem, 5vh, 3.5rem);
-  padding-bottom: clamp(2.5rem, 8vh, 6rem);
+  padding-top: clamp(2.5rem, 7vh, 5rem);
+  padding-bottom: clamp(3rem, 10vh, 7rem);
 }
 
 @media (min-width: 640px) {
   .tool-hero {
-    padding-top: clamp(2rem, 6vh, 4rem);
-    padding-bottom: clamp(3rem, 9vh, 6.5rem);
+    padding-top: clamp(3rem, 8vh, 5.5rem);
+    padding-bottom: clamp(3.5rem, 11vh, 7.5rem);
   }
 }
 
 @media (min-width: 1024px) {
   .tool-hero {
-    padding-top: clamp(2.5rem, 7vh, 4.5rem);
-    padding-bottom: clamp(3.5rem, 10vh, 7rem);
+    padding-top: clamp(3rem, 8vh, 5.5rem);
+    padding-bottom: clamp(3.5rem, 11vh, 7.5rem);
   }
 }
 
@@ -1849,8 +1849,11 @@ html:not(.js) .readmore-toggle {
   }
 
   .tool-hero {
-    padding-top: 1.25rem !important;
-    padding-bottom: 2rem !important;
+    min-height: calc(100vh - 64px);
+    min-height: calc(100dvh - 64px);
+    padding-top: 1.75rem !important;
+    padding-bottom: 2.5rem !important;
+    margin-bottom: 0 !important;
   }
 
   .home-hero .hero-title-a,

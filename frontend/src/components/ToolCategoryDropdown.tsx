@@ -164,13 +164,13 @@ export default function ToolCategoryDropdown() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-[75vh] overflow-y-auto p-1">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[75vh] overflow-y-auto p-1">
           {PLATFORM_CATEGORIES.map((cat) => {
             const CatIcon = cat.icon;
             return (
               <div
                 key={cat.id}
-                className="group/card flex flex-col rounded-xl border border-border/70 p-3 transition-colors hover:border-primary/30 hover:bg-bg/50"
+                className="group/card flex flex-col h-fit rounded-xl border border-border/70 p-2.5 sm:p-3 transition-colors hover:border-primary/30 hover:bg-bg/50"
                 style={{ background: "var(--card)" }}
               >
                 {/* Platform Header */}
@@ -179,16 +179,16 @@ export default function ToolCategoryDropdown() {
                   role="menuitem"
                   tabIndex={open ? 0 : -1}
                   onClick={() => close()}
-                  className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-border/40 group-hover/card:text-primary transition-colors"
+                  className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-border/40 group-hover/card:text-primary transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                      className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg"
                       style={{ background: cat.badgeBg, color: cat.color }}
                     >
-                      <CatIcon size={16} />
+                      <CatIcon size={15} />
                     </span>
-                    <span className="font-bold text-[13.5px] text-fg group-hover/card:text-primary truncate">
+                    <span className="font-bold text-[13px] sm:text-[13.5px] text-fg group-hover/card:text-primary truncate">
                       {cat.name}
                     </span>
                   </div>
@@ -196,7 +196,7 @@ export default function ToolCategoryDropdown() {
                 </Link>
 
                 {/* Sub items */}
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {cat.items.map((sub) => {
                     const SubIcon = sub.icon;
                     const isSubSelected = pathname === sub.href;
@@ -207,18 +207,19 @@ export default function ToolCategoryDropdown() {
                         role="menuitem"
                         tabIndex={open ? 0 : -1}
                         onClick={() => close()}
-                        className={`flex flex-col rounded-lg px-2 py-1.5 transition-colors ${isSubSelected
+                        className={`flex flex-col rounded-lg px-2 py-1 transition-colors ${
+                          isSubSelected
                             ? "bg-primary-light text-primary-strong"
                             : "hover:bg-primary-light/60 text-fg"
-                          }`}
+                        }`}
                       >
                         <div className="flex items-center gap-1.5">
-                          <SubIcon size={13} className="shrink-0 text-primary opacity-80" strokeWidth={2.2} />
-                          <span className="text-[12.5px] font-semibold text-fg leading-snug">
+                          <SubIcon size={12.5} className="shrink-0 text-primary opacity-80" strokeWidth={2.2} />
+                          <span className="text-[12px] font-semibold text-fg leading-tight">
                             {sub.name}
                           </span>
                         </div>
-                        <span className="text-[11px] leading-tight text-fg-subtle line-clamp-1 pl-4">
+                        <span className="text-[10.5px] leading-tight text-fg-subtle line-clamp-1 pl-4">
                           {sub.desc}
                         </span>
                       </Link>

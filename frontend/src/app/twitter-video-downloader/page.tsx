@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import Breadcrumb from "@/components/Breadcrumb";
 import TwitterDownloader from "@/components/TwitterDownloader";
 import DownloaderContentLayout from "@/components/DownloaderContentLayout";
 import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
@@ -49,7 +48,6 @@ export default function TwitterVideoDownloaderPage() {
     <>
       <Header />
       <main id="main-content" className="flex-1">
-        <Breadcrumb items={[{ name: "Home", path: "/" }, { name: PAGE.name, path: PAGE.path }]} />
         <TwitterDownloader
           badge={PAGE.badge}
           titleA={PAGE.titleA}
