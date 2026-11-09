@@ -3,58 +3,284 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FacebookDownloader from "@/components/FacebookDownloader";
-import DownloaderContentLayout from "@/components/DownloaderContentLayout";
-import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { TOOL_PAGES } from "@/config/toolPages";
+import {
+  CheckCircle2,
+  ChevronDown,
+  Film,
+  Smartphone,
+  ShieldCheck,
+  Zap,
+  Sparkles,
+  ArrowRight,
+  Monitor,
+  HelpCircle,
+  Layers,
+  Lock,
+} from "lucide-react";
 
 const PAGE = TOOL_PAGES.facebookVideo;
-export const metadata: Metadata = toolMetadata(PAGE);
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Facebook Video Downloader – Download FB Videos in HD | Downloadit",
+  },
+  description:
+    "Download Facebook videos online for free with Downloadit.pro. Paste a public Facebook video or Reel link, preview available media and save supported HD MP4 quality. No login required.",
+  alternates: {
+    canonical: "https://downloadit.pro/facebook-video-downloader",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    title: "Facebook Video Downloader – Download FB Videos in HD",
+    description:
+      "Download public Facebook videos and Reels online. Preview available media and save supported MP4 quality.",
+    url: "https://downloadit.pro/facebook-video-downloader",
+    images: [
+      {
+        url: "/og-downloadit.png",
+        width: 1200,
+        height: 630,
+        alt: "Facebook Video Downloader – Downloadit",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Facebook Video Downloader – Download FB Videos in HD",
+    description:
+      "Download public Facebook videos and Reels online with Downloadit.",
+    images: ["/og-downloadit.png"],
+  },
+};
 
 const FAQS = [
   {
-    q: "How do I download Facebook videos?",
-    a: "Copy the link to any public Facebook post, Reel, or Watch video. Paste it into Downloadit above, select 'Get Video', verify the preview, and click Download to save the MP4 to your device.",
+    q: "How to download Facebook videos online?",
+    a: "To download Facebook videos online, open Facebook and find the public video, Reel, or Watch clip you want to save. Click the Share button and select 'Copy link' (or copy the URL directly from your browser's address bar). Paste the copied link into the input field on Downloadit, click 'Get Video', and let our engine retrieve the video stream. Once the media preview appears, click 'Download' to save the MP4 video directly to your phone or computer.",
+  },
+  {
+    q: "Is Facebook Video Downloader free?",
+    a: "Yes. Downloadit's Facebook Video Downloader is completely free to use. There are no registration requirements, premium paywalls, subscriptions, or hidden charges. You can download and save as many publicly accessible Facebook videos and Reels as you need without limits.",
   },
   {
     q: "Can I download Facebook Reels?",
-    a: "Yes. Public Facebook Reels are fully supported. Downloadit extracts the original vertical MP4 video with synchronized audio.",
+    a: "Yes. Public Facebook Reels are fully supported. Simply copy the link to any public Reel, paste it into our downloader input box, and tap 'Get Video'. Downloadit extracts the original vertical 9:16 MP4 video stream with crisp synchronized audio, with zero watermarks added.",
   },
   {
-    q: "Does Downloadit support Facebook Watch videos?",
-    a: "Yes, public Facebook Watch links are supported. You can download interviews, game streams, and community clips as progressive MP4 video.",
+    q: "Can I download Facebook videos in HD?",
+    a: "Yes. Downloadit resolves the highest resolution progressive MP4 stream provided by Facebook's public media servers for that specific post. If the creator uploaded the video in HD (720p, 1080p, or higher) and Facebook delivers a progressive stream, you can download the video in high definition. Standard definition (SD) posts will be delivered in their best available native quality.",
   },
   {
-    q: "Do I need a Facebook account to download videos?",
-    a: "No. You never need to log in to Facebook or share your password. Downloadit works anonymously with any publicly viewable link.",
+    q: "How do I save Facebook videos to my phone gallery?",
+    a: "On Android, downloading an MP4 through Chrome or Firefox saves it directly into your device's 'Downloads' folder, which automatically appears in your Gallery or Google Photos app. On iPhone (iOS), open the downloaded video in Safari's Download Manager, tap the Share icon, and select 'Save Video' to add the MP4 directly into your Apple Photos camera roll.",
   },
   {
-    q: "Can I download private Facebook videos or private group posts?",
-    a: "No. Downloadit respects privacy boundaries and does not collect or bypass Facebook login sessions, cookies, or group permissions.",
+    q: "Does Facebook Video Downloader require login?",
+    a: "No. Downloadit operates completely anonymously. You never need to sign in, provide your Facebook account details, share login passwords, or install access cookies. All extractions happen using publicly accessible video links.",
   },
   {
-    q: "Why is a Facebook link not working?",
-    a: "Make sure you copied the direct link to the specific video post rather than a profile page, group feed, or search page. Also ensure the post privacy is set to Public.",
+    q: "Can I download Facebook videos on iPhone?",
+    a: "Yes. Downloadit works seamlessly on iPhone and iPad via Safari, Google Chrome, or any modern iOS web browser. Simply paste the Facebook video URL, preview the content, tap Download, and save the MP4 file directly into the Safari Files app or Apple Photos.",
+  },
+  {
+    q: "Why is my Facebook video link not working?",
+    a: "A Facebook video link may fail to process if: (1) the post privacy is set to 'Friends' or restricted to a private group, (2) the creator has removed or archived the post, (3) you copied a profile feed, comment link, or search URL instead of the specific video post URL, or (4) the CDN media token has expired. Make sure you copy the direct URL of an individual public video and refresh the page to retry.",
+  },
+  {
+    q: "Which Facebook video formats are supported?",
+    a: "Downloadit extracts and serves universal MP4 video files with AAC audio. MP4 is compatible across all devices, operating systems, and video players, including Android, iOS, Windows, macOS, smart TVs, and gaming consoles.",
+  },
+  {
+    q: "Can I download private Facebook videos?",
+    a: "No. Downloadit strictly respects user privacy boundaries and platform access controls. It cannot retrieve private posts, videos from closed or secret Facebook groups, or media requiring user authentication.",
+  },
+  {
+    q: "Can I download Facebook videos without installing an app?",
+    a: "Yes. Downloadit is a 100% web-based tool. You do not need to download third-party APKs, desktop software, or browser extensions. Everything runs smoothly inside your existing mobile or desktop web browser.",
+  },
+  {
+    q: "Does Downloadit support Facebook video links from mobile devices?",
+    a: "Yes. Downloadit supports all standard Facebook URL formats, including desktop links (facebook.com/...), mobile links (m.facebook.com/...), short share links (fb.watch/...), and mobile app share URLs. Simply paste whatever share link the Facebook app provides.",
+  },
+];
+
+const STEPS = [
+  {
+    step: "1",
+    title: "Open Facebook and find the video",
+    desc: "Open the Facebook app or website and locate the public video or Reel you want to download.",
+  },
+  {
+    step: "2",
+    title: "Copy the video's share link",
+    desc: "Tap the Share button on the post and select 'Copy link', or copy the URL directly from the address bar.",
+  },
+  {
+    step: "3",
+    title: "Open Downloadit Facebook Downloader",
+    desc: "Navigate to downloadit.pro/facebook-video-downloader in any web browser on your device.",
+  },
+  {
+    step: "4",
+    title: "Paste the link into the input field",
+    desc: "Paste the copied Facebook link into the search box above or tap the 'Paste' button.",
+  },
+  {
+    step: "5",
+    title: "Click the download button",
+    desc: "Tap 'Get Video' to start the extraction process. Downloadit fetches the available progressive stream.",
+  },
+  {
+    step: "6",
+    title: "Preview the available media",
+    desc: "Review the video thumbnail and details to confirm the correct media has been resolved.",
+  },
+  {
+    step: "7",
+    title: "Save the video to your device",
+    desc: "Click 'Download' to save the high-definition MP4 file directly to your phone gallery or computer storage.",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: Zap,
+    title: "100% Free & Unlimited",
+    desc: "Enjoy unlimited Facebook video downloads without subscription charges, hidden fees, or daily download restrictions.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "No Login or Account Needed",
+    desc: "Protect your privacy. Download public Facebook videos completely anonymously without sharing credentials or passwords.",
+  },
+  {
+    icon: Sparkles,
+    title: "Zero Watermarks Added",
+    desc: "Download clean, original MP4 videos without any added logos, watermarks, stamps, or compression artifacts.",
+  },
+  {
+    icon: Film,
+    title: "Watch, Reels & Feed Videos",
+    desc: "One versatile downloader for all public Facebook media: short vertical Reels, standard feed videos, and long-form Watch clips.",
+  },
+  {
+    icon: Smartphone,
+    title: "Universal Mobile Compatibility",
+    desc: "Optimized for Android smartphones, iPhone, iPad, Windows PC, and Mac through any modern mobile or desktop web browser.",
+  },
+  {
+    icon: Layers,
+    title: "High-Definition (HD) Streams",
+    desc: "Extracts the top progressive MP4 resolution offered by Facebook servers, delivering crisp 720p and 1080p video quality.",
+  },
+];
+
+const RELATED_TOOLS = [
+  {
+    name: "Instagram Video Downloader",
+    href: "/instagram-video-downloader",
+    desc: "Download public Instagram Reels, videos, and carousel posts in HD.",
+  },
+  {
+    name: "Pinterest Video Downloader",
+    href: "/pinterest-video-downloader",
+    desc: "Save Pinterest video pins, Idea pins, and recipe clips as MP4.",
+  },
+  {
+    name: "YouTube Video Downloader",
+    href: "/youtube-video-downloader",
+    desc: "Download YouTube videos and Shorts in supported quality or audio.",
+  },
+  {
+    name: "Twitter/X Video Downloader",
+    href: "/twitter-video-downloader",
+    desc: "Download videos and animated GIFs from public Twitter and X posts.",
+  },
+  {
+    name: "Threads Video Downloader",
+    href: "/threads-video-downloader",
+    desc: "Download public videos and photos from Threads posts quickly.",
   },
 ];
 
 export default function FacebookVideoDownloaderPage() {
-  const faqSchema = {
+  const structuredData = {
     "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: FAQS.map((item) => ({
-      "@type": "Question",
-      name: item.q,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: item.a,
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://downloadit.pro/facebook-video-downloader/#webpage",
+        url: "https://downloadit.pro/facebook-video-downloader",
+        name: "Facebook Video Downloader – Download FB Videos in HD | Downloadit",
+        description:
+          "Download Facebook videos online for free with Downloadit.pro. Paste a public Facebook video or Reel link, preview available media and save supported HD MP4 quality. No login required.",
+        inLanguage: "en",
+        isPartOf: {
+          "@id": "https://downloadit.pro/#website",
+        },
+        breadcrumb: {
+          "@id": "https://downloadit.pro/facebook-video-downloader/#breadcrumbs",
+        },
       },
-    })),
+      {
+        "@type": "WebApplication",
+        "@id": "https://downloadit.pro/facebook-video-downloader/#app",
+        name: "Downloadit Facebook Video Downloader",
+        url: "https://downloadit.pro/facebook-video-downloader",
+        applicationCategory: "UtilitiesApplication",
+        operatingSystem: "Web Browser",
+        inLanguage: "en",
+        description:
+          "Free web-based tool to download public Facebook videos and Reels online in supported HD MP4 quality without login.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://downloadit.pro/facebook-video-downloader/#breadcrumbs",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: "https://downloadit.pro",
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Facebook Video Downloader",
+            item: "https://downloadit.pro/facebook-video-downloader",
+          },
+        ],
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://downloadit.pro/facebook-video-downloader/#faq",
+        mainEntity: FAQS.map((item) => ({
+          "@type": "Question",
+          name: item.q,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: item.a,
+          },
+        })),
+      },
+    ],
   };
 
   return (
     <>
       <Header />
       <main id="main-content" className="flex-1">
+        {/* H1 is rendered inside the FacebookDownloader hero */}
         <FacebookDownloader
           badge={PAGE.badge}
           titleA={PAGE.titleA}
@@ -65,147 +291,363 @@ export default function FacebookVideoDownloaderPage() {
           benefits={PAGE.trust}
         />
 
-        <DownloaderContentLayout
-          supportedFeatures={
-            <>
-              <div>
-                <h3 className="text-[20px] font-bold text-fg mb-3">Supported Facebook Media Types</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <span className="block text-[14px] font-bold text-primary">Facebook Watch</span>
-                    <span className="block text-[12px] text-fg-subtle mt-1">Full-length videos, shows, and interviews</span>
-                  </div>
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <span className="block text-[14px] font-bold text-primary">Facebook Reels</span>
-                    <span className="block text-[12px] text-fg-subtle mt-1">Vertical 9:16 viral short videos</span>
-                  </div>
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <span className="block text-[14px] font-bold text-primary">Feed Videos</span>
-                    <span className="block text-[12px] text-fg-subtle mt-1">Standard video posts from public pages</span>
-                  </div>
-                </div>
-              </div>
+        {/* Content Section following exact heading hierarchy */}
+        <div className="mx-auto max-w-[960px] px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12 text-fg">
 
-              <div>
-                <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { title: "No Watermark Added", desc: "Downloads original progressive MP4 streams without branding stamps." },
-                    { title: "Watch, Feed & Reels Supported", desc: "One unified downloader for all public Facebook video types." },
-                    { title: "Fast & Lightweight", desc: "No bulky APKs, desktop applications, or browser plugins required." },
-                    { title: "100% Free & Anonymous", desc: "Never requires Facebook sign-in or session sharing." },
-                  ].map((item) => (
-                    <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
-                      <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
-                      <div>
-                        <h4 className="text-[14.5px] font-bold text-fg">{item.title}</h4>
-                        <p className="text-[13px] text-fg-muted mt-0.5">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          }
-          howToUse={
-            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-              <h3 className="text-[20px] font-bold text-fg mb-4">How to Download Facebook Videos, Step by Step</h3>
-
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-[16px] font-bold text-primary-strong mb-2">On Android, iPhone, &amp; Desktop</h4>
-                  <ol className="list-decimal pl-5 space-y-2 text-[14.5px] leading-[1.7] text-fg-muted">
-                    <li>Find the public Facebook video, Reel, or Watch page you wish to download.</li>
-                    <li>Tap the <strong className="text-fg">Share</strong> button and choose <strong className="text-fg">Copy link</strong> (or copy the URL from the desktop address bar).</li>
-                    <li>Paste the link into the URL field above and tap <strong className="text-fg">Get Video</strong>.</li>
-                    <li>Verify the video preview and select <strong className="text-fg">Download</strong> to save the MP4 to your storage.</li>
-                  </ol>
+          {/* H2: Download Facebook Videos Online */}
+          <section
+            id="download-facebook-videos-online"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary-light text-primary">
+                <Film className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
+                Online FB Video Saver
+              </span>
+            </div>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              Download Facebook Videos Online
+            </h2>
+            <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
+              <p>
+                Looking for a fast, reliable, and completely free way to save public videos from Facebook?
+                Downloadit provides a specialized <strong className="text-fg">facebook video downloader</strong> that
+                works entirely in your web browser. Whether you want to perform a quick <strong className="text-fg">facebook video download</strong> of
+                an entertaining viral post, save an educational tutorial, or back up an insightful community interview, our
+                engine extracts the direct media stream so you can save videos in universally compatible MP4 format.
+              </p>
+              <p>
+                Unlike complicated third-party programs or browser extensions that track your browsing habits, Downloadit is a
+                clean <strong className="text-fg">facebook video download online</strong> solution. When you paste a public
+                Facebook link into our tool, our backend resolves the public delivery stream directly from Facebook&apos;s Content
+                Delivery Network (CDN). We never ask for your account password, login tokens, or personal information. You can
+                safely enjoy <strong className="text-fg">facebook video download without login</strong> on any device.
+              </p>
+              <p>
+                Many internet users search for alternatives like <em className="text-fg-subtle">fdown</em>, <em className="text-fg-subtle">fdown net</em>, <em className="text-fg-subtle">fbdown</em>, <em className="text-fg-subtle">fbdown net</em>, <em className="text-fg-subtle">fdownloader</em>, <em className="text-fg-subtle">getfvid</em>, or <em className="text-fg-subtle">snapsave facebook</em>. Downloadit delivers a fast, privacy-respecting alternative to save public Facebook media online with no spammy pop-ups, no invasive tracking, and no malware risks. If you are wondering <em className="text-fg-subtle">facebook se video download kaise kare</em> or looking for a dependable <em className="text-fg-subtle">facebook video download karne ka tarika</em>, Downloadit makes the entire process as easy as pasting a link and clicking download.
+              </p>
+              <div className="rounded-xl border border-border/80 bg-bg/50 p-4 mt-4">
+                <div className="flex items-start gap-3">
+                  <Lock className="h-5 w-5 text-fg-subtle shrink-0 mt-0.5" />
+                  <div className="text-[13.5px] leading-relaxed text-fg-muted">
+                    <strong className="text-fg">Privacy &amp; Copyright Notice:</strong> Downloadit only resolves publicly accessible Facebook videos. Content shared in private groups, secret communities, or personal profiles with restricted audience settings cannot be retrieved. Always respect the original creator&apos;s copyright and ensure you have permission to download and store shared media.
+                  </div>
                 </div>
               </div>
             </div>
-          }
-          educationalContent={
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <h3 className="text-[20px] font-bold text-fg mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                Troubleshooting Facebook Video Downloads
+          </section>
+
+          {/* H2: Facebook Reels Downloader */}
+          <section
+            id="facebook-reels-downloader"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-accent-light text-accent">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-accent">
+                Vertical Short Video Tool
+              </span>
+            </div>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              Facebook Reels Downloader
+            </h2>
+            <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
+              <p>
+                Facebook Reels have quickly become one of the most engaging formats on social media, filled with comedy sketches, culinary recipes, travel vlogs, and trending dance choreography. With our dedicated <strong className="text-fg">facebook reels downloader</strong>, saving your favorite short videos for offline watching has never been simpler.
+              </p>
+              <p>
+                When you initiate a <strong className="text-fg">facebook reels download</strong> on Downloadit, our resolver fetches the full-resolution vertical 9:16 video stream exactly as published by the creator. Best of all, we offer <strong className="text-fg">download fb reels without watermark</strong>: we never stamp promotional branding, overlays, or extra logos onto your downloaded video. You get the original progressive MP4 file with crisp, synchronized stereo sound.
+              </p>
+              <p>
+                Whether you search for <strong className="text-fg">fb reels download</strong>, <strong className="text-fg">facebook reels video download</strong>, or need to know <em className="text-fg-subtle">facebook reels download kaise kare</em>, simply copy the share link from the Facebook app or mobile browser and paste it into Downloadit. In seconds, you will have a clean, high-quality MP4 file saved on your smartphone or desktop.
+              </p>
+            </div>
+          </section>
+
+          {/* H2: How to Download Facebook Videos */}
+          <section
+            id="how-to-download-facebook-videos"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary-light text-primary">
+                <HelpCircle className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
+                Step-by-Step Guide
+              </span>
+            </div>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              How to Download Facebook Videos
+            </h2>
+            <p className="text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted mb-6">
+              Follow these simple, step-by-step instructions to save any public Facebook video or Reel to your device in seconds:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {STEPS.map((s) => (
+                <div
+                  key={s.step}
+                  className="flex gap-3.5 rounded-xl border border-border/80 bg-bg/40 p-4 transition-colors hover:border-primary/40 hover:bg-card"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary font-extrabold text-[14px]">
+                    {s.step}
+                  </span>
+                  <div>
+                    <h3 className="text-[15px] font-bold text-fg leading-snug">
+                      Step {s.step}: {s.title}
+                    </h3>
+                    <p className="text-[13px] leading-relaxed text-fg-muted mt-1">
+                      {s.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-xl border border-border/80 bg-bg/60 p-5">
+              <h3 className="text-[16px] font-bold text-fg mb-2">
+                Quick Tips for Mobile &amp; Desktop Users
               </h3>
-              <div className="space-y-3 text-[14.5px] leading-[1.7] text-fg-muted">
-                <p>
-                  <strong className="text-fg">Private Profiles &amp; Closed Groups:</strong> Videos shared within closed Facebook groups or posted by private user accounts cannot be resolved because they require authorization.
-                </p>
-                <p>
-                  <strong className="text-fg">Temporary CDN Expiration:</strong> Facebook video URLs are signed with short expiration timestamps. If a download stalls, paste the link again to retrieve a fresh URL.
-                </p>
-              </div>
+              <ul className="list-disc pl-5 space-y-1.5 text-[13.5px] leading-relaxed text-fg-muted">
+                <li>
+                  <strong className="text-fg">Facebook App:</strong> Tap the &quot;Share&quot; button below any video post, swipe through the options, and select &quot;Copy link&quot;.
+                </li>
+                <li>
+                  <strong className="text-fg">Desktop Browser:</strong> Right-click the video and choose &quot;Show video URL&quot;, or copy the address bar URL directly from Chrome, Edge, or Safari.
+                </li>
+                <li>
+                  <strong className="text-fg">Expired Media Links:</strong> Facebook CDN links use signed tokens that expire after a period of time. If a download stalls, simply re-paste the link into Downloadit to generate a fresh token.
+                </li>
+              </ul>
             </div>
-          }
-          whatItDoes={
-            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6">
-              <h2 className="text-[24px] font-bold tracking-tight text-fg sm:text-[30px] leading-[1.25]">
-                What the Facebook Video Downloader Does
-              </h2>
+          </section>
 
-              <div>
-                <h3 className="text-[20px] font-bold text-fg mb-3">What is a Facebook Video Downloader?</h3>
-                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                  A Facebook Video Downloader is an online service that enables you to save publicly accessible Facebook videos, Reels, and Watch streams directly to your phone or computer as MP4 video files for offline watching.
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
-                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                  When a public video is posted on Facebook, Facebook distributes a progressive video stream. When you submit a Facebook link to Downloadit, our engine resolves the public stream address and presents a direct MP4 download link without requesting your Facebook login.
-                </p>
-              </div>
+          {/* H2: Download Facebook Videos in HD */}
+          <section
+            id="download-facebook-videos-in-hd"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary-light text-primary">
+                <Zap className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
+                High-Definition Playback
+              </span>
             </div>
-          }
-          faqs={
-            <div className="pt-4">
-              <h3 className="text-[22px] font-bold text-fg mb-4">Frequently Asked Questions</h3>
-              <div className="space-y-3">
-                {FAQS.map((item) => (
-                  <div key={item.q} className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                    <h4 className="text-[15.5px] font-bold text-fg mb-2">{item.q}</h4>
-                    <p className="text-[14px] leading-relaxed text-fg-muted">{item.a}</p>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              Download Facebook Videos in HD
+            </h2>
+            <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
+              <p>
+                Visual clarity matters, especially when downloading scenic travel clips, sports highlights, high-production interviews, or creative tutorials. Our <strong className="text-fg">facebook video downloader hd</strong> is designed to detect and retrieve the highest progressive resolution delivered by Facebook&apos;s media servers for that specific post.
+              </p>
+              <p>
+                When a creator publishes a video, Facebook creates multiple stream renditions including standard definition (SD 360p, 540p) and high definition (HD 720p, 1080p). When you request a <strong className="text-fg">facebook video download hd</strong> on Downloadit, we inspect the available progressive MP4 renditions and deliver the highest quality stream. If the original video was recorded and published in full high definition, you can effortlessly <strong className="text-fg">download facebook video in hd</strong> without loss of visual sharpness.
+              </p>
+              <p>
+                All files are packaged in the universal MP4 container with synchronized AAC audio. This ensures standard <strong className="text-fg">facebook to mp4</strong> conversion that plays reliably on all modern media players, editing software, and smart screens without needing extra video codecs or transcoder tools.
+              </p>
+            </div>
+          </section>
+
+          {/* H2: Facebook Video Downloader for Mobile */}
+          <section
+            id="facebook-video-downloader-for-mobile"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary-light text-primary">
+                <Smartphone className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
+                Cross-Device Compatibility
+              </span>
+            </div>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              Facebook Video Downloader for Mobile
+            </h2>
+            <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
+              <p>
+                Over 80% of Facebook users browse content from a mobile smartphone or tablet. That is why Downloadit was engineered mobile-first: you can use our <strong className="text-fg">facebook video downloader for mobile</strong> seamlessly without installing any third-party app, APK package, or background utility.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
+                <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Smartphone className="h-4 w-4 text-primary" />
+                    <h3 className="text-[15px] font-bold text-fg">Android Devices</h3>
                   </div>
-                ))}
+                  <p className="text-[13px] leading-relaxed text-fg-muted">
+                    Works smoothly with Chrome, Firefox, Opera, and Samsung Internet. Downloaded MP4 files go directly into your device &quot;Downloads&quot; directory and instantly appear in Google Photos or your Gallery app.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Smartphone className="h-4 w-4 text-accent" />
+                    <h3 className="text-[15px] font-bold text-fg">iPhone &amp; iPad (iOS)</h3>
+                  </div>
+                  <p className="text-[13px] leading-relaxed text-fg-muted">
+                    Fully compatible with Apple Safari and Chrome on iOS 13+. Download the MP4 file directly into Safari Downloads, tap Share, and select &quot;Save Video&quot; to place it into your Photos camera roll.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Monitor className="h-4 w-4 text-primary" />
+                    <h3 className="text-[15px] font-bold text-fg">Windows PC</h3>
+                  </div>
+                  <p className="text-[13px] leading-relaxed text-fg-muted">
+                    No desktop setup required. Works seamlessly across Chrome, Microsoft Edge, Firefox, and Brave. Downloaded videos save directly to your Windows Downloads folder for instant playback.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Monitor className="h-4 w-4 text-accent" />
+                    <h3 className="text-[15px] font-bold text-fg">macOS (Mac)</h3>
+                  </div>
+                  <p className="text-[13px] leading-relaxed text-fg-muted">
+                    Native compatibility with Safari, Chrome, and Arc. Save MP4 files directly to Finder with full QuickTime playback and AirDrop support.
+                  </p>
+                </div>
               </div>
+              <p>
+                If you have ever asked <em className="text-fg-subtle">how to save facebook video to gallery</em> or <em className="text-fg-subtle">facebook video gallery mein kaise save kare</em>, Downloadit gives you a direct, app-free path to saving media in your gallery without cluttering your phone with sketchy software.
+              </p>
             </div>
-          }
-          relatedDownloaders={
-            <div className="pt-4">
-              <h3 className="text-[20px] font-bold text-fg mb-4">Related Downloaders</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {[
-                  { href: "/instagram-video-downloader", label: "Instagram Downloader", desc: "Download Instagram Reels & videos" },
-                  { href: "/youtube-video-downloader", label: "YouTube Downloader", desc: "Save YouTube videos and Shorts" },
-                  { href: "/twitter-video-downloader", label: "Twitter/X Downloader", desc: "Download Twitter/X videos & GIFs" },
-                  { href: "/threads-video-downloader", label: "Threads Downloader", desc: "Download Threads videos & photos" },
-                  { href: "/pinterest-video-downloader", label: "Pinterest Downloader", desc: "Download Pinterest video pins" },
-                  { href: "/", label: "All Downloaders", desc: "Downloadit multi-platform home" },
-                ].map((tool) => (
-                  <Link
-                    key={tool.href}
-                    href={tool.href}
-                    className="flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:bg-primary-light/40"
+          </section>
+
+          {/* H2: Features of Downloadit Facebook Downloader */}
+          <section
+            id="features-of-downloadit-facebook-downloader"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary-light text-primary">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
+                Core Advantages
+              </span>
+            </div>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              Features of Downloadit Facebook Downloader
+            </h2>
+            <p className="text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted mb-6">
+              Downloadit is designed to provide the cleanest, fastest, and most honest video downloading experience on the web:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {FEATURES.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-bg/40 p-4 transition-colors hover:border-primary/40 hover:bg-card"
                   >
-                    <span className="text-[14px] font-bold text-primary">{tool.label}</span>
-                    <span className="text-[12px] text-fg-subtle mt-0.5">{tool.desc}</span>
-                  </Link>
-                ))}
-              </div>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-light text-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <h3 className="text-[15px] font-bold text-fg leading-snug">{item.title}</h3>
+                    <p className="text-[13px] leading-relaxed text-fg-muted">{item.desc}</p>
+                  </div>
+                );
+              })}
             </div>
-          }
-        />
+          </section>
+
+          {/* H2: Frequently Asked Questions */}
+          <section
+            id="frequently-asked-questions"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary-light text-primary">
+                <HelpCircle className="h-4 w-4" />
+              </span>
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
+                Common Questions
+              </span>
+            </div>
+            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted mb-6">
+              Find transparent, accurate answers to the most common questions regarding our Facebook video and Reels downloader:
+            </p>
+
+            <div className="space-y-3">
+              {FAQS.map((faq, idx) => (
+                <details
+                  key={faq.q}
+                  name="facebook-faq"
+                  className="group rounded-xl border border-border/90 bg-bg/40 transition-colors hover:border-primary/40 overflow-hidden"
+                  {...(idx === 0 ? { open: true } : {})}
+                >
+                  <summary className="flex w-full items-center justify-between gap-4 p-4 sm:p-5 text-left cursor-pointer list-none select-none transition-colors hover:bg-primary-light/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&::-webkit-details-marker]:hidden">
+                    <span className="text-[15px] sm:text-[16px] font-bold text-fg leading-snug">
+                      {faq.q}
+                    </span>
+                    <ChevronDown className="h-5 w-5 shrink-0 text-fg-muted transition-transform duration-200 group-open:rotate-180" />
+                  </summary>
+                  <div className="px-4 sm:px-5 pb-5 pt-1 text-[14px] leading-relaxed text-fg-muted border-t border-border-light bg-card/60">
+                    {faq.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+
+          {/* Internal Links: Contextual Related Downloaders */}
+          <section
+            id="related-downloaders"
+            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
+          >
+            <h3 className="text-[20px] font-bold text-fg mb-2">
+              Explore More Media Downloaders
+            </h3>
+            <p className="text-[13.5px] leading-relaxed text-fg-muted mb-5">
+              Need to save videos or media from other social networks? Downloadit offers dedicated downloaders for all major platforms:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {RELATED_TOOLS.map((tool) => (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className="flex flex-col rounded-xl border border-border bg-bg/40 p-4 transition-all hover:border-primary/40 hover:bg-primary-light/30"
+                >
+                  <span className="text-[14.5px] font-bold text-primary flex items-center justify-between">
+                    <span>{tool.name}</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-[12px] text-fg-subtle mt-1 leading-normal">
+                    {tool.desc}
+                  </span>
+                </Link>
+              ))}
+            </div>
+            <div className="mt-6 text-center">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-fg-subtle transition-colors hover:text-primary"
+              >
+                <span aria-hidden="true">&larr;</span>
+                <span>Back to Downloadit Home</span>
+              </Link>
+            </div>
+          </section>
+
+        </div>
       </main>
 
       <Footer />
 
+      {/* JSON-LD Structured Data: WebPage, WebApplication, BreadcrumbList, FAQPage */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
     </>
   );
