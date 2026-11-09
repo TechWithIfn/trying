@@ -7,6 +7,7 @@ import {
   extensionForContentType,
 } from "../src/lib/download-filename.js";
 import { buildZip, crc32 } from "../src/lib/zip.js";
+import { isCdnMediaHost } from "../src/lib/providers/base.js";
 
 describe("Download query-param validation", () => {
   it("preserves case and spaces in the requested base name", () => {
@@ -111,18 +112,13 @@ describe("ZIP archive writer", () => {
 });
 
 describe("Strict domain allowlist matching", () => {
-  const ALLOWED_MEDIA_HOSTS: Array<(hostname: string) => boolean> = [
-    (h) => h === "cdninstagram.com" || h.endsWith(".cdninstagram.com"),
-    (h) => h === "fbcdn.net" || h.endsWith(".fbcdn.net"),
-    (h) => h.startsWith("scontent."),
-  ];
-
+  // Exercise the REAL allowlist used by the download/stream proxies instead of
+  // a drifting local copy, so a CDN host added for a platform is covered here.
   function isAllowedMediaUrl(url: string): boolean {
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== "https:") return false;
-      const hostname = parsed.hostname.toLowerCase();
-      return ALLOWED_MEDIA_HOSTS.some((match) => match(hostname));
+      return isCdnMediaHost(parsed.hostname.toLowerCase());
     } catch {
       return false;
     }
@@ -135,11 +131,30 @@ describe("Strict domain allowlist matching", () => {
     expect(isAllowedMediaUrl("https://fbcdn.net/v/media.mp4")).toBe(true);
   });
 
+  it("allows legitimate Twitter/X media CDN hosts", () => {
+    expect(
+      isAllowedMediaUrl(
+        "https://video.twimg.com/amplify_video/123/vid/avc1/1280x720/clip.mp4?tag=29"
+      )
+    ).toBe(true);
+    expect(
+      isAllowedMediaUrl(
+        "https://pbs.twimg.com/amplify_video_thumb/123/img/poster.jpg?name=orig"
+      )
+    ).toBe(true);
+  });
+
   it("blocks attacker-controlled domains containing allowed substrings", () => {
     expect(isAllowedMediaUrl("https://evil-cdninstagram.com.attacker.net/malware")).toBe(false);
     expect(isAllowedMediaUrl("https://not-cdninstagram.com/malware")).toBe(false);
     expect(isAllowedMediaUrl("https://evil-scontent.attacker.com/malware")).toBe(false);
     expect(isAllowedMediaUrl("https://evil-fbcdn.net.attacker.com/malware")).toBe(false);
+    expect(isAllowedMediaUrl("https://video.twimg.com.attacker.net/malware")).toBe(false);
+    expect(isAllowedMediaUrl("https://notvideo.twimg.com/malware")).toBe(false);
+    expect(isAllowedMediaUrl("https://evil-twimg.com/malware")).toBe(false);
+    // Only the two exact Twitter media hosts are allowed, never any other
+    // twimg.com subdomain.
+    expect(isAllowedMediaUrl("https://abs.twimg.com/malware")).toBe(false);
   });
 
   it("blocks non-https protocols", () => {

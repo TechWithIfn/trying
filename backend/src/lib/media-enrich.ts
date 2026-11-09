@@ -1,6 +1,6 @@
 import type { MediaItem } from "./types.js";
 import { logger } from "./logger.js";
-import { UPSTREAM_HEADERS, isAllowedMediaUrl } from "./media-proxy.js";
+import { upstreamHeadersFor, isAllowedMediaUrl } from "./media-proxy.js";
 import { getGate } from "./capacity.js";
 import { readBoundedInt, readPositiveInt } from "./env.js";
 
@@ -256,7 +256,7 @@ async function probeItem(item: MediaItem, signal?: AbortSignal): Promise<MediaIt
 
     if (item.type === "video" || !needsDims) {
       // Cheap path: headers only.
-      const head = await fetchBounded(item.url, { method: "HEAD", headers: { ...UPSTREAM_HEADERS } }, signal);
+      const head = await fetchBounded(item.url, { method: "HEAD", headers: upstreamHeadersFor(item.url) }, signal);
       if (head && head.ok) {
         if (needsSize) {
           const s = sizeFromHeaders(head.headers);
@@ -280,7 +280,7 @@ async function probeItem(item: MediaItem, signal?: AbortSignal): Promise<MediaIt
         item.url,
         {
           method: "GET",
-          headers: { ...UPSTREAM_HEADERS, Range: `bytes=0-${MAX_PROBE_BYTES - 1}` },
+          headers: { ...upstreamHeadersFor(item.url), Range: `bytes=0-${MAX_PROBE_BYTES - 1}` },
         },
         signal
       );

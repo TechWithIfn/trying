@@ -52,6 +52,12 @@ const CDN_HOST_MATCHERS: Array<(hostname: string) => boolean> = [
   // pinimg.com domain — never a broad pinterest.* match — so the download
   // and stream proxies cannot be pointed at arbitrary Pinterest web hosts.
   (h) => h === "pinimg.com" || h.endsWith(".pinimg.com"),
+  // Twitter/X media CDN: video.twimg.com serves MP4/HLS renditions and
+  // pbs.twimg.com serves the poster/thumbnail images. Both are exact hosts —
+  // never a broad *.twimg.com match — so the proxy cannot be pointed at
+  // other Twitter asset/web hosts.
+  (h) => h === "video.twimg.com",
+  (h) => h === "pbs.twimg.com",
 ];
 
 /** Strict allowlist for Instagram/Facebook/Pinterest media CDN hosts (no open proxy). */

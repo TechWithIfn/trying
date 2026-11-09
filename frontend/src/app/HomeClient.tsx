@@ -314,7 +314,7 @@ export default function HomeClient() {
         >
           <div className="rounded-[28px] border border-border/80 bg-card p-6 sm:p-10 lg:p-12 shadow-[var(--shadow-card)]">
             <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-light px-3.5 py-1 text-[11px] font-bold tracking-wider uppercase text-accent">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-light px-3.5 py-1 text-[11px] font-bold tracking-wider uppercase text-[#9d2466]">
                 <Sparkles size={13} />
                 Honest &amp; Dependable
               </span>
@@ -452,9 +452,11 @@ export default function HomeClient() {
                     </span>
                     <Link
                       href={platform.href}
+                      aria-label={`Learn more about ${platform.name}`}
                       className="inline-flex items-center gap-1 text-[13px] font-bold text-primary hover:underline"
                     >
                       <span>Learn More</span>
+                      <span className="sr-only"> about {platform.shortName}</span>
                       <ArrowRight size={14} />
                     </Link>
                   </div>

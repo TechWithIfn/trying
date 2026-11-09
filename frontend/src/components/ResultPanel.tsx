@@ -22,6 +22,9 @@ import {
 import {
   resolveInstagramUrl,
   resolvePinterestUrl,
+  resolveTwitterUrl,
+  resolveFacebookUrl,
+  resolveThreadsUrl,
   getStreamUrl,
   getDownloadUrl,
   getZipDownloadUrl,
@@ -75,7 +78,7 @@ function decodeHtmlEntities(text: string): string {
   return decoded;
 }
 
-const TITLE_PREVIEW_LENGTH = 20;
+const TITLE_PREVIEW_LENGTH = 120;
 
 function titlePreview(text: string): { text: string; isLong: boolean } {
   let chars: string[];
@@ -871,28 +874,40 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       const base = stripStreamRetryParam(failedProxySrc);
       if (!base || recoveryAttemptedRef.current.has(base)) return false;
       recoveryAttemptedRef.current.add(base);
-      // The fresh resolve MUST go through the SAME platform resolver that
-      // produced the original media. A Pinterest pin can never be re-resolved
-      // by the Instagram resolver (and vice versa), so hardcoding one endpoint
-      // made every Pinterest refresh fail and turned a transient stream error
-      // into a permanent "Preview unavailable" with no recovery.
-      const requestType = isPinterest ? "pinterest-resolve" : "resolve-post";
-      const requestUrl = isPinterest
-        ? `${getApiBase()}/api/pinterest/resolve`
-        : `${getApiBase()}/api/resolve`;
+      // Route to the SAME platform resolver that produced the original media.
+      // Using a different platform's resolver (e.g. Instagram for a Twitter URL)
+      // throws an INVALID_URL error and permanently collapses the card into
+      // "Preview unavailable", even when the failure was only a transient CDN
+      // expiry. Each resolver is called with its own correct endpoint.
       let data;
       try {
-        data = isPinterest
-          ? await resolvePinterestUrl(result.sourceUrl, result.type === "VIDEO" ? "video" : "image")
-          : await resolveInstagramUrl(result.sourceUrl, undefined, { refresh: true });
+        if (isPinterest) {
+          data = await resolvePinterestUrl(result.sourceUrl, result.type === "VIDEO" ? "video" : "image");
+        } else if (variant === "twitter") {
+          data = await resolveTwitterUrl(result.sourceUrl);
+        } else if (variant === "facebook") {
+          data = await resolveFacebookUrl(result.sourceUrl);
+        } else if (variant === "threads") {
+          data = await resolveThreadsUrl(result.sourceUrl);
+        } else {
+          // instagram (default) — also the SSE-based resolver
+          data = await resolveInstagramUrl(result.sourceUrl, undefined, { refresh: true });
+        }
       } catch (err) {
+        const requestType = isPinterest ? "pinterest-resolve" : variant === "twitter" ? "twitter-resolve" : variant === "facebook" ? "facebook-resolve" : variant === "threads" ? "threads-resolve" : "resolve-post";
+        const requestUrl = isPinterest
+          ? `${getApiBase()}/api/pinterest/resolve`
+          : variant === "twitter" ? `${getApiBase()}/api/twitter/resolve`
+          : variant === "facebook" ? `${getApiBase()}/api/facebook/resolve`
+          : variant === "threads" ? `${getApiBase()}/api/threads/resolve`
+          : `${getApiBase()}/api/resolve`;
         logApiFailure({ requestType, requestUrl, status: null, error: err });
         return false;
       }
       if (!data.success) {
         logApiFailure({
-          requestType,
-          requestUrl,
+          requestType: "media-stream",
+          requestUrl: `${getApiBase()}/api/stream`,
           status: null,
           error: new Error(`media-refresh-${data.error.code}`),
         });
@@ -910,7 +925,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       setFreshItems(next);
       return true;
     },
-    [result.sourceUrl, result.type, items, safeIndex, isPinterest]
+    [result.sourceUrl, result.type, items, safeIndex, isPinterest, variant]
   );
 
   // Frontend safety: NEVER display profile/avatar as Story media
@@ -1608,7 +1623,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
           {result.author && (
             <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 sm:justify-start">
               <div className="h-[22px] w-[22px] shrink-0 rounded-full" style={{ background: "var(--brand-gradient)" }} />
-              <span className="truncate text-[14px] font-semibold text-fg sm:text-[14px]">@{result.author.username}</span>
+              <span className="min-w-0 max-w-[200px] truncate text-[14px] font-semibold text-fg sm:max-w-[260px] sm:text-[14px]">@{result.author.username}</span>
             </div>
           )}
           <button

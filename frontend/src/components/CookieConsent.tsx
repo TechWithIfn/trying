@@ -8,10 +8,28 @@ export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      setVisible(window.localStorage.getItem(STORAGE_KEY) === null);
-    }, 0);
-    return () => window.clearTimeout(id);
+    // Defer mounting until the browser is idle and above-the-fold content has painted.
+    // Mounting immediately on hydration causes this fixed dialog's text to become the LCP
+    // element instead of the hero heading, inflating mobile LCP from ~1.2s to 3.7-5.6s.
+    const show = () => {
+      if (typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY) === null) {
+        setVisible(true);
+      }
+    };
+
+    let idleId: number | null = null;
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(show, { timeout: 3000 });
+    } else {
+      idleId = window.setTimeout(show, 2500);
+    }
+
+    return () => {
+      if (idleId !== null) {
+        if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+        else window.clearTimeout(idleId);
+      }
+    };
   }, []);
 
   if (!visible) return null;
@@ -37,9 +55,8 @@ export default function CookieConsent() {
         "sm:bottom-6 sm:right-6 sm:left-auto sm:max-w-[448px] sm:pb-6",
       ].join(" ")}
     >
-      <p className="text-sm leading-6 text-fg-muted">
-        Downloadit uses essential storage to remember this choice. If advertising
-        is enabled, optional advertising cookies are used only with your consent.
+      <p className="text-[13px] leading-[1.4] text-fg-muted">
+        We use essential storage for functionality and optional advertising cookies with your consent.
         See our <a href="/privacy" className="font-semibold text-primary-strong hover:underline">
           Privacy Policy
         </a>.

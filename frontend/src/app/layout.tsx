@@ -114,14 +114,9 @@ export default function RootLayout({
             apply dark styling. No dark class or data-theme is ever added. */}
         <meta name="color-scheme" content="light" />
         {/* DNS prefetch for the deferred AdSense library (loaded by
-            AdsenseLoader after first interaction/idle — no preconnect, which
-            would open idle sockets and cost radio/battery on mobile). */}
+            AdsenseLoader after first interaction/idle — no duplicate script in head,
+            which blocks mobile rendering and downloads 220KB+ before first paint). */}
         <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com" />
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
-          crossOrigin="anonymous"
-        />
 
         {/* Website Structured Data. Plain <script> tags so the JSON-LD is
             server-rendered for crawlers — next/script only injects it after

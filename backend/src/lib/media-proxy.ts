@@ -2,6 +2,8 @@ import type { Request, Response as ExpressResponse } from "express";
 import { isPrivateOrReservedHost, isCdnMediaHost } from "./providers/base.js";
 import { resolveUrl } from "./resolvers/index.js";
 import { validateInstagramUrl } from "./validators/instagram-url.js";
+import { validateTwitterUrl } from "./validators/twitter-url.js";
+import { resolveTwitterPost } from "./twitter/resolve.js";
 import { logger } from "./logger.js";
 import { withRetry } from "./retry.js";
 import { redactMediaUrl } from "./text.js";
@@ -130,6 +132,35 @@ export const UPSTREAM_HEADERS: Record<string, string> = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
+/**
+ * Host-aware upstream identity.
+ *
+ * CDN edges hotlink-check the Referer: video.twimg.com answers 403 to media
+ * requests carrying Instagram's referer, even though the same object is public
+ * and returns 206 to a request with an X referer (or none at all). Sending
+ * Instagram's identity to Twitter media made Preview and Download report the
+ * freshly extracted URL as "expired", so the referer must match the host
+ * actually being fetched.
+ */
+export function upstreamHeadersFor(rawUrl: string): Record<string, string> {
+  let hostname = "";
+  try {
+    hostname = new URL(rawUrl).hostname.toLowerCase();
+  } catch {
+    return { ...UPSTREAM_HEADERS };
+  }
+  if (hostname === "video.twimg.com" || hostname === "pbs.twimg.com") {
+    return {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+      Accept: "video/mp4,video/*;q=0.9,image/*;q=0.8,*/*;q=0.5",
+      Referer: "https://x.com/",
+      "Accept-Language": "en-US,en;q=0.9",
+    };
+  }
+  return { ...UPSTREAM_HEADERS };
+}
+
 const MAX_REDIRECTS = 5;
 
 export type UpstreamStatus =
@@ -188,7 +219,7 @@ export async function fetchUpstreamMedia(
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       timeout.unref?.();
       try {
-        const headers: Record<string, string> = { ...UPSTREAM_HEADERS };
+        const headers: Record<string, string> = upstreamHeadersFor(currentUrl);
         if (rangeHeader) {
           headers.Range = rangeHeader;
         }
@@ -340,11 +371,11 @@ export interface ResilientUpstreamResult {
 /**
  * Fetch upstream media, with ONE guarded recovery attempt: if the CDN
  * reports the URL expired/invalid AND the caller supplied the original
- * Instagram `sourceUrl`, re-run the resolver (bypassing the stale cache
- * entry) and retry exactly once against the fresh media URL.
+ * Instagram or Twitter/X `sourceUrl`, re-run extraction and retry exactly
+ * once against the fresh media URL.
  *
- * Security is preserved end-to-end: the source must be a valid Instagram
- * URL and the refreshed URL must pass the same CDN/SSRF validation.
+ * Security is preserved end-to-end: the source must be a valid Instagram or
+ * Twitter/X URL and the refreshed URL must pass the same CDN/SSRF validation.
  * Maximum 2 upstream attempts per call — never an open retry loop.
  */
 export async function fetchUpstreamMediaResilient(
@@ -376,8 +407,11 @@ export async function fetchUpstreamMediaResilient(
     return { status: first, refreshed: false };
   }
 
-  const validation = validateInstagramUrl(sourceUrl);
-  if (!validation.valid || !validation.parsed) {
+  const instagram = validateInstagramUrl(sourceUrl);
+  const twitter = instagram.valid ? null : validateTwitterUrl(sourceUrl);
+  const instagramValid = instagram.valid && Boolean(instagram.parsed);
+  const twitterValid = Boolean(twitter && twitter.valid && twitter.parsed);
+  if (!instagramValid && !twitterValid) {
     await first.response.body?.cancel().catch(() => {});
     return { status: first, refreshed: false };
   }
@@ -385,34 +419,55 @@ export async function fetchUpstreamMediaResilient(
   logger.info(`[${options.tag}] upstream reports expired media, re-resolving once`, {
     requestId: options.requestId,
     status: first.response.status,
+    source: instagramValid ? "instagram" : "twitter",
   });
 
   let freshUrl: string | null = null;
   try {
-    // Re-resolution is expensive browser work: bound it with the provider
-    // gate and abort it the moment the client leaves.
-    const result = await resolveUrl(validation.parsed.normalized, undefined, {
-      bypassCache: true,
-      signal: fetchOpts.signal,
-    });
-    // Pick the refreshed candidate for the SAME media item: rotating CDN
-    // signatures keep the media identity in host+pathname, so prefer the
-    // item whose identity matches the expired URL. Blindly using media[0]
-    // would serve slide 1 when slide N expired (wrong bytes on download).
-    const identityMatch = result.media.find(
-      (m) =>
-        typeof m.url === "string" &&
-        m.url !== initialUrl &&
-        sameCdnIdentity(m.url, initialUrl)
-    );
-    const fallback = result.media.find(
-      (m) => typeof m.url === "string" && m.url !== initialUrl
-    );
-    const candidate = identityMatch?.url ?? fallback?.url;
-    if (typeof candidate === "string" && candidate.length > 0) {
+    // Rotating CDN signatures keep the media identity in host+pathname, so
+    // prefer the refreshed item whose identity matches the expired URL.
+    // Blindly using media[0] would serve slide 1 when slide N expired.
+    const candidates: string[] = [];
+    if (instagramValid) {
+      // Re-resolution is expensive browser work: bound it with the provider
+      // gate and abort it the moment the client leaves.
+      const result = await resolveUrl(
+        instagram.valid && instagram.parsed ? instagram.parsed.normalized : "",
+        undefined,
+        { bypassCache: true, signal: fetchOpts.signal }
+      );
+      const identityMatch = result.media.find(
+        (m) =>
+          typeof m.url === "string" &&
+          m.url !== initialUrl &&
+          sameCdnIdentity(m.url, initialUrl)
+      );
+      const fallback = result.media.find(
+        (m) => typeof m.url === "string" && m.url !== initialUrl
+      );
+      if (identityMatch?.url) candidates.push(identityMatch.url);
+      if (fallback?.url) candidates.push(fallback.url);
+    } else if (twitter && twitter.valid && twitter.parsed) {
+      // Twitter extraction (yt-dlp) is cheap relative to a browser page and
+      // already re-validates the fresh rendition before returning it.
+      const result = await resolveTwitterPost(twitter.parsed.normalized, {
+        signal: fetchOpts.signal,
+        requestId: options.requestId,
+        purpose: "refresh",
+      });
+      const identityMatch = result.media.find(
+        (m) => m.url !== initialUrl && sameCdnIdentity(m.url, initialUrl)
+      );
+      const fallback = result.media.find((m) => m.url !== initialUrl);
+      if (identityMatch?.url) candidates.push(identityMatch.url);
+      if (fallback?.url) candidates.push(fallback.url);
+    }
+
+    for (const candidate of candidates) {
       const mediaValidation = validateProxyUrl(candidate);
       if (mediaValidation.ok && mediaValidation.value.url !== initialUrl) {
         freshUrl = mediaValidation.value.url;
+        break;
       }
     }
   } catch (err) {

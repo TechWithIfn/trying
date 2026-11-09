@@ -200,7 +200,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
                 type="button"
                 onClick={() => setLangOpen((o) => !o)}
                 className={iconBtn}
-                aria-label={t.common.language}
+                aria-label={`${current.code.toUpperCase()} - ${t.common.language}`}
                 aria-haspopup="menu"
                 aria-expanded={langOpen}
               >
