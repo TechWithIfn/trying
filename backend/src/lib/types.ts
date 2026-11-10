@@ -165,6 +165,8 @@ export interface ResolveErrorResponse {
     code: ErrorCode;
     message: string;
     retryable: boolean;
+    /** Seconds the client must wait before retrying (server-enforced). */
+    retryAfterSeconds?: number;
     diagnostics?: ResolveDiagnostics;
   };
 }

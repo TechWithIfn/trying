@@ -4,22 +4,40 @@ export class AppError extends Error {
   public readonly code: ErrorCode;
   public readonly statusCode: number;
   public readonly details?: ResolveDiagnostics;
+  /**
+   * Server-enforced wait before this operation may be retried. Set only when
+   * the source of the failure told us how long to wait (YouTube cooldown /
+   * upstream Retry-After). Never fabricated for permanent failures.
+   */
+  public retryAfterMs?: number;
 
-  constructor(code: ErrorCode, message: string, statusCode: number = 400, details?: ResolveDiagnostics) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    statusCode: number = 400,
+    details?: ResolveDiagnostics,
+    retryAfterMs?: number
+  ) {
     super(message);
     this.name = "AppError";
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
+    this.retryAfterMs = retryAfterMs;
   }
 
   toResponse(): ResolveErrorResponse {
+    const retryAfterSeconds =
+      this.retryAfterMs !== undefined && this.retryAfterMs > 0
+        ? Math.max(1, Math.ceil(this.retryAfterMs / 1000))
+        : undefined;
     return {
       success: false,
       error: {
         code: this.code,
         message: this.message,
         retryable: ERRORS[this.code].retryable,
+        ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
         ...(this.details ? { diagnostics: { ...this.details } } : {}),
       },
     };

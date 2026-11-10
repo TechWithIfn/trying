@@ -1,5 +1,6 @@
 import { AppError, ERRORS } from "../errors.js";
-import { readPositiveInt } from "../env.js";
+import { readNonNegativeInt, readPositiveInt } from "../env.js";
+import { inc } from "../metrics.js";
 import { logger } from "../logger.js";
 import { withRetry } from "../retry.js";
 import type { Author, ErrorCode, ResolveDiagnostics } from "../types.js";
@@ -16,6 +17,11 @@ import {
   isRetryableYtDlpError,
   sanitizeYtDlpStderr,
 } from "./ytdlp.js";
+import {
+  activeYouTubeRestrictionError,
+  applyYouTubeRestriction,
+  clearYouTubeRestriction,
+} from "./restriction.js";
 
 /** Qualities the page offers when the video exposes them. */
 export const YOUTUBE_QUALITY_TARGETS = [1080, 720, 480, 240, 144] as const;
@@ -346,20 +352,30 @@ export function parseYouTubeProbe(
   };
 }
 
-const PROBE_CACHE_TTL_MS = 5 * 60 * 1000;
-const PROBE_CACHE_MAX = 200;
+function probeCacheTtlMs(): number {
+  return readNonNegativeInt("YOUTUBE_PROBE_CACHE_TTL_MS", 5 * 60 * 1000, 24 * 60 * 60 * 1000);
+}
+
+function probeCacheMaxEntries(): number {
+  return readNonNegativeInt("YOUTUBE_PROBE_CACHE_MAX", 200, 5_000);
+}
+
 const probeCache = new Map<string, { probe: YouTubeProbe; expiresAt: number }>();
+/** One live extraction per canonical URL; concurrent requests share it. */
+const probeInFlight = new Map<string, Promise<YouTubeProbe>>();
 
 export function invalidateYouTubeProbe(sourceUrl: string): void {
   probeCache.delete(sourceUrl);
 }
 
-/** Test-only: drop cached probe results. */
+/** Test-only: drop cached probe results and in-flight registrations. */
 export function resetYouTubeProbeCacheForTests(): void {
   probeCache.clear();
+  probeInFlight.clear();
 }
 
 function cacheGet(sourceUrl: string): YouTubeProbe | null {
+  if (probeCacheTtlMs() === 0 || probeCacheMaxEntries() === 0) return null;
   const entry = probeCache.get(sourceUrl);
   if (!entry) return null;
   if (entry.expiresAt <= Date.now()) {
@@ -370,18 +386,26 @@ function cacheGet(sourceUrl: string): YouTubeProbe | null {
 }
 
 function cacheSet(sourceUrl: string, probe: YouTubeProbe): void {
-  if (probeCache.size >= PROBE_CACHE_MAX) {
+  const ttlMs = probeCacheTtlMs();
+  const maxEntries = probeCacheMaxEntries();
+  if (ttlMs === 0 || maxEntries === 0) return;
+
+  if (probeCache.size >= maxEntries) {
     const now = Date.now();
     for (const [key, entry] of probeCache) {
-      if (entry.expiresAt <= now) probeCache.delete(key);
+      if (entry.expiresAt <= now) {
+        probeCache.delete(key);
+        inc("cacheEvictions");
+      }
     }
-    while (probeCache.size >= PROBE_CACHE_MAX) {
+    while (probeCache.size >= maxEntries) {
       const oldest = probeCache.keys().next().value;
       if (typeof oldest !== "string") break;
       probeCache.delete(oldest);
+      inc("cacheEvictions");
     }
   }
-  probeCache.set(sourceUrl, { probe, expiresAt: Date.now() + PROBE_CACHE_TTL_MS });
+  probeCache.set(sourceUrl, { probe, expiresAt: Date.now() + ttlMs });
 }
 
 export interface ProbeYouTubeOptions {
@@ -396,23 +420,17 @@ function trimLimit(): number {
   return readPositiveInt("YOUTUBE_MAX_DURATION_SECONDS", 60 * 60);
 }
 
-/**
- * Probe a video with yt-dlp (metadata only; no media is downloaded).
- */
-export async function probeYouTube(
+async function runProbe(
   parsed: ParsedYouTubeUrl,
   options: ProbeYouTubeOptions
 ): Promise<YouTubeProbe> {
-  if (!options.fresh) {
-    const cached = cacheGet(parsed.normalized);
-    if (cached) return cached;
-  }
-
   const startedAt = Date.now();
+  let attempts = 0;
   let stdout: string;
   try {
     const result = await withRetry(
       (attempt) => {
+        attempts += 1;
         logger.info("[YOUTUBE] yt-dlp probe attempt", {
           requestId: options.requestId,
           videoId: parsed.videoId,
@@ -445,8 +463,19 @@ export async function probeYouTube(
     );
     stdout = result.stdout;
   } catch (error) {
-    logYtDlpFailure(error, "probe", options.requestId, parsed.videoId, Date.now() - startedAt);
-    throw classifyYtDlpFailure(error, "probe", options.requestId, parsed.videoId);
+    const retryCount = Math.max(0, attempts - 1);
+    logYtDlpFailure(
+      error,
+      "probe",
+      options.requestId,
+      parsed.videoId,
+      Date.now() - startedAt,
+      retryCount
+    );
+    const classified = classifyYtDlpFailure(error, "probe", options.requestId, parsed.videoId);
+    // Arm the process-wide cooldown for bot checks / 429 before surfacing the
+    // error, so parallel and subsequent requests stop hitting YouTube.
+    throw applyYouTubeRestriction(classified, "probe");
   }
 
   let payload: unknown;
@@ -479,6 +508,8 @@ export async function probeYouTube(
     );
   }
 
+  // A real extraction succeeded end-to-end: YouTube is reachable again.
+  clearYouTubeRestriction("probe");
   cacheSet(parsed.normalized, probe);
   logger.info("[YOUTUBE] probe complete", {
     requestId: options.requestId,
@@ -486,9 +517,77 @@ export async function probeYouTube(
     duration: probe.durationSeconds,
     qualities: probe.qualities.map((quality) => quality.height),
     audioAvailable: probe.audioAvailable,
+    retryCount: Math.max(0, attempts - 1),
+    cache: "miss",
     elapsedMs: Date.now() - startedAt,
   });
   return probe;
+}
+
+/**
+ * Probe a video with yt-dlp (metadata only; no media is downloaded).
+ *
+ * Ordering matters:
+ *  1. an active restriction fails fast (even for cached metadata, because the
+ *     download step still needs YouTube),
+ *  2. a fresh cache entry answers without touching the network,
+ *  3. concurrent requests for the same canonical URL share one extraction.
+ */
+export async function probeYouTube(
+  parsed: ParsedYouTubeUrl,
+  options: ProbeYouTubeOptions
+): Promise<YouTubeProbe> {
+  const restriction = activeYouTubeRestrictionError({
+    requestId: options.requestId,
+    youtubeVideoId: parsed.videoId,
+  });
+  if (restriction) throw restriction;
+
+  if (!options.fresh) {
+    const cached = cacheGet(parsed.normalized);
+    if (cached) {
+      inc("youtubeProbeCacheHits");
+      logger.info("[YOUTUBE] probe cache hit", {
+        requestId: options.requestId,
+        videoId: cached.videoId,
+        cache: "hit",
+      });
+      return cached;
+    }
+    inc("youtubeProbeCacheMisses");
+    logger.info("[YOUTUBE] probe cache miss", {
+      requestId: options.requestId,
+      videoId: parsed.videoId,
+      cache: "miss",
+    });
+  } else {
+    logger.info("[YOUTUBE] probe cache bypassed", {
+      requestId: options.requestId,
+      videoId: parsed.videoId,
+      cache: "bypass",
+    });
+  }
+
+  const existing = probeInFlight.get(parsed.normalized);
+  if (existing) {
+    inc("youtubeProbeCoalesced");
+    logger.info("[YOUTUBE] probe coalesced", {
+      requestId: options.requestId,
+      videoId: parsed.videoId,
+      cache: "miss",
+      coalesced: true,
+    });
+    return existing;
+  }
+
+  let promise: Promise<YouTubeProbe>;
+  promise = runProbe(parsed, options).finally(() => {
+    if (probeInFlight.get(parsed.normalized) === promise) {
+      probeInFlight.delete(parsed.normalized);
+    }
+  });
+  probeInFlight.set(parsed.normalized, promise);
+  return promise;
 }
 
 /**
@@ -616,7 +715,8 @@ function logYtDlpFailure(
   stage: string,
   requestId: string | undefined,
   videoId: string,
-  durationMs: number
+  durationMs: number,
+  retryCount = 0
 ): void {
   const stderr = error instanceof YtDlpProcessError ? error.stderr : "";
   const message = error instanceof Error ? error.message : String(error);
@@ -625,6 +725,7 @@ function logYtDlpFailure(
     videoId,
     stage,
     durationMs,
+    retryCount,
     platform: process.platform,
     runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
     ytDlpPath: getYtDlpPath(),

@@ -28,6 +28,10 @@ import {
   isYouTubeAudioFormat,
   type YouTubeAudioFormat,
 } from "./audio.js";
+import {
+  activeYouTubeRestrictionError,
+  applyYouTubeRestriction,
+} from "./restriction.js";
 
 export type YouTubeDownloadFormat = "mp4" | YouTubeAudioFormat;
 
@@ -175,6 +179,12 @@ export async function safeRemoveDir(dir: string, requestId?: string): Promise<vo
  * directory. The caller streams it and must call `safeRemoveDir` afterwards.
  */
 export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Promise<DownloadedYouTubeFile> {
+  const restriction = activeYouTubeRestrictionError({
+    requestId: options.requestId,
+    youtubeVideoId: options.probe.videoId,
+  });
+  if (restriction) throw restriction;
+
   const ffmpeg = await resolveFfmpegPath();
   if (!ffmpeg) {
     throw verdict("YOUTUBE_CONVERSION_FAILED", options.probe, "ffmpeg", options.requestId);
@@ -186,9 +196,11 @@ export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Prom
   const startedAt = Date.now();
 
   try {
+    let attempts = 0;
     try {
       const result = await withRetry(
         (attempt) => {
+          attempts += 1;
           logger.info("[YOUTUBE] yt-dlp download attempt", {
             requestId: options.requestId,
             videoId: options.probe.videoId,
@@ -219,15 +231,18 @@ export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Prom
           requestId: options.requestId,
           videoId: options.probe.videoId,
           format: options.format,
+          retryCount: Math.max(0, attempts - 1),
           elapsedMs: Date.now() - startedAt,
         });
       }
     } catch (error) {
+      const retryCount = Math.max(0, attempts - 1);
       logger.error("[YOUTUBE] yt-dlp download failed", {
         requestId: options.requestId,
         videoId: options.probe.videoId,
         format: options.format,
         durationMs: Date.now() - startedAt,
+        retryCount,
         platform: process.platform,
         runtime: process.env.VERCEL ? "vercel" : process.env.NODE_ENV || "local",
         ytDlpPath: getYtDlpPath(),
@@ -242,12 +257,13 @@ export async function downloadYouTubeFile(options: DownloadYouTubeOptions): Prom
             : null,
         stderr: error instanceof YtDlpProcessError ? sanitizeYtDlpStderr(error.stderr) : null,
       });
-      throw classifyYtDlpFailure(
+      const classified = classifyYtDlpFailure(
         error,
         isYouTubeAudioFormat(options.format) ? "audio" : "download",
         options.requestId,
         options.probe.videoId
       );
+      throw applyYouTubeRestriction(classified, "download");
     }
 
     let fileStat;

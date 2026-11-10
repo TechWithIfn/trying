@@ -23,6 +23,7 @@ import {
   isBrowserOffline,
   isValidYouTubeUrl,
   resolveYouTubeUrl,
+  youtubeErrorMessage,
   type YouTubeAudioOption,
   type YouTubeFormat,
   type YouTubeResolveData,
@@ -157,6 +158,10 @@ export default function YouTubeDownloader({
   const [quality, setQuality] = useState<number | null>(null);
   const [titleExpanded, setTitleExpanded] = useState(false);
   const [download, setDownload] = useState<DownloadState | null>(null);
+  // Server-enforced cooldown. `cooldownNow` ticks once a second so the retry
+  // button can show a real countdown without issuing duplicate requests.
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [cooldownNow, setCooldownNow] = useState(0);
 
   const resolveAbortRef = useRef<AbortController | null>(null);
   const downloadAbortRef = useRef<AbortController | null>(null);
@@ -171,6 +176,11 @@ export default function YouTubeDownloader({
 
   const downloading = download?.phase === "preparing" || download?.phase === "downloading";
   const busy = state === "LOADING";
+  const cooldownLeft =
+    cooldownUntil > 0 && cooldownUntil > cooldownNow
+      ? Math.max(1, Math.ceil((cooldownUntil - cooldownNow) / 1000))
+      : 0;
+  const coolingDown = cooldownLeft > 0;
   const inputId = "downloadit-youtube-url-input";
   const badgeText = badge ?? t.hero.badge;
   const audioOptions = result?.audioOptions ?? [];
@@ -181,6 +191,9 @@ export default function YouTubeDownloader({
   const benefitItems = (benefits && benefits.length > 0 ? benefits : BENEFITS.map((b) => b.label))
     .slice(0, BENEFITS.length)
     .map((label, i) => ({ icon: BENEFITS[i].icon, label }));
+  const submitLabel = coolingDown
+    ? `Wait ${cooldownLeft}s`
+    : buttonLabel || t.common.getMedia;
 
   const abortAll = useCallback(() => {
     requestSeqRef.current += 1;
@@ -191,6 +204,32 @@ export default function YouTubeDownloader({
   }, []);
 
   useEffect(() => () => abortAll(), [abortAll]);
+
+  // Tick only while a cooldown is active. The interval is cleared exactly when
+  // the deadline passes, so no timer runs in the normal flow.
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setCooldownNow(now);
+      if (now >= cooldownUntil) {
+        setCooldownUntil(0);
+        window.clearInterval(timer);
+      }
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldownUntil]);
+
+  const applyServerCooldown = useCallback(
+    (error?: { retryAfterSeconds?: number } | null) => {
+      const seconds = error?.retryAfterSeconds;
+      if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return;
+      const until = Date.now() + Math.ceil(seconds) * 1000;
+      setCooldownNow(Date.now());
+      setCooldownUntil((current) => Math.max(current, until));
+    },
+    []
+  );
 
   const resetOutput = useCallback(() => {
     abortAll();
@@ -233,12 +272,14 @@ export default function YouTubeDownloader({
       const response = await resolveYouTubeUrl(target, controller.signal);
       if (seq !== requestSeqRef.current) return;
       if (response.success) {
+        setCooldownUntil(0);
         setResult(response.data);
         setQuality(response.data.qualities[0]?.height ?? null);
         setTitleExpanded(false);
         setState("READY");
       } else {
-        setError(response.error.message || "This YouTube video could not be read.");
+        applyServerCooldown(response.error);
+        setError(youtubeErrorMessage(response.error.code, response.error.message));
         setState("ERROR");
         scrollOnErrorRef.current = true;
       }
@@ -259,12 +300,12 @@ export default function YouTubeDownloader({
       clearTimeout(timer);
       if (resolveAbortRef.current === controller) resolveAbortRef.current = null;
     }
-  }, []);
+  }, [applyServerCooldown]);
 
   const handleSubmit = useCallback(
     (event: React.FormEvent) => {
       event.preventDefault();
-      if (busy || downloading) return;
+      if (busy || downloading || coolingDown) return;
       const trimmed = url.trim();
       resetOutput();
       if (!trimmed) {
@@ -288,7 +329,7 @@ export default function YouTubeDownloader({
       }
       void startResolve(trimmed);
     },
-    [busy, downloading, focusInput, resetOutput, startResolve, url]
+    [busy, coolingDown, downloading, focusInput, resetOutput, startResolve, url]
   );
 
   const handleUrlChange = useCallback(
@@ -320,10 +361,10 @@ export default function YouTubeDownloader({
   }, [focusInput, resetOutput]);
 
   const handleRetry = useCallback(() => {
-    if (busy || downloading) return;
+    if (busy || downloading || coolingDown) return;
     const trimmed = url.trim();
     if (trimmed && isValidYouTubeUrl(trimmed)) void startResolve(trimmed);
-  }, [busy, downloading, startResolve, url]);
+  }, [busy, coolingDown, downloading, startResolve, url]);
 
   // Coordinate scrolling with the rendered DOM so each section is scrolled into
   // view exactly once per flow transition (never repeatedly during one request).
@@ -381,7 +422,7 @@ export default function YouTubeDownloader({
 
   const startDownload = useCallback(
     async (format: YouTubeFormat, bitrateKbps?: number) => {
-      if (!result || downloading) return;
+      if (!result || downloading || coolingDown) return;
       if (format === "mp4" && quality === null) {
         setDownload({
           kind: "mp4",
@@ -422,13 +463,14 @@ export default function YouTubeDownloader({
         if (downloadAbortRef.current !== controller) return;
 
         if (!outcome.ok) {
+          applyServerCooldown(outcome.error);
           setDownload({
             kind: format,
             audioKey,
             phase: "error",
             loaded: 0,
             total: null,
-            message: outcome.error.message,
+            message: youtubeErrorMessage(outcome.error.code, outcome.error.message),
           });
           return;
         }
@@ -472,7 +514,7 @@ export default function YouTubeDownloader({
         if (downloadAbortRef.current === controller) downloadAbortRef.current = null;
       }
     },
-    [downloading, quality, result, url]
+    [applyServerCooldown, coolingDown, downloading, quality, result, url]
   );
 
   const progressPct =
@@ -637,7 +679,11 @@ export default function YouTubeDownloader({
                     {t.common.paste}
                   </button>
 
-                  <button type="submit" disabled={busy} className="gradient-btn h-13 shrink-0 px-7 text-[16px]">
+                  <button
+                    type="submit"
+                    disabled={busy || coolingDown}
+                    className="gradient-btn h-13 shrink-0 px-7 text-[16px]"
+                  >
                     {busy ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -646,7 +692,7 @@ export default function YouTubeDownloader({
                     ) : (
                       <>
                         <DownloadIcon className="h-5 w-5" />
-                        <span>{buttonLabel || t.common.getMedia}</span>
+                        <span>{submitLabel}</span>
                       </>
                     )}
                   </button>
@@ -695,7 +741,11 @@ export default function YouTubeDownloader({
                       <Clipboard className="h-4 w-4 shrink-0" />
                       <span className="btn-label truncate">{t.common.paste}</span>
                     </button>
-                    <button type="submit" disabled={busy} className="gradient-btn h-12 min-h-[48px] w-full px-3 text-[16px]">
+                    <button
+                      type="submit"
+                      disabled={busy || coolingDown}
+                      className="gradient-btn h-12 min-h-[48px] w-full px-3 text-[16px]"
+                    >
                       {busy ? (
                         <>
                           <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
@@ -704,7 +754,7 @@ export default function YouTubeDownloader({
                       ) : (
                         <>
                           <DownloadIcon className="h-5 w-5 shrink-0" />
-                          <span className="btn-label truncate">{buttonLabel || t.common.getMedia}</span>
+                          <span className="btn-label truncate">{submitLabel}</span>
                         </>
                       )}
                     </button>
@@ -881,7 +931,7 @@ export default function YouTubeDownloader({
                                       <button
                                         type="button"
                                         onClick={() => void startDownload(option.format, option.bitrateKbps)}
-                                        disabled={downloading}
+                                        disabled={downloading || coolingDown}
                                         data-audio-key={key}
                                         aria-label={`${
                                           rowBusy ? "Downloading" : rowError ? "Retry" : rowDone ? "Saved" : "Download"
@@ -975,7 +1025,7 @@ export default function YouTubeDownloader({
                         <button
                           type="button"
                           onClick={() => void startDownload("mp4")}
-                          disabled={downloading || quality === null}
+                          disabled={downloading || coolingDown || quality === null}
                           data-mp4-download
                           className="gradient-btn h-11 min-h-[44px] w-full whitespace-nowrap text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                           style={{ padding: "0 10px" }}
@@ -1042,10 +1092,10 @@ export default function YouTubeDownloader({
                 <button
                   type="button"
                   onClick={handleRetry}
-                  disabled={busy || downloading}
+                  disabled={busy || downloading || coolingDown}
                   className="mt-4 inline-flex items-center gap-2 rounded-xl border border-danger/20 bg-white px-5 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger-light disabled:opacity-50"
                 >
-                  {t.common.tryAgain}
+                  {coolingDown ? `${t.common.tryAgain} · ${cooldownLeft}s` : t.common.tryAgain}
                 </button>
               </div>
             </div>

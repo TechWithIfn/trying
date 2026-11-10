@@ -138,6 +138,80 @@ async function isUsable(filePath, versionArgs) {
   return (await isFilePresent(filePath)) && (await looksNative(filePath)) && (await verifyExecutable(filePath, versionArgs));
 }
 
+/** Read a `YYYY.MM.DD` yt-dlp version, or null when it cannot be parsed. */
+async function ytDlpBinaryVersion(filePath) {
+  if (!filePath) return null;
+  try {
+    return await new Promise((resolve) => {
+      execFile(
+        filePath,
+        ["--version"],
+        { timeout: 20_000, maxBuffer: 256 * 1024 },
+        (error, stdout) => {
+          if (error) {
+            resolve(null);
+            return;
+          }
+          const first = String(stdout || "").trim().split(/\r?\n/)[0] || "";
+          resolve(/^\d{4}\.\d{1,2}\.\d{1,2}/.test(first) ? first : null);
+        }
+      );
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve the latest published yt-dlp tag without failing the build. */
+async function latestYtDlpVersion() {
+  try {
+    const response = await fetch("https://github.com/yt-dlp/yt-dlp/releases/latest", {
+      method: "HEAD",
+      redirect: "manual",
+    });
+    const location = response.headers.get("location") || "";
+    const match = location.match(/\/tag\/(\d{4}\.\d{1,2}\.\d{1,2})/);
+    if (match) return match[1];
+  } catch {
+    /* fall through to the API */
+  }
+  try {
+    const response = await fetch("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest", {
+      headers: { "User-Agent": "downloadit-build" },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (typeof data.tag_name === "string") return data.tag_name.replace(/^v/, "");
+    }
+  } catch {
+    /* offline build: keep whatever is staged */
+  }
+  return null;
+}
+
+function compareVersions(a, b) {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const l = left[index] ?? 0;
+    const r = right[index] ?? 0;
+    if (l !== r) return l < r ? -1 : 1;
+  }
+  return 0;
+}
+
+/**
+ * Stale binaries are a real failure mode: a cached build can keep an old
+ * yt-dlp for months while YouTube changes its player. Check (best-effort) and
+ * report whether the staged build should be refreshed.
+ */
+async function ytDlpStaleness(filePath) {
+  const local = await ytDlpBinaryVersion(filePath);
+  const latest = await latestYtDlpVersion();
+  if (!local || !latest) return { stale: false, local, latest };
+  return { stale: compareVersions(local, latest) < 0, local, latest };
+}
+
 /** Verify a gzip-compressed binary by expanding it to a temp file and running it. */
 async function isUsableGzip(gzPath, versionArgs) {
   if (!gzPath) return false;
@@ -223,27 +297,37 @@ async function downloadGzip(url, destination) {
 }
 
 async function stageYtDlp() {
-  if (await isUsable(binaryPath)) {
-    console.log(`[youtube] yt-dlp already present: ${binaryPath}`);
-    return true;
+  const existingUsable = await isUsable(binaryPath);
+  if (existingUsable) {
+    const { stale, local, latest } = await ytDlpStaleness(binaryPath);
+    if (!stale) {
+      console.log(`[youtube] yt-dlp already present: ${binaryPath} (${local ?? "version unknown"})`);
+      return true;
+    }
+    console.log(
+      `[youtube] yt-dlp ${local} is older than the latest release ${latest}; refreshing (best-effort)`
+    );
   }
 
-  // Prefer the copy that npm installed, but only when it is a native build.
-  // On Linux/macOS youtube-dl-exec installs the Python zipapp, which we must
-  // not ship: it verifies on the build image but cannot run on the host.
-  const bundled = bundledYtDlpPath();
-  if (bundled && bundled !== binaryPath && (await isUsable(bundled))) {
-    await mkdir(binDir, { recursive: true });
-    await copyFile(bundled, binaryPath);
-    await markExecutable(binaryPath);
-    console.log(`[youtube] yt-dlp staged from bundled dependency: ${binaryPath}`);
-    return true;
+  // Prefer the copy that npm installed, but only when no usable project build
+  // exists. On Linux/macOS youtube-dl-exec installs the Python zipapp, which
+  // we must not ship: it verifies on the build image but cannot run on the
+  // host.
+  if (!existingUsable) {
+    const bundled = bundledYtDlpPath();
+    if (bundled && bundled !== binaryPath && (await isUsable(bundled))) {
+      await mkdir(binDir, { recursive: true });
+      await copyFile(bundled, binaryPath);
+      await markExecutable(binaryPath);
+      console.log(`[youtube] yt-dlp staged from bundled dependency: ${binaryPath}`);
+      return true;
+    }
   }
 
   const asset = ytDlpAsset();
   if (!asset) {
     console.warn(`[youtube] no standalone yt-dlp build for ${process.platform}/${process.arch}`);
-    return false;
+    return existingUsable;
   }
 
   const url = `${YTDLP_RELEASE}/${asset}`;
@@ -258,9 +342,10 @@ async function stageYtDlp() {
     console.log(`[youtube] yt-dlp downloaded: ${binaryPath} (${asset})`);
     return true;
   } catch (error) {
-    console.warn(`[youtube] could not stage yt-dlp: ${error instanceof Error ? error.message : String(error)}`);
-    await unlink(binaryPath).catch(() => undefined);
-    return false;
+    console.warn(`[youtube] could not refresh yt-dlp: ${error instanceof Error ? error.message : String(error)}`);
+    // Never destroy a working (if older) binary because GitHub had a hiccup.
+    if (!existingUsable) await unlink(binaryPath).catch(() => undefined);
+    return existingUsable;
   }
 }
 

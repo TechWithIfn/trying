@@ -8,6 +8,7 @@ import {
   type YtFormat,
 } from "@/lib/youtube/resolve";
 import {
+  getYtDlpRetryAfterMs,
   isRetryableYtDlpError,
   YtDlpAbortedError,
   YtDlpNotAvailableError,
@@ -217,12 +218,35 @@ describe("classifyYtDlpFailure", () => {
     expect(mapped.message).toContain("media engine");
   });
 
-  it("retries temporary upstream failures but not bot, timeout, or permanent failures", () => {
+  it("retries temporary upstream failures but not bot, timeout, 429, or permanent failures", () => {
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 503", 1))).toBe(true);
-    expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 429", 1))).toBe(true);
+    // 429 is an explicit "do not retry now"; Retry-After is surfaced instead.
+    expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 429", 1))).toBe(false);
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "Sign in to confirm you're not a bot", 1))).toBe(false);
     expect(isRetryableYtDlpError(new YtDlpProcessError("yt-dlp failed", "HTTP Error 403: Forbidden", 1))).toBe(false);
     expect(isRetryableYtDlpError(new YtDlpAbortedError("timeout"))).toBe(false);
     expect(isRetryableYtDlpError(new YtDlpAbortedError("aborted"))).toBe(false);
+  });
+});
+
+describe("getYtDlpRetryAfterMs", () => {
+  function hint(stderr: string): number | null {
+    return getYtDlpRetryAfterMs(new YtDlpProcessError("yt-dlp failed", stderr, 1));
+  }
+
+  it("reads the HTTP header form in seconds", () => {
+    expect(hint("HTTP Error 503: Service Unavailable\nRetry-After: 120")).toBe(120_000);
+  });
+
+  it("reads prose durations with units", () => {
+    expect(hint("HTTP Error 503: try again in 45 seconds")).toBe(45_000);
+    expect(hint("HTTP Error 503: retry after 3 minutes")).toBe(180_000);
+    expect(hint("HTTP Error 503: retry-after: 1.5 seconds")).toBe(1_500);
+  });
+
+  it("returns null when no hint is present or the value is unusable", () => {
+    expect(hint("HTTP Error 503: Service Unavailable")).toBeNull();
+    expect(hint("Retry-After: not-a-number")).toBeNull();
+    expect(getYtDlpRetryAfterMs(new YtDlpAbortedError("timeout"))).toBeNull();
   });
 });

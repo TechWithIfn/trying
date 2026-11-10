@@ -736,6 +736,8 @@ export interface YouTubeError {
   code: string;
   message: string;
   retryable?: boolean;
+  /** Server-enforced wait before retrying (seconds). */
+  retryAfterSeconds?: number;
   diagnostics?: { availableQualities?: number[] };
 }
 
@@ -814,7 +816,24 @@ function isYouTubeResolveSuccess(value: unknown): value is YouTubeResolveSuccess
   );
 }
 
-function youtubeTransportError(status: number): YouTubeError {
+function retryAfterSecondsFrom(response: Response): number | null {
+  const raw = response.headers.get("retry-after");
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.max(1, Math.ceil(seconds));
+  // HTTP-date form (e.g. "Wed, 21 Oct 2026 07:28:00 GMT").
+  const at = Date.parse(trimmed);
+  if (Number.isFinite(at)) return Math.max(1, Math.ceil((at - Date.now()) / 1000));
+  return null;
+}
+
+function withRetryAfter(error: YouTubeError, seconds: number | null): YouTubeError {
+  if (seconds === null || seconds <= 0) return error;
+  return { ...error, retryAfterSeconds: error.retryAfterSeconds ?? seconds };
+}
+
+function youtubeTransportError(status: number, retryAfterSeconds?: number | null): YouTubeError {
   if (status === 403) {
     return {
       code: "YOUTUBE_VIDEO_UNAVAILABLE",
@@ -826,6 +845,7 @@ function youtubeTransportError(status: number): YouTubeError {
       code: "YOUTUBE_RATE_LIMITED",
       message: "YouTube is temporarily rate-limiting requests. Please try again later.",
       retryable: true,
+      ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
     };
   }
   if (status >= 500) {
@@ -833,13 +853,62 @@ function youtubeTransportError(status: number): YouTubeError {
       code: "YOUTUBE_UPSTREAM_ERROR",
       message: "YouTube is temporarily unavailable. Please try again later.",
       retryable: true,
+      ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
     };
   }
   return {
     code: "TEMPORARY_ERROR",
     message: "The server returned an unexpected response. Please try again.",
     retryable: true,
+    ...(retryAfterSeconds ? { retryAfterSeconds } : {}),
   };
+}
+
+/**
+ * Friendly, state-specific copy for YouTube verdicts. The backend message is
+ * preferred whenever it contains concrete detail (for example the list of
+ * available qualities); these strings only replace generic or missing text.
+ * The cooldown countdown itself is rendered next to the retry button.
+ */
+export function youtubeErrorMessage(
+  code: string,
+  backendMessage?: string | null,
+  retryAfterSeconds?: number | null
+): string {
+  const backend = typeof backendMessage === "string" ? backendMessage.trim() : "";
+  const cooldown =
+    typeof retryAfterSeconds === "number" && retryAfterSeconds > 0
+      ? ` Please wait about ${retryAfterSeconds}s before trying again.`
+      : "";
+  switch (code) {
+    case "YOUTUBE_BOT_CHECK":
+      return `YouTube is temporarily blocking automated requests from this server. This is not caused by your link.${cooldown || " Please try again in a few minutes."}`;
+    case "YOUTUBE_RATE_LIMITED":
+      return `YouTube is rate-limiting this server right now.${cooldown || " Please wait a moment before trying again."}`;
+    case "YOUTUBE_UPSTREAM_ERROR":
+      return "YouTube returned an unexpected response. Please try again shortly.";
+    case "YOUTUBE_TIMEOUT":
+      return "YouTube took too long to respond. Please try again.";
+    case "YOUTUBE_UNAVAILABLE":
+      return "YouTube downloading is temporarily unavailable on this server. Please try again later.";
+    case "YOUTUBE_VIDEO_NOT_FOUND":
+      return "That YouTube video could not be found. It may have been removed or the link may be incorrect.";
+    case "YOUTUBE_VIDEO_UNAVAILABLE":
+      return "This YouTube video is not available to download. It may be private, members-only, region-blocked, or otherwise restricted.";
+    case "YOUTUBE_AGE_RESTRICTED":
+      return "YouTube requires a signed-in account to confirm the viewer's age for this video, so it cannot be downloaded anonymously.";
+    case "YOUTUBE_LIVE_UNSUPPORTED":
+      return "Live YouTube streams cannot be downloaded until the broadcast has ended and the final video is available.";
+    case "YOUTUBE_QUALITY_UNAVAILABLE":
+      return backend || "That video quality is not available for this YouTube video.";
+    case "YOUTUBE_TOO_LONG":
+    case "YOUTUBE_FILE_TOO_LARGE":
+    case "YOUTUBE_AUDIO_UNAVAILABLE":
+    case "YOUTUBE_CONVERSION_FAILED":
+      return backend || "The requested YouTube file could not be prepared. Please try another option.";
+    default:
+      return backend || "Something went wrong while reading this YouTube video. Please try again.";
+  }
 }
 
 export async function resolveYouTubeUrl(
@@ -861,6 +930,7 @@ export async function resolveYouTubeUrl(
     throw error;
   }
 
+  const retryAfterSeconds = retryAfterSecondsFrom(response);
   const body = await response.json().catch(() => null);
   if (isYouTubeResolveSuccess(body)) return body;
   if (isYouTubeErrorBody(body)) {
@@ -870,7 +940,10 @@ export async function resolveYouTubeUrl(
       status: response.status,
       error: new Error(`youtube-resolve-${body.error.code}`),
     });
-    return body;
+    return {
+      success: false,
+      error: withRetryAfter(body.error, retryAfterSeconds),
+    };
   }
 
   logApiFailure({
@@ -882,7 +955,7 @@ export async function resolveYouTubeUrl(
   });
   return {
     success: false,
-    error: youtubeTransportError(response.status),
+    error: youtubeTransportError(response.status, retryAfterSeconds),
   };
 }
 
@@ -936,6 +1009,7 @@ export async function downloadYouTubeFile(options: {
   }
 
   if (!response.ok) {
+    const retryAfterSeconds = retryAfterSecondsFrom(response);
     const body = await response.json().catch(() => null);
     if (isYouTubeErrorBody(body)) {
       logApiFailure({
@@ -944,7 +1018,7 @@ export async function downloadYouTubeFile(options: {
         status: response.status,
         error: new Error(`youtube-download-${body.error.code}`),
       });
-      return { ok: false, error: body.error };
+      return { ok: false, error: withRetryAfter(body.error, retryAfterSeconds) };
     }
     logApiFailure({
       requestType: "youtube-download",
@@ -955,7 +1029,7 @@ export async function downloadYouTubeFile(options: {
     });
     return {
       ok: false,
-      error: youtubeTransportError(response.status),
+      error: youtubeTransportError(response.status, retryAfterSeconds),
     };
   }
 

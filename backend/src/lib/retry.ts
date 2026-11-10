@@ -95,11 +95,11 @@ export async function withRetry<T>(
       lastError = error;
       if (attempt >= attempts) break;
       if (!isRetryable(error, attempt)) break;
+      // A source-provided Retry-After is a FLOOR, not a suggestion: retrying
+      // before it expires guarantees another rejection and can extend the
+      // block. Only our own exponential backoff is capped by maxDelayMs.
       const requestedDelay = options.retryAfterMs?.(error) ?? 0;
-      const delayMs = Math.min(
-        maxDelayMs,
-        Math.max(backoffDelay(attempt, baseDelayMs, maxDelayMs), requestedDelay)
-      );
+      const delayMs = Math.max(backoffDelay(attempt, baseDelayMs, maxDelayMs), requestedDelay);
       if (
         options.maxElapsedMs !== undefined &&
         Date.now() - startedAt + delayMs >= options.maxElapsedMs

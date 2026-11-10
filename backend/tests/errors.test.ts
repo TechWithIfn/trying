@@ -75,6 +75,14 @@ describe("createErrorResponse", () => {
     expect(response.success).toBe(false);
     expect(response.error.diagnostics).toBeUndefined();
   });
+
+  it("exposes a server-enforced retry window only when one is set", () => {
+    const plain = createError("YOUTUBE_BOT_CHECK").toResponse();
+    expect(plain.error.retryAfterSeconds).toBeUndefined();
+
+    const withCooldown = new AppError("YOUTUBE_BOT_CHECK", "limited", 503, undefined, 61_500);
+    expect(withCooldown.toResponse().error.retryAfterSeconds).toBe(62);
+  });
 });
 
 describe("failure diagnostics", () => {

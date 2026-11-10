@@ -21,6 +21,7 @@ import {
   parseYouTubeAudioOption,
   type YouTubeAudioOption,
 } from "../lib/youtube/audio.js";
+import { activeYouTubeRestrictionError } from "../lib/youtube/restriction.js";
 import { checkRateLimit, routeRateLimitConfig } from "../lib/rate-limit.js";
 import { generateToken } from "../lib/crypto.js";
 import { getGate, KeyedConcurrency } from "../lib/capacity.js";
@@ -96,12 +97,25 @@ function sendError(
     res.destroy();
     return;
   }
-  if (appError.statusCode === 503) res.setHeader("Retry-After", "5");
+  // Prefer the server-enforced cooldown / upstream hint. Only fall back to a
+  // short generic delay for capacity 503s; a permanent failure never claims a
+  // retry window it cannot honor.
+  const retryAfterMs =
+    appError.retryAfterMs ??
+    (appError.statusCode === 503 ? readPositiveInt("CAPACITY_RETRY_AFTER_SECONDS", 5) * 1000 : undefined);
+  const retryAfterSeconds =
+    retryAfterMs !== undefined && retryAfterMs > 0
+      ? Math.max(1, Math.ceil(retryAfterMs / 1000))
+      : undefined;
+  if (retryAfterSeconds !== undefined) {
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+  }
   logger.warn("[YOUTUBE] request failed", {
     requestId,
     path: requestPath,
     code: appError.code,
     status: appError.statusCode,
+    retryAfterSeconds: retryAfterSeconds ?? null,
     duration: Date.now() - startTime,
   });
   res
@@ -145,6 +159,17 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
   if (!rate.allowed) {
     res.setHeader("Retry-After", String(Math.ceil(rate.retryAfterMs / 1000)));
     res.status(429).json(withRequestDiagnostics(createErrorResponse("RATE_LIMITED"), requestDiagnostics(requestId, startTime)));
+    return;
+  }
+
+  // Fail fast while YouTube is blocking this host. This avoids taking a
+  // capacity slot or starting another doomed extraction.
+  const restricted = activeYouTubeRestrictionError({
+    requestId,
+    youtubeVideoId: parsed.videoId,
+  });
+  if (restricted) {
+    sendError(res, restricted, requestId, startTime, "/api/youtube/resolve");
     return;
   }
 
@@ -246,6 +271,15 @@ router.get("/download", async (req: Request, res: Response): Promise<void> => {
   if (!rate.allowed) {
     res.setHeader("Retry-After", String(Math.ceil(rate.retryAfterMs / 1000)));
     res.status(429).json(withRequestDiagnostics(createErrorResponse("RATE_LIMITED"), requestDiagnostics(requestId, startTime)));
+    return;
+  }
+
+  const restricted = activeYouTubeRestrictionError({
+    requestId,
+    youtubeVideoId: parsed.videoId,
+  });
+  if (restricted) {
+    sendError(res, restricted, requestId, startTime, "/api/youtube/download");
     return;
   }
 

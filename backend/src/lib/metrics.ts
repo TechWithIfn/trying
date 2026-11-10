@@ -33,6 +33,12 @@ export type MetricName =
   | "cacheRefreshes"
   | "cacheEvictions"
   | "coalescedResolutions"
+  // YouTube probe cache / restriction telemetry
+  | "youtubeProbeCacheHits"
+  | "youtubeProbeCacheMisses"
+  | "youtubeProbeCoalesced"
+  | "youtubeRestrictions"
+  | "youtubeCooldownRejections"
   // Expensive work
   | "providerResolutions"
   | "providerFailures"
@@ -60,6 +66,11 @@ const COUNTERS: Record<MetricName, number> = {
   cacheRefreshes: 0,
   cacheEvictions: 0,
   coalescedResolutions: 0,
+  youtubeProbeCacheHits: 0,
+  youtubeProbeCacheMisses: 0,
+  youtubeProbeCoalesced: 0,
+  youtubeRestrictions: 0,
+  youtubeCooldownRejections: 0,
   providerResolutions: 0,
   providerFailures: 0,
   puppeteerJobs: 0,

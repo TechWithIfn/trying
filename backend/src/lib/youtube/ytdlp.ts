@@ -139,8 +139,13 @@ function normalizedYtDlpText(error: YtDlpProcessError): string {
 
 /**
  * Retry only failures that may succeed without changing the requested video
- * or format. Bot checks, CAPTCHA, access restrictions, and format errors are
- * intentionally terminal.
+ * or format. Bot checks, CAPTCHA, access restrictions, HTTP 429, and format
+ * errors are intentionally terminal:
+ *
+ *  - a bot check proves YouTube has blocked this host's IP; asking again
+ *    seconds later cannot help,
+ *  - a 429 is an explicit "do not retry now" (any Retry-After is surfaced to
+ *    the caller instead of being ignored).
  */
 export function isRetryableYtDlpError(error: unknown): boolean {
   if (error instanceof YtDlpAbortedError) return false;
@@ -148,26 +153,45 @@ export function isRetryableYtDlpError(error: unknown): boolean {
 
   const text = normalizedYtDlpText(error);
   if (
-    /not a bot|captcha|robot check|automated query|private video|video unavailable|requested format|no video formats|age[- ]?restricted|sign in|members?[- ]only|premium|ffmpeg|postprocess|unable to merge/.test(
+    /not a bot|captcha|robot check|automated query|private video|video unavailable|requested format|no video formats|age[- ]?restricted|sign in|members?[- ]only|premium|ffmpeg|postprocess|unable to merge|http error 429\b|http 429\b|too many requests|rate.?limit/.test(
       text
     )
   ) {
     return false;
   }
   return (
-    /http error (429|5\d\d)\b|too many requests|rate.?limit|service unavailable|bad gateway|gateway timeout|temporar(?:y|ily) unavailable|fetch failed|econnreset|econnrefused|enotfound|eai_again|etimedout|socket hang up|connection (reset|refused|closed)/.test(
+    /http error 5\d\d\b|service unavailable|bad gateway|gateway timeout|temporar(?:y|ily) unavailable|fetch failed|econnreset|econnrefused|enotfound|eai_again|etimedout|socket hang up|connection (reset|refused|closed)/.test(
       text
     )
   );
 }
 
-/** Parse a Retry-After value if yt-dlp included one in its diagnostic text. */
+const RETRY_AFTER_RE =
+  /retry[- ]?after\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m)?|(?:try again|retry)\s+(?:in|after)\s+(\d+(?:\.\d+)?)\s*(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m)?/i;
+
+/**
+ * Parse an upstream Retry-After hint from yt-dlp's diagnostic text. Handles
+ * the real header form (`Retry-After: 120`) as well as yt-dlp's prose
+ * variants (`try again in 5 minutes`). Returns null when no usable value is
+ * present so callers can fall back to bounded backoff.
+ */
 export function getYtDlpRetryAfterMs(error: unknown): number | null {
   if (!(error instanceof YtDlpProcessError)) return null;
-  const match = error.stderr.match(/retry-after\s*:\s*(\d+)/i);
+  const match = error.stderr.match(RETRY_AFTER_RE);
   if (!match) return null;
-  const seconds = Number(match[1]);
-  return Number.isSafeInteger(seconds) && seconds >= 0 ? seconds * 1000 : null;
+
+  const raw = match[1] ?? match[3];
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) return null;
+
+  const unit = (match[2] ?? match[4] ?? "s").toLowerCase();
+  const multiplier = unit === "ms" || unit.startsWith("milli") || unit.startsWith("msec")
+    ? 1
+    : unit === "m" || unit.startsWith("min")
+      ? 60_000
+      : 1000;
+  const ms = value * multiplier;
+  return Number.isSafeInteger(Math.round(ms)) ? Math.round(ms) : null;
 }
 
 export function sanitizeYtDlpStderr(stderr: string): string {
