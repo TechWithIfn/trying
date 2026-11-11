@@ -10,7 +10,6 @@ import {
   PinterestIcon,
   ThreadsIcon,
   TwitterIcon,
-  YouTubeIcon,
 } from "@/components/ToolCategoryDropdown";
 
 const POPULAR_DOWNLOADERS = [
@@ -156,7 +155,7 @@ export default function Footer() {
 
             <div className="pt-2">
               <p className="text-[11.5px] leading-relaxed text-fg-subtle">
-                Downloadit is an independent utility and is not affiliated with Instagram, Meta, Pinterest, YouTube, Google, or X Corp.
+                Downloadit is an independent utility and is not affiliated with Instagram, Meta, Pinterest, or X Corp.
               </p>
             </div>
           </nav>

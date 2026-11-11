@@ -206,9 +206,9 @@ const RELATED_TOOLS = [
     desc: "Save Pinterest video pins, Idea pins, and recipe clips as MP4.",
   },
   {
-    name: "YouTube Video Downloader",
-    href: "/youtube-video-downloader",
-    desc: "Download YouTube videos and Shorts in supported quality or audio.",
+    name: "Pinterest Image Downloader",
+    href: "/pinterest-image-downloader",
+    desc: "Download high-resolution Pinterest photos and carousel albums in full quality.",
   },
   {
     name: "Facebook Video Downloader",

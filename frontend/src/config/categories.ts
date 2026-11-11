@@ -15,7 +15,6 @@ import {
   PinterestIcon,
   ThreadsIcon,
   TwitterIcon,
-  YouTubeIcon,
 } from "@/components/ToolCategoryDropdown";
 
 export interface CategorySubItem {

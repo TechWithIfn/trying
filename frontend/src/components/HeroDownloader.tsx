@@ -320,7 +320,7 @@ export default function HeroDownloader({
   const [state, setState] = useState<UIState>("IDLE");
   const [result, setResult] = useState<ResolveData | null>(null);
   const [resolvedVariant, setResolvedVariant] = useState<
-    "default" | "pinterest" | "facebook" | "twitter" | "threads" | "youtube"
+    "default" | "pinterest" | "facebook" | "twitter" | "threads"
   >("default");
   const detectedPlatform = isHome ? detectPlatformFromUrl(url) : null;
   // Default to the primary mode (Reels). The tab is ONLY ever changed by an
@@ -476,7 +476,7 @@ export default function HeroDownloader({
         return;
       }
       if (isHome && !platform && !isValidInstagramUrl(trimmed)) {
-        setError("Please paste a valid public link from Instagram, Pinterest, YouTube, Facebook, Twitter/X, or Threads.");
+        setError("Please paste a valid public link from Instagram, Pinterest, Facebook, Twitter/X, or Threads.");
         setState("ERROR");
         return;
       }
@@ -529,8 +529,6 @@ export default function HeroDownloader({
         let resolverPromise;
         if (platform === "pinterest") {
           resolverPromise = resolvePinterestUrl(trimmed, "any", controller.signal);
-        } else if (platform === "youtube") {
-          resolverPromise = resolveYouTubeUrl(trimmed, controller.signal);
         } else if (platform === "facebook") {
           resolverPromise = resolveFacebookUrl(trimmed, controller.signal);
         } else if (platform === "twitter") {
@@ -546,11 +544,7 @@ export default function HeroDownloader({
             if (res.success) {
               setProgress(100);
               setProgressStage("");
-              if (platform === "youtube") {
-                setResult(convertYouTubeToResolveData(res.data as YouTubeResolveData));
-              } else {
-                setResult(res.data as ResolveData);
-              }
+              setResult(res.data as ResolveData);
               setState("SUCCESS");
             } else {
               setError(res.error?.message || `Unable to resolve media from this ${platform} post. Please verify it is public.`);
@@ -930,8 +924,6 @@ export default function HeroDownloader({
                         ? "rgba(236,95,168,0.12)"
                         : detectedPlatform === "pinterest"
                         ? "rgba(230,0,35,0.10)"
-                        : detectedPlatform === "youtube"
-                        ? "rgba(255,0,0,0.10)"
                         : detectedPlatform === "facebook"
                         ? "rgba(24,119,242,0.10)"
                         : "rgba(15,23,42,0.08)",
@@ -940,8 +932,6 @@ export default function HeroDownloader({
                         ? "#ec5fa8"
                         : detectedPlatform === "pinterest"
                         ? "#e60023"
-                        : detectedPlatform === "youtube"
-                        ? "#ff0000"
                         : detectedPlatform === "facebook"
                         ? "#1877f2"
                         : "var(--fg)",

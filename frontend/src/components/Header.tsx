@@ -22,7 +22,6 @@ import ToolCategoryDropdown, {
   PinterestIcon,
   ThreadsIcon,
   TwitterIcon,
-  YouTubeIcon,
 } from "@/components/ToolCategoryDropdown";
 import { PLATFORM_CATEGORIES } from "@/config/categories";
 

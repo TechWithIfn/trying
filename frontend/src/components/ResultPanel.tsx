@@ -706,7 +706,7 @@ interface MediaResultProps {
    * the card layout, overlay controls and download flow are identical for every
    * video/image result on every platform.
    */
-  variant?: "default" | "pinterest" | "facebook" | "twitter" | "threads" | "youtube";
+  variant?: "default" | "pinterest" | "facebook" | "twitter" | "threads";
 }
 
 function formatBytes(size: number | null | undefined): string {
@@ -855,7 +855,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
   // Platform label for the honest filename fallback (`Instagram Video`,
   // `Pinterest Image`, ...). Pinterest is the only non-Instagram downloader.
   const platformLabel =
-    variant === "youtube" ? "YouTube" : variant === "facebook" ? "Facebook" : variant === "twitter" ? "Twitter/X" : variant === "threads" ? "Threads" : isPinterest ? "Pinterest" : "Instagram";
+    variant === "facebook" ? "Facebook" : variant === "twitter" ? "Twitter/X" : variant === "threads" ? "Threads" : isPinterest ? "Pinterest" : "Instagram";
 
   // URLs a recovery resolve was already attempted for (stripped of our own
   // cache-buster). One entry per failed media URL, shared by the video and

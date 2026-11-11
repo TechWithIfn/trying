@@ -203,7 +203,7 @@ export const en: Strings = {
       },
       {
         q: "Is Downloadit affiliated with a source platform?",
-        a: "No. Downloadit is independent and is not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, YouTube, Facebook or X.",
+        a: "No. Downloadit is independent and is not affiliated with, endorsed by, or sponsored by Instagram, Meta, Pinterest, Facebook or X.",
       },
     ],
   },
@@ -256,7 +256,7 @@ export const en: Strings = {
       advertise: "Advertise",
     },
     disclaimer:
-      "Downloadit is independent and not affiliated with Instagram, Meta, Pinterest, Google, YouTube, Facebook or X. Only download content you have the right to save.",
+      "Downloadit is independent and not affiliated with Instagram, Meta, Pinterest, Facebook or X. Only download content you have the right to save.",
     rights: "All rights reserved.",
     madeWith: "Made with ♥ for Downloadit.",
     homeLabel: "Downloadit home",
@@ -264,7 +264,7 @@ export const en: Strings = {
   help: {
     metaTitle: "Help Center – How to Download Public Media | Downloadit",
     metaDesc:
-      "Learn how to use Downloadit on six platforms, troubleshoot common download issues, and find answers to frequently asked questions.",
+      "Learn how to use Downloadit on five platforms, troubleshoot common download issues, and find answers to frequently asked questions.",
     title: "How can we help?",
     subtitle: "Everything you need to know about using Downloadit.",
     s1title: "Getting started",
@@ -282,7 +282,7 @@ export const en: Strings = {
       "Availability depends on the platform, the media type and whether the content is publicly accessible. Not every URL will work, and private content is never supported.",
     s3title: "How Downloadit works",
     s3desc:
-      "Paste a link and Downloadit detects the content, shows you a preview, and lets you download it. The same workflow covers Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads through public links — no login needed.",
+      "Paste a link and Downloadit detects the content, shows you a preview, and lets you download it. The same workflow covers Instagram, Pinterest, Facebook, Twitter/X and Threads through public links — no login needed.",
     flow: ["Link", "Content Detection", "Media Preview", "Download"],
     s4title: "Audio download",
     s4steps: [
@@ -337,7 +337,7 @@ export const en: Strings = {
       },
       {
         q: "Which content types are supported?",
-        a: "Instagram Reels, videos, photos, carousels, Stories and MP3 audio; Pinterest videos and images; YouTube video and audio; Facebook and Twitter/X video; Threads video and photos.",
+        a: "Instagram Reels, videos, photos, carousels, Stories and MP3 audio; Pinterest videos and images; Facebook and Twitter/X video; Threads video and photos.",
       },
       {
         q: "Why did my media link expire?",

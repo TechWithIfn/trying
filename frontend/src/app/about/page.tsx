@@ -123,8 +123,9 @@ export default function AboutPage() {
         Videos save as MP4, images keep their original JPG, PNG or WebP, and
         stories keep whatever image or video format they were posted in. Downloadit also supports{" "}
         <Link href="/pinterest-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest videos</Link>,{" "}
-        <Link href="/pinterest-image-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest images</Link> and{" "}
-        <Link href="/youtube-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public YouTube videos</Link> and{" "}
+        <Link href="/pinterest-image-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest images</Link>,{" "}
+        <Link href="/twitter-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Twitter/X videos</Link>,{" "}
+        <Link href="/threads-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Threads media</Link> and{" "}
         <Link href="/facebook-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public Facebook videos</Link>. The{" "}
         <Link href="/help" className="font-semibold text-fg transition-colors hover:text-primary">Help page</Link>{" "}
         walks through each of these with troubleshooting for the common

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const runYtDlpMock = vi.hoisted(() => vi.fn());
 
-vi.mock("../src/lib/youtube/ytdlp.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/lib/youtube/ytdlp.js")>();
+vi.mock("../src/lib/ytdlp.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/lib/ytdlp.js")>();
   return { ...actual, runYtDlp: runYtDlpMock };
 });
 
@@ -18,7 +18,7 @@ import {
   TwitterResolveError,
   type TwitterYtInfo,
 } from "../src/lib/twitter/resolve.js";
-import { YtDlpProcessError } from "../src/lib/youtube/ytdlp.js";
+import { YtDlpProcessError } from "../src/lib/ytdlp.js";
 
 const POST_URL = "https://x.com/dhruv_rathee/status/2119404709513408949";
 const VIDEO_URL =
