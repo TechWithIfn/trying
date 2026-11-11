@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FacebookDownloader from "@/components/FacebookDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
   CheckCircle2,
   ChevronDown,
@@ -21,42 +21,7 @@ import {
 
 const PAGE = TOOL_PAGES.facebookVideo;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Facebook Video Downloader – Download FB Videos in HD | Downloadit",
-  },
-  description:
-    "Download Facebook videos online for free with Downloadit.pro. Paste a public Facebook video or Reel link, preview available media and save supported HD MP4 quality. No login required.",
-  alternates: {
-    canonical: "https://downloadit.pro/facebook-video-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Facebook Video Downloader – Download FB Videos in HD",
-    description:
-      "Download public Facebook videos and Reels online. Preview available media and save supported MP4 quality.",
-    url: "https://downloadit.pro/facebook-video-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Facebook Video Downloader – Downloadit",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Facebook Video Downloader – Download FB Videos in HD",
-    description:
-      "Download public Facebook videos and Reels online with Downloadit.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -65,7 +30,7 @@ const FAQS = [
   },
   {
     q: "Is Facebook Video Downloader free?",
-    a: "Yes. Downloadit's Facebook Video Downloader is completely free to use. There are no registration requirements, premium paywalls, subscriptions, or hidden charges. You can download and save as many publicly accessible Facebook videos and Reels as you need without limits.",
+    a: "Yes. There is no registration, subscription, paywall or per-download charge. The service is supported by advertising, and usage is subject to fair-use rate limiting that protects availability for everyone.",
   },
   {
     q: "Can I download Facebook Reels?",
@@ -73,7 +38,7 @@ const FAQS = [
   },
   {
     q: "Can I download Facebook videos in HD?",
-    a: "Yes. Downloadit resolves the highest resolution progressive MP4 stream provided by Facebook's public media servers for that specific post. If the creator uploaded the video in HD (720p, 1080p, or higher) and Facebook delivers a progressive stream, you can download the video in high definition. Standard definition (SD) posts will be delivered in their best available native quality.",
+    a: "The downloader saves the best progressive MP4 stream Facebook exposes for that post. If the creator uploaded in HD and Facebook serves an HD rendition, you get that rendition; if only a standard-definition stream is available, that is what the tool returns. Downloadit does not upscale or invent a higher resolution.",
   },
   {
     q: "How do I save Facebook videos to my phone gallery?",
@@ -81,7 +46,7 @@ const FAQS = [
   },
   {
     q: "Does Facebook Video Downloader require login?",
-    a: "No. Downloadit operates completely anonymously. You never need to sign in, provide your Facebook account details, share login passwords, or install access cookies. All extractions happen using publicly accessible video links.",
+    a: "No. You never need to sign in, provide your Facebook account details, or share login cookies. Downloadit resolves media from publicly accessible video links.",
   },
   {
     q: "Can I download Facebook videos on iPhone?",
@@ -100,12 +65,8 @@ const FAQS = [
     a: "No. Downloadit strictly respects user privacy boundaries and platform access controls. It cannot retrieve private posts, videos from closed or secret Facebook groups, or media requiring user authentication.",
   },
   {
-    q: "Can I download Facebook videos without installing an app?",
-    a: "Yes. Downloadit is a 100% web-based tool. You do not need to download third-party APKs, desktop software, or browser extensions. Everything runs smoothly inside your existing mobile or desktop web browser.",
-  },
-  {
-    q: "Does Downloadit support Facebook video links from mobile devices?",
-    a: "Yes. Downloadit supports all standard Facebook URL formats, including desktop links (facebook.com/...), mobile links (m.facebook.com/...), short share links (fb.watch/...), and mobile app share URLs. Simply paste whatever share link the Facebook app provides.",
+    q: "Which Facebook link formats are supported?",
+    a: "Standard public post URLs work, including facebook.com and m.facebook.com links, fb.watch short links, and the share links produced by the Facebook mobile app. Profile URLs, search pages and comment permalinks are not media links, so paste the direct post URL instead.",
   },
 ];
 
@@ -143,15 +104,15 @@ const STEPS = [
   {
     step: "7",
     title: "Save the video to your device",
-    desc: "Click 'Download' to save the high-definition MP4 file directly to your phone gallery or computer storage.",
+    desc: "Click 'Download' to save the MP4 file directly to your phone gallery or computer storage.",
   },
 ];
 
 const FEATURES = [
   {
     icon: Zap,
-    title: "100% Free & Unlimited",
-    desc: "Enjoy unlimited Facebook video downloads without subscription charges, hidden fees, or daily download restrictions.",
+    title: "Free to Use",
+    desc: "No subscription, payment or download-credit system. The service is supported by advertising and fair-use rate limiting.",
   },
   {
     icon: ShieldCheck,
@@ -160,8 +121,8 @@ const FEATURES = [
   },
   {
     icon: Sparkles,
-    title: "Zero Watermarks Added",
-    desc: "Download clean, original MP4 videos without any added logos, watermarks, stamps, or compression artifacts.",
+    title: "No Added Watermark",
+    desc: "Downloadit does not stamp logos, watermarks or branding onto the MP4 it returns.",
   },
   {
     icon: Film,
@@ -175,8 +136,8 @@ const FEATURES = [
   },
   {
     icon: Layers,
-    title: "High-Definition (HD) Streams",
-    desc: "Extracts the top progressive MP4 resolution offered by Facebook servers, delivering crisp 720p and 1080p video quality.",
+    title: "Best Available MP4",
+    desc: "Saves the best progressive MP4 stream Facebook exposes for that post. The actual resolution depends on the source upload.",
   },
 ];
 
@@ -214,24 +175,24 @@ export default function FacebookVideoDownloaderPage() {
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://downloadit.pro/facebook-video-downloader/#webpage",
-        url: "https://downloadit.pro/facebook-video-downloader",
+        "@id": "https://www.downloadit.pro/facebook-video-downloader/#webpage",
+        url: "https://www.downloadit.pro/facebook-video-downloader",
         name: "Facebook Video Downloader – Download FB Videos in HD | Downloadit",
         description:
           "Download Facebook videos online for free with Downloadit.pro. Paste a public Facebook video or Reel link, preview available media and save supported HD MP4 quality. No login required.",
         inLanguage: "en",
         isPartOf: {
-          "@id": "https://downloadit.pro/#website",
+          "@id": "https://www.downloadit.pro/#website",
         },
         breadcrumb: {
-          "@id": "https://downloadit.pro/facebook-video-downloader/#breadcrumbs",
+          "@id": "https://www.downloadit.pro/facebook-video-downloader/#breadcrumbs",
         },
       },
       {
         "@type": "WebApplication",
-        "@id": "https://downloadit.pro/facebook-video-downloader/#app",
+        "@id": "https://www.downloadit.pro/facebook-video-downloader/#app",
         name: "Downloadit Facebook Video Downloader",
-        url: "https://downloadit.pro/facebook-video-downloader",
+        url: "https://www.downloadit.pro/facebook-video-downloader",
         applicationCategory: "UtilitiesApplication",
         operatingSystem: "Web Browser",
         inLanguage: "en",
@@ -245,25 +206,25 @@ export default function FacebookVideoDownloaderPage() {
       },
       {
         "@type": "BreadcrumbList",
-        "@id": "https://downloadit.pro/facebook-video-downloader/#breadcrumbs",
+        "@id": "https://www.downloadit.pro/facebook-video-downloader/#breadcrumbs",
         itemListElement: [
           {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://downloadit.pro",
+            item: "https://www.downloadit.pro",
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Facebook Video Downloader",
-            item: "https://downloadit.pro/facebook-video-downloader",
+            item: "https://www.downloadit.pro/facebook-video-downloader",
           },
         ],
       },
       {
         "@type": "FAQPage",
-        "@id": "https://downloadit.pro/facebook-video-downloader/#faq",
+        "@id": "https://www.downloadit.pro/facebook-video-downloader/#faq",
         mainEntity: FAQS.map((item) => ({
           "@type": "Question",
           name: item.q,
@@ -326,7 +287,7 @@ export default function FacebookVideoDownloaderPage() {
                 safely enjoy <strong className="text-fg">facebook video download without login</strong> on any device.
               </p>
               <p>
-                Many internet users search for alternatives like <em className="text-fg-subtle">fdown</em>, <em className="text-fg-subtle">fdown net</em>, <em className="text-fg-subtle">fbdown</em>, <em className="text-fg-subtle">fbdown net</em>, <em className="text-fg-subtle">fdownloader</em>, <em className="text-fg-subtle">getfvid</em>, or <em className="text-fg-subtle">snapsave facebook</em>. Downloadit delivers a fast, privacy-respecting alternative to save public Facebook media online with no spammy pop-ups, no invasive tracking, and no malware risks. If you are wondering <em className="text-fg-subtle">facebook se video download kaise kare</em> or looking for a dependable <em className="text-fg-subtle">facebook video download karne ka tarika</em>, Downloadit makes the entire process as easy as pasting a link and clicking download.
+                The workflow is the same on a phone, tablet or desktop: copy the link to an individual public post, paste it above, and let the resolver read the media information Facebook exposes for that post. No account connection is involved, so your profile, feed and friends list are never accessed. If the post is private, deleted, region-locked or only visible to logged-in users, the resolver returns an error instead of a broken file.
               </p>
               <div className="rounded-xl border border-border/80 bg-bg/50 p-4 mt-4">
                 <div className="flex items-start gap-3">
@@ -363,7 +324,7 @@ export default function FacebookVideoDownloaderPage() {
                 When you initiate a <strong className="text-fg">facebook reels download</strong> on Downloadit, our resolver fetches the full-resolution vertical 9:16 video stream exactly as published by the creator. Best of all, we offer <strong className="text-fg">download fb reels without watermark</strong>: we never stamp promotional branding, overlays, or extra logos onto your downloaded video. You get the original progressive MP4 file with crisp, synchronized stereo sound.
               </p>
               <p>
-                Whether you search for <strong className="text-fg">fb reels download</strong>, <strong className="text-fg">facebook reels video download</strong>, or need to know <em className="text-fg-subtle">facebook reels download kaise kare</em>, simply copy the share link from the Facebook app or mobile browser and paste it into Downloadit. In seconds, you will have a clean, high-quality MP4 file saved on your smartphone or desktop.
+                Facebook serves Reels through the same public delivery system as other videos, so the same link-based workflow applies. Copy the Reel&apos;s share link from the Facebook app or mobile site rather than a profile or feed URL, paste it above, and download the progressive MP4 that Facebook returns. The file keeps the original vertical framing and audio; Downloadit does not add overlays or re-encode the video.
               </p>
             </div>
           </section>
@@ -474,7 +435,7 @@ export default function FacebookVideoDownloaderPage() {
             </h2>
             <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
               <p>
-                Over 80% of Facebook users browse content from a mobile smartphone or tablet. That is why Downloadit was engineered mobile-first: you can use our <strong className="text-fg">facebook video downloader for mobile</strong> seamlessly without installing any third-party app, APK package, or background utility.
+                Most people open Facebook on a phone, so the downloader is built mobile-first. The layout, touch targets and result panel are designed for small screens, and you can complete the whole flow in a mobile browser without installing an APK, a store app or a background utility.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
                 <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
@@ -515,7 +476,7 @@ export default function FacebookVideoDownloaderPage() {
                 </div>
               </div>
               <p>
-                If you have ever asked <em className="text-fg-subtle">how to save facebook video to gallery</em> or <em className="text-fg-subtle">facebook video gallery mein kaise save kare</em>, Downloadit gives you a direct, app-free path to saving media in your gallery without cluttering your phone with sketchy software.
+                Saved files follow your browser&apos;s normal download behaviour, which means they land in the device&apos;s Downloads folder or Files app. On Android they usually appear in Gallery or Google Photos automatically; on iPhone, open the downloaded file in Files, tap Share, then choose Save Video to add it to Photos.
               </p>
             </div>
           </section>

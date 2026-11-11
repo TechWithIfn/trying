@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ThreadsDownloader from "@/components/ThreadsDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
   CheckCircle2,
   ChevronDown,
@@ -24,115 +24,64 @@ import {
 
 const PAGE = TOOL_PAGES.threadsVideo;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Threads Video Downloader – Download Threads Videos in HD | Downloadit",
-  },
-  description:
-    "Download Threads videos online for free with Downloadit. Paste a public Threads post link, preview available media and save videos in supported MP4 quality. No login required.",
-  alternates: {
-    canonical: "https://downloadit.pro/threads-video-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Threads Video Downloader – Download Threads Videos | Downloadit",
-    description:
-      "Save publicly accessible Threads videos online. Paste a post link, preview available media and download supported formats.",
-    url: "https://downloadit.pro/threads-video-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Threads Video Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Threads Video Downloader – Download Threads Videos in HD | Downloadit",
-    description:
-      "Download Threads videos online for free with Downloadit. Paste a public Threads post link, preview available media and save videos in supported MP4 quality. No login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
-    q: "How to download videos from Threads?",
-    a: "To download videos from Threads, open the Threads mobile app or visit threads.net/threads.com in your web browser. Locate the public post with the video, tap the Share icon (paper airplane), and select 'Copy link'. Paste that URL into Downloadit above, click 'Get Media', verify the video preview, and click 'Download' to save the MP4 video directly to your phone or computer.",
+    q: "How do I download a video from Threads?",
+    a: "Open the Threads app or visit threads.net in your browser and find the public post. Tap the paper-airplane share icon and choose 'Copy link'. Paste that URL into the field above, select 'Get Media', confirm the preview, and choose 'Download' to save the MP4 file.",
   },
   {
-    q: "Is Threads Video Downloader free?",
-    a: "Yes, Downloadit's Threads Video Downloader is 100% free with no registration, no subscription fees, and no daily download restrictions. You can save as many public Threads videos and images as you need without limits.",
+    q: "Is Downloadit free to use for Threads videos?",
+    a: "Yes. Downloadit is free to use and does not require a subscription, account, or payment details. You can use the Threads downloader for personal archiving without a paywall.",
   },
   {
-    q: "Can I download Threads videos without login?",
-    a: "Yes. Downloadit requires no Threads, Instagram, or Meta account login. You never need to share passwords, authentication tokens, or personal information. The tool operates completely anonymously.",
+    q: "Do I need a Threads or Instagram account to download?",
+    a: "No. Downloadit does not ask for Threads, Instagram, or Meta credentials. You never share a password, session cookie, or authentication token with us.",
   },
   {
-    q: "How do I save Threads videos to my phone?",
-    a: "On Android, open your mobile browser (such as Chrome or Samsung Internet), paste the Threads URL into Downloadit, and tap Download. The MP4 video saves into your 'Downloads' folder and appears in Google Photos or Gallery. On iPhone (iOS), open Safari, download the video, tap the download icon in Safari, open the file, tap the Share icon, and select 'Save Video' to store it in your Apple Photos camera roll.",
+    q: "Where do downloaded Threads videos go on my phone?",
+    a: "On Android, the MP4 usually lands in your browser's Downloads folder and appears in Gallery or Google Photos. On iPhone, the file is saved to Safari's Downloads; open it, tap Share, and choose 'Save Video' to move it into Photos.",
   },
   {
-    q: "Can I download Threads videos in HD?",
-    a: "Yes. Downloadit detects the highest resolution progressive MP4 video stream provided by Meta's content servers for that post. When a creator uploads an HD (720p or 1080p) video, we deliver the stream in original high-definition quality without downsampling.",
+    q: "What video quality does Downloadit retrieve from Threads?",
+    a: "Downloadit requests the highest progressive rendition Meta publishes for the post, which is often 720p or 1080p for HD uploads. We do not upscale lower-resolution source videos, so a clip saved from an SD upload stays SD.",
   },
   {
-    q: "Does Threads Video Downloader work on iPhone?",
-    a: "Yes. Downloadit works seamlessly on iPhone and iPad via Safari, Google Chrome, or any modern iOS web browser without needing third-party App Store applications or shortcuts.",
+    q: "Can Downloadit save photos and carousels from Threads?",
+    a: "Yes. For public image posts, Downloadit resolves the original JPEG files, including each item in a multi-photo carousel, at the dimensions published by the creator.",
   },
   {
-    q: "Can I download Threads videos on Android?",
-    a: "Yes. Android users can download Threads videos using Google Chrome, Mozilla Firefox, Opera, or Samsung Internet directly to their phone's internal storage.",
+    q: "How are animated GIFs on Threads saved?",
+    a: "Threads delivers animated GIFs as silent, looping MP4 files. Downloadit retrieves that video stream, so the saved file loops in any standard video player instead of arriving as a .gif.",
   },
   {
-    q: "Can I download Threads photos?",
-    a: "Yes. When a public Threads post includes single photos or multiple pictures, Downloadit resolves the original high-resolution JPEG image files and allows you to download each photo directly.",
+    q: "Can I download every item in a Threads carousel?",
+    a: "Yes. When a public post mixes videos and photos in one carousel, Downloadit lists each media item separately so you can preview and download only the ones you need.",
   },
   {
-    q: "Can I download GIFs from Threads?",
-    a: "Yes. Threads delivers animated GIFs as looping progressive MP4 video files. Downloadit extracts this looping video stream so you can save and share the animated GIF easily on any platform.",
+    q: "Why does a Threads link fail to download?",
+    a: "The most common causes are a private author account, a deleted or moderated post, a profile URL such as threads.net/@username instead of a post URL, or a text-only post with no media. Check that the link opens a public post containing a video or image.",
   },
   {
-    q: "Can I download multiple videos from one Threads post?",
-    a: "Yes. If a Threads post contains a carousel of multiple videos or mixed photos and videos, Downloadit resolves each media item in the post so you can preview and download the items you want.",
+    q: "Can I download media from private Threads profiles?",
+    a: "No. Private posts require an approved follower session, and Downloadit only works with media that is publicly visible without logging in.",
   },
   {
-    q: "Can I download private Threads posts?",
-    a: "No. Downloadit respects user privacy and Meta's access controls. Posts published by private Threads profiles require approved follower permissions and cannot be retrieved anonymously.",
+    q: "Does Downloadit keep copies of downloaded Threads media?",
+    a: "No. Downloadit does not host or archive the media you request. Files are streamed from Meta's delivery network to your browser, and we do not maintain a library of saved downloads.",
   },
   {
-    q: "Why is my Threads video link not working?",
-    a: "A Threads link may fail if: (1) the author has a private account, (2) the post was deleted or removed, (3) you copied a user profile URL (threads.net/@username) instead of an individual post link, or (4) the post contains only plain text without media. Ensure the link points to a public post containing a video or photo.",
+    q: "Do I need to install an app or browser extension?",
+    a: "No. The downloader runs in a normal web browser on phones, tablets, and computers. There is no APK, desktop program, or extension to install.",
   },
   {
-    q: "Can I convert Threads videos to MP4?",
-    a: "Yes. Threads video streams are packaged in the standard MP4 (H.264/AAC) container. Downloadit delivers these direct MP4 files, which are universally compatible with all phones, computers, media players, and editing tools.",
+    q: "Does Downloadit work on desktop browsers?",
+    a: "Yes. The page works in current versions of Chrome, Edge, Firefox, Safari, and Brave on Windows, macOS, and Linux.",
   },
   {
-    q: "Does Downloadit store downloaded videos?",
-    a: "No. Downloadit does not host, store, or archive downloaded media on its servers. All files are fetched directly from Meta's Content Delivery Network (CDN) to your device in real-time, and we do not maintain personal download logs.",
-  },
-  {
-    q: "Do I need to install an application?",
-    a: "No. Downloadit is completely web-based. You do not need to install APKs, desktop applications, or browser extensions. Everything runs smoothly inside your web browser.",
-  },
-  {
-    q: "Can I download Threads videos on PC?",
-    a: "Yes. Downloadit supports all major desktop browsers on Windows, macOS, and Linux, including Google Chrome, Microsoft Edge, Mozilla Firefox, Safari, and Brave.",
-  },
-  {
-    q: "Which video quality is available?",
-    a: "Video quality depends on the source video uploaded by the creator. Downloadit delivers the highest progressive stream available from Meta's servers, typically 720p or 1080p for HD uploads, or native SD resolution for standard uploads.",
-  },
-  {
-    q: "Can I download videos from threads.com and threads.net?",
-    a: "Yes. Both domains (threads.net and threads.com) are fully supported. Whether you copy a link from the Threads mobile app, mobile web, or desktop website, Downloadit will resolve the public media accurately.",
+    q: "Does Downloadit support both threads.net and threads.com links?",
+    a: "Yes. Links copied from the Threads app, mobile web, or desktop site work whether the URL uses the threads.net or threads.com domain.",
   },
 ];
 
@@ -182,8 +131,8 @@ const STEPS = [
 const FEATURES = [
   {
     icon: Zap,
-    title: "100% Free Online Access",
-    desc: "Unlimited Threads downloads without paid subscriptions, hidden fees, or daily download caps.",
+    title: "Free Online Access",
+    desc: "No subscription or payment details required to use the Threads downloader.",
   },
   {
     icon: ShieldCheck,
@@ -230,13 +179,13 @@ const WHY_CHOOSE = [
   },
   {
     icon: ShieldCheck,
-    title: "Zero Watermarks & Clean MP4",
+    title: "No Added Watermark",
     desc: "We never stamp promotional branding or logos onto your downloaded files. You receive the authentic, original source stream served by Meta.",
   },
   {
     icon: Lock,
-    title: "Strict Privacy Architecture",
-    desc: "Downloadit does not store files on intermediary servers, track your personal identity, or record user download histories.",
+    title: "Privacy-Conscious by Design",
+    desc: "No account is required, and Downloadit does not keep a library of the media you request.",
   },
   {
     icon: Repeat,
@@ -279,24 +228,24 @@ export default function ThreadsVideoDownloaderPage() {
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://downloadit.pro/threads-video-downloader/#webpage",
-        url: "https://downloadit.pro/threads-video-downloader",
+        "@id": "https://www.downloadit.pro/threads-video-downloader/#webpage",
+        url: "https://www.downloadit.pro/threads-video-downloader",
         name: "Threads Video Downloader – Download Threads Videos in HD | Downloadit",
         description:
           "Download Threads videos online for free with Downloadit. Paste a public Threads post link, preview available media and save videos in supported MP4 quality. No login required.",
         inLanguage: "en",
         isPartOf: {
-          "@id": "https://downloadit.pro/#website",
+          "@id": "https://www.downloadit.pro/#website",
         },
         breadcrumb: {
-          "@id": "https://downloadit.pro/threads-video-downloader/#breadcrumbs",
+          "@id": "https://www.downloadit.pro/threads-video-downloader/#breadcrumbs",
         },
       },
       {
         "@type": "WebApplication",
-        "@id": "https://downloadit.pro/threads-video-downloader/#app",
+        "@id": "https://www.downloadit.pro/threads-video-downloader/#app",
         name: "Downloadit Threads Video Downloader",
-        url: "https://downloadit.pro/threads-video-downloader",
+        url: "https://www.downloadit.pro/threads-video-downloader",
         applicationCategory: "UtilitiesApplication",
         operatingSystem: "Web Browser",
         inLanguage: "en",
@@ -310,25 +259,25 @@ export default function ThreadsVideoDownloaderPage() {
       },
       {
         "@type": "BreadcrumbList",
-        "@id": "https://downloadit.pro/threads-video-downloader/#breadcrumbs",
+        "@id": "https://www.downloadit.pro/threads-video-downloader/#breadcrumbs",
         itemListElement: [
           {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://downloadit.pro",
+            item: "https://www.downloadit.pro",
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Threads Video Downloader",
-            item: "https://downloadit.pro/threads-video-downloader",
+            item: "https://www.downloadit.pro/threads-video-downloader",
           },
         ],
       },
       {
         "@type": "FAQPage",
-        "@id": "https://downloadit.pro/threads-video-downloader/#faq",
+        "@id": "https://www.downloadit.pro/threads-video-downloader/#faq",
         mainEntity: FAQS.map((item) => ({
           "@type": "Question",
           name: item.q,
@@ -377,13 +326,13 @@ export default function ThreadsVideoDownloaderPage() {
             </h2>
             <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
               <p>
-                Meta&apos;s Threads platform has grown rapidly into a thriving hub for conversations, trending memes, breaking news, short video clips, and creative photo essays. However, Threads does not feature a native download button for saving media directly to your device storage. With Downloadit&apos;s <strong className="text-fg">threads video downloader</strong>, performing a fast, secure, and free <strong className="text-fg">threads video download</strong> takes only a few seconds in your web browser.
+                Meta&apos;s Threads platform has grown into a hub for conversations, trending memes, breaking news, short video clips, and creative photo essays. Threads does not offer a native download button for saving media to your device. Downloadit&apos;s <strong className="text-fg">Threads video downloader</strong> lets you save a public post&apos;s video in a few seconds, directly in your browser.
               </p>
               <p>
-                Our <strong className="text-fg">threads downloader online</strong> connects directly to Meta&apos;s public Content Delivery Network (CDN) to extract progressive media streams without re-encoding or compressing them. Whether you want to <strong className="text-fg">download threads video</strong> clips, preserve personal memories, or archive inspirational posts, our <strong className="text-fg">threads video downloader online</strong> gives you clean MP4 video files and full-resolution images without watermarks.
+                The tool connects to Meta&apos;s public Content Delivery Network to request the progressive media stream without re-encoding it. You can save a Threads video for offline viewing, keep a photo post for reference, or archive an inspirational clip, and the result is a clean MP4 or full-resolution image with no Downloadit watermark.
               </p>
               <p>
-                Many users search the web for solutions like <em className="text-fg-subtle">threadster</em>, <em className="text-fg-subtle">threadsdl</em>, <em className="text-fg-subtle">snapthreads</em>, <em className="text-fg-subtle">grabivo</em>, or <em className="text-fg-subtle">threadsvideodl</em>. Downloadit provides a modern, privacy-respecting alternative to <strong className="text-fg">save threads video</strong> media online. You never have to log in to your Instagram or Threads account, install suspicious mobile applications, or navigate through intrusive pop-up advertisements. If you are wondering <em className="text-fg-subtle">threads se video download kaise kare</em> or looking for a straightforward <em className="text-fg-subtle">threads video download karne ka tarika</em>, Downloadit offers the simplest link-based solution available.
+                Threads does not currently offer a native download button. Downloadit gives you a simple, link-based alternative: paste a public post URL and retrieve the available media without logging in to Instagram or Threads, installing mobile apps, or working through pop-up advertisements.
               </p>
               <div className="rounded-xl border border-border/80 bg-bg/50 p-4 mt-4">
                 <div className="flex items-start gap-3">
@@ -473,13 +422,13 @@ export default function ThreadsVideoDownloaderPage() {
             </h2>
             <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
               <p>
-                Visual fidelity is crucial when archiving high-quality video content. When videos are uploaded to Threads, Meta processes the file into progressive stream renditions. Our <strong className="text-fg">threads video downloader hd</strong> inspects all available renditions on Meta&apos;s media servers and serves the highest resolution stream available for that post.
+                When videos are uploaded to Threads, Meta processes the file into progressive stream renditions. Downloadit inspects the renditions exposed for the post and requests the highest-resolution progressive stream available.
               </p>
               <p>
-                We practice complete technical transparency: we never claim to upscale standard definition videos to 4K or 1080p if the creator originally recorded or posted in lower quality. When the author uploads in full high definition, your <strong className="text-fg">download threads video in hd</strong> retains authentic clarity, rich color contrast, and synchronized stereo audio without artificial downsampling or added compression stamps.
+                We do not claim to upscale standard-definition videos to 4K or 1080p when the creator posted in lower quality. If the author uploads in high definition, the saved MP4 retains the clarity, colour contrast, and synchronized audio of that source rendition.
               </p>
               <p>
-                Whether you need <strong className="text-fg">threads video download 1080p</strong>, <strong className="text-fg">threads video download 720p</strong>, or simply the best <strong className="text-fg">threads high quality video downloader</strong> stream, Downloadit provides direct access to the master progressive file available on Threads.
+                The resulting quality depends on the original upload and on the stream Meta makes available for that post.
               </p>
             </div>
           </section>
@@ -531,7 +480,7 @@ export default function ThreadsVideoDownloaderPage() {
                 Threads is not limited to text and video — creators regularly publish stunning photography, infographics, comic strips, and multi-picture carousels. Downloadit is a comprehensive <strong className="text-fg">threads photo downloader</strong> that detects and resolves static image posts seamlessly.
               </p>
               <p>
-                When a post includes images, our system extracts the original full-resolution JPEG files directly from Meta&apos;s servers. You can easily <strong className="text-fg">download threads images</strong> and carousels at their maximum published dimensions without the compression or resolution loss typical of mobile screenshots. If you want to know <em className="text-fg-subtle">threads se photo download kaise kare</em>, simply paste the post link into Downloadit to save the high-res pictures.
+                When a post includes images, our system extracts the original full-resolution JPEG files directly from Meta&apos;s servers. You can easily <strong className="text-fg">download threads images</strong> and carousels at their maximum published dimensions without the compression or resolution loss typical of mobile screenshots.
               </p>
             </div>
           </section>
@@ -603,7 +552,7 @@ export default function ThreadsVideoDownloaderPage() {
                 </div>
               </div>
               <p>
-                If you are looking to <strong className="text-fg">save threads videos to gallery</strong> or searching for <em className="text-fg-subtle">mobile mein threads video kaise save kare</em>, Downloadit gives you an effortless, app-free path to saving media straight to your phone.
+                Downloadit gives you an app-free path to saving Threads media straight to your phone, whether the post contains a video, a photo, or a mixed carousel.
               </p>
             </div>
           </section>

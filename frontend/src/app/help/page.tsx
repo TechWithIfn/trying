@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import HelpClient from "./HelpClient";
 import { SITE_URL } from "@/config/site";
 
-const HELP_TITLE = "How to Download Instagram Reels, Videos & Carousels | Downloadit";
+const HELP_TITLE = "Help Center – How to Download Public Media | Downloadit";
 const HELP_DESCRIPTION =
-  "Learn how to use Downloadit to download public Instagram Reels, videos, carousels, Stories and audio quickly and easily.";
+  "How to use Downloadit for Instagram, Pinterest, Facebook, Twitter/X and Threads, plus fixes for common download errors and format questions.";
 
 export const metadata: Metadata = {
   title: { absolute: HELP_TITLE },

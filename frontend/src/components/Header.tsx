@@ -119,7 +119,6 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
   const platformLinks = [
     { href: "/instagram-video-downloader", label: "Instagram", Icon: InstagramIcon, color: "#ec5fa8" },
     { href: "/pinterest-video-downloader", label: "Pinterest", Icon: PinterestIcon, color: "#e60023" },
-    { href: "/youtube-video-downloader", label: "YouTube", Icon: YouTubeIcon, color: "#ff0000" },
     { href: "/facebook-video-downloader", label: "Facebook", Icon: FacebookIcon, color: "#1877f2" },
     { href: "/twitter-video-downloader", label: "Twitter/X", Icon: TwitterIcon, color: "#0f172a" },
     { href: "/threads-video-downloader", label: "Threads", Icon: ThreadsIcon, color: "#0f172a" },

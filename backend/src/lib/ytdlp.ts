@@ -10,8 +10,8 @@ import {
   resolveRuntimeBinary,
   ytDlpReleaseAsset,
   type RuntimeBinarySpec,
-} from "../media-binary.js";
-import { logger } from "../logger.js";
+} from "./media-binary.js";
+import { logger } from "./logger.js";
 
 /**
  * Thin, bounded wrapper around the yt-dlp executable.

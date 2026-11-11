@@ -3,7 +3,7 @@ import { generateToken } from "../lib/crypto.js";
 import { logger } from "../lib/logger.js";
 import { checkRateLimit, routeRateLimitConfig } from "../lib/rate-limit.js";
 import { getClientIp } from "../lib/media-proxy.js";
-import { runYtDlp, YtDlpAbortedError, YtDlpProcessError } from "../lib/youtube/ytdlp.js";
+import { runYtDlp, YtDlpAbortedError, YtDlpProcessError } from "../lib/ytdlp.js";
 import { validateFacebookUrl } from "../lib/validators/facebook-url.js";
 
 const router = Router();

@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import TwitterDownloader from "@/components/TwitterDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
   CheckCircle2,
   ChevronDown,
@@ -19,47 +19,11 @@ import {
   Lock,
   Layers,
   HeartHandshake,
-  DollarSign,
 } from "lucide-react";
 
 const PAGE = TOOL_PAGES.twitterVideo;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Twitter Video Downloader – Download X Videos in MP4 HD | Downloadit",
-  },
-  description:
-    "Download Twitter (X) videos online for free with Downloadit. Save public X videos as MP4 in available quality. Fast, easy, mobile-friendly and no login required.",
-  alternates: {
-    canonical: "https://downloadit.pro/twitter-video-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Twitter Video Downloader – Save X Videos Online | Downloadit",
-    description:
-      "Paste your public Twitter/X post link, preview available media and download videos in MP4 format.",
-    url: "https://downloadit.pro/twitter-video-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Twitter X Video Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Twitter Video Downloader – Download X Videos in MP4 HD | Downloadit",
-    description:
-      "Download Twitter (X) videos online for free with Downloadit. Save public X videos as MP4 in available quality. Fast, easy, mobile-friendly and no login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -68,7 +32,7 @@ const FAQS = [
   },
   {
     q: "Is Downloadit Twitter Video Downloader free?",
-    a: "Yes, Downloadit's Twitter Video Downloader is 100% free to use. There are no registration fees, premium tiers, or hidden subscriptions. You can download as many public Twitter and X videos as you want without any restrictions.",
+    a: "Yes. Downloadit does not charge for Twitter/X downloads and requires no account, subscription, or payment details. The tool is intended for personal, offline viewing of public posts.",
   },
   {
     q: "Can I download Twitter videos without an account?",
@@ -99,8 +63,8 @@ const FAQS = [
     a: "Yes. On Twitter and X, animated GIFs are actually converted and delivered as looping MP4 video files without audio. Downloadit detects and extracts these looping MP4 video streams so you can save and share them on any platform.",
   },
   {
-    q: "Do I need to install an application?",
-    a: "No. Downloadit is entirely web-based and runs within your existing mobile or desktop web browser. You do not need to install third-party mobile apps, APK files, browser plugins, or desktop software.",
+    q: "Can I use Downloadit without installing Twitter/X software?",
+    a: "Yes. Downloadit is a web page, not an app. You do not need the X desktop client, a mobile APK, a browser extension, or any command-line tool to save a public video.",
   },
   {
     q: "Can I download videos from private Twitter accounts?",
@@ -111,16 +75,16 @@ const FAQS = [
     a: "Common reasons a download may not work include: (1) the tweet is from a protected or private account, (2) the tweet has been deleted by its author or removed by X, (3) the post contains only images or text rather than a video or GIF, or (4) you pasted a profile URL instead of a specific post URL. Verify the post is public and contains playable media, then try again.",
   },
   {
-    q: "Can I download multiple Twitter videos?",
-    a: "Yes, you can download multiple Twitter videos one by one. There are no daily quotas or cooldown periods on Downloadit. Simply paste each tweet URL into the downloader whenever you need to save a video.",
+    q: "Can I download multiple Twitter videos in one session?",
+    a: "Downloadit processes one post link at a time. To save several videos, paste each public tweet URL in turn. There is no login step between downloads.",
   },
   {
-    q: "Does Downloadit store downloaded videos?",
-    a: "No. Downloadit does not host, store, or archive downloaded videos or media on its servers. All media is fetched and streamed directly from Twitter/X's Content Delivery Network (CDN) to your device, and we do not keep user download histories.",
+    q: "Are saved Twitter videos stored on Downloadit?",
+    a: "No. Downloadit does not keep a library of the videos you save. Media is requested from X's delivery network at the time of download and passed to your browser; we do not publish or resell downloaded files.",
   },
   {
-    q: "Is Twitter Video Downloader safe?",
-    a: "Yes, Downloadit is completely safe. It requires no software downloads, requires no account logins or passwords, contains no invasive trackers or malicious pop-ups, and operates via secure HTTPS encryption.",
+    q: "Is Downloadit safe to use for X videos?",
+    a: "The downloader runs over HTTPS and does not ask for your X password or require software installation. As with any online tool, avoid entering credentials on look-alike sites and only download media you have the right to use.",
   },
 ];
 
@@ -166,7 +130,7 @@ const FEATURES = [
   {
     icon: Zap,
     title: "Free Online Access",
-    desc: "100% free tool with no hidden subscriptions, paywalls, or daily download restrictions.",
+    desc: "Free to use with no subscription, account, or payment details required.",
   },
   {
     icon: ShieldCheck,
@@ -209,7 +173,7 @@ const WHY_CHOOSE = [
   {
     icon: Zap,
     title: "Direct High-Speed Retrieval",
-    desc: "Downloadit connects directly to Twitter's public media delivery network, providing fast, unthrottled MP4 downloads without unnecessary queueing.",
+    desc: "Downloadit requests the media directly from X's public delivery network, so the file is not re-encoded or queued behind a converter.",
   },
   {
     icon: ShieldCheck,
@@ -218,8 +182,8 @@ const WHY_CHOOSE = [
   },
   {
     icon: Repeat,
-    title: "Full GIF & Video Support",
-    desc: "Handles standard user-uploaded videos, long interview clips, and animated GIFs without quality degradation or forced watermarks.",
+    title: "No Added Watermarks",
+    desc: "Handles standard videos, longer clips, and animated GIFs without adding a Downloadit watermark.",
   },
   {
     icon: Lock,
@@ -262,24 +226,24 @@ export default function TwitterVideoDownloaderPage() {
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://downloadit.pro/twitter-video-downloader/#webpage",
-        url: "https://downloadit.pro/twitter-video-downloader",
+        "@id": "https://www.downloadit.pro/twitter-video-downloader/#webpage",
+        url: "https://www.downloadit.pro/twitter-video-downloader",
         name: "Twitter Video Downloader – Download X Videos in MP4 HD | Downloadit",
         description:
           "Download Twitter (X) videos online for free with Downloadit. Save public X videos as MP4 in available quality. Fast, easy, mobile-friendly and no login required.",
         inLanguage: "en",
         isPartOf: {
-          "@id": "https://downloadit.pro/#website",
+          "@id": "https://www.downloadit.pro/#website",
         },
         breadcrumb: {
-          "@id": "https://downloadit.pro/twitter-video-downloader/#breadcrumbs",
+          "@id": "https://www.downloadit.pro/twitter-video-downloader/#breadcrumbs",
         },
       },
       {
         "@type": "WebApplication",
-        "@id": "https://downloadit.pro/twitter-video-downloader/#app",
+        "@id": "https://www.downloadit.pro/twitter-video-downloader/#app",
         name: "Downloadit Twitter Video Downloader",
-        url: "https://downloadit.pro/twitter-video-downloader",
+        url: "https://www.downloadit.pro/twitter-video-downloader",
         applicationCategory: "UtilitiesApplication",
         operatingSystem: "Web Browser",
         inLanguage: "en",
@@ -293,25 +257,25 @@ export default function TwitterVideoDownloaderPage() {
       },
       {
         "@type": "BreadcrumbList",
-        "@id": "https://downloadit.pro/twitter-video-downloader/#breadcrumbs",
+        "@id": "https://www.downloadit.pro/twitter-video-downloader/#breadcrumbs",
         itemListElement: [
           {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://downloadit.pro",
+            item: "https://www.downloadit.pro",
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Twitter Video Downloader",
-            item: "https://downloadit.pro/twitter-video-downloader",
+            item: "https://www.downloadit.pro/twitter-video-downloader",
           },
         ],
       },
       {
         "@type": "FAQPage",
-        "@id": "https://downloadit.pro/twitter-video-downloader/#faq",
+        "@id": "https://www.downloadit.pro/twitter-video-downloader/#faq",
         mainEntity: FAQS.map((item) => ({
           "@type": "Question",
           name: item.q,
@@ -360,13 +324,13 @@ export default function TwitterVideoDownloaderPage() {
             </h2>
             <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
               <p>
-                Twitter (now officially known as X) is the primary real-time destination for breaking news, sports highlights, viral memes, investigative reporting, and entertainment clips. However, X does not provide an official built-in option to save videos directly to your device. That is where Downloadit&apos;s <strong className="text-fg">twitter video downloader</strong> comes in: a fast, reliable, and completely free web utility that allows you to perform a quick <strong className="text-fg">twitter video download</strong> directly in your browser.
+                Twitter (now officially known as X) is the primary real-time destination for breaking news, sports highlights, viral memes, investigative reporting, and entertainment clips. However, X does not provide a built-in option to save videos directly to your device. Downloadit&apos;s <strong className="text-fg">Twitter video downloader</strong> fills that gap: a free browser tool that saves a public post&apos;s video without installing anything.
               </p>
               <p>
-                Whether you want to <strong className="text-fg">download twitter video</strong> clips for offline archiving, sharing with friends on WhatsApp or Telegram, or creating presentations, our <strong className="text-fg">twitter video download online</strong> tool resolves the direct media stream from X&apos;s Content Delivery Network. Simply copy the URL of any public post from <code className="text-xs bg-bg px-1.5 py-0.5 rounded border border-border">x.com</code> or <code className="text-xs bg-bg px-1.5 py-0.5 rounded border border-border">twitter.com</code>, paste it into the field above, and our engine extracts the progressive MP4 stream.
+                Whether you want to keep a clip for offline viewing, share it with friends on WhatsApp or Telegram, or reference it in a presentation, the tool resolves the direct media stream from X&apos;s Content Delivery Network. Copy the URL of any public post from <code className="text-xs bg-bg px-1.5 py-0.5 rounded border border-border">x.com</code> or <code className="text-xs bg-bg px-1.5 py-0.5 rounded border border-border">twitter.com</code>, paste it into the field above, and Downloadit retrieves the available progressive MP4 rendition.
               </p>
               <p>
-                Users exploring online services often encounter platforms such as <em className="text-fg-subtle">SSSTwitter</em>, <em className="text-fg-subtle">SSTwitter</em>, <em className="text-fg-subtle">TwitterVideoDownloader</em>, <em className="text-fg-subtle">TWMate</em>, <em className="text-fg-subtle">SaveTweetVid</em>, <em className="text-fg-subtle">TwDown</em>, <em className="text-fg-subtle">TweetSave</em>, or <em className="text-fg-subtle">GetTwitterVideo</em>. Downloadit delivers a clean, modern, and privacy-respecting alternative to <strong className="text-fg">save twitter video</strong> files online without intrusive advertisements, fake download prompts, or mandatory app installations. If you are searching <em className="text-fg-subtle">twitter se video download kaise kare</em> or want a reliable <em className="text-fg-subtle">X video download karne ka tarika</em>, Downloadit offers the easiest link-based experience available.
+                Downloadit offers a clean, link-based way to <strong className="text-fg">save Twitter videos</strong> without intrusive advertisements, fake download prompts, or mandatory app installations. All you need is the URL of a public post.
               </p>
               <div className="rounded-xl border border-border/80 bg-bg/50 p-4 mt-4">
                 <div className="flex items-start gap-3">
@@ -456,13 +420,13 @@ export default function TwitterVideoDownloaderPage() {
             </h2>
             <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
               <p>
-                When video content is uploaded to X (Twitter), the platform automatically transcodes the master media file into multiple bitrate renditions — typically 360p, 540p, 720p (HD), and occasionally 1080p (Full HD) depending on the author&apos;s source resolution and subscription settings. Our <strong className="text-fg">twitter video downloader hd</strong> inspects all available video stream variants delivered by Twitter&apos;s media servers and selects the highest quality stream for you.
+                When video content is uploaded to X (Twitter), the platform transcodes the master file into several bitrate renditions — commonly 360p, 540p, and 720p, with 1080p available for some uploads depending on the source and account settings. Downloadit inspects the progressive variants offered for the post and requests the highest-resolution stream that X exposes.
               </p>
               <p>
-                We believe in technical honesty: we never make false claims of upscaling standard definition content to 4K or 1080p if the source author originally uploaded a low-resolution file. When a creator uploads a high-definition video, Downloadit ensures that your <strong className="text-fg">download twitter video in hd</strong> preserves the original sharpness, color fidelity, and synchronized stereo audio without artificial downsampling or compression artifacts.
+                We do not claim to upscale standard-definition content to 4K or 1080p when the author uploaded a lower-resolution file. If a creator posts in high definition, the saved MP4 keeps the sharpness, colour, and synchronized audio of the source rendition without artificial downsampling.
               </p>
               <p>
-                Whether you need <strong className="text-fg">twitter video download 1080p</strong>, <strong className="text-fg">twitter video download 720p</strong>, or simply the cleanest <strong className="text-fg">x video download hd</strong> possible, Downloadit provides direct access to the best progressive stream published on X.
+                The quality you receive therefore depends on the original upload and on which stream X makes publicly available for that post, not on an artificial &quot;HD&quot; toggle.
               </p>
             </div>
           </section>
@@ -514,7 +478,7 @@ export default function TwitterVideoDownloaderPage() {
                 Many users are surprised to discover that animated GIFs uploaded to Twitter and X are not actually stored as bulky .gif files. Instead, Twitter automatically converts GIFs into lightweight, looping MP4 video files to improve playback speed and reduce bandwidth consumption.
               </p>
               <p>
-                Downloadit acts as a dedicated <strong className="text-fg">twitter gif downloader</strong>: when you paste the link to an animated GIF tweet, our system identifies the looping MP4 video stream and provides a direct download link. You can easily <strong className="text-fg">download twitter gif</strong> media to share in your group chats, insert into presentations, or preserve as memes. If you are wondering <em className="text-fg-subtle">twitter se gif download kaise kare</em>, simply copy the post link, paste it into Downloadit, and tap download.
+                Downloadit acts as a dedicated <strong className="text-fg">twitter gif downloader</strong>: when you paste the link to an animated GIF tweet, our system identifies the looping MP4 video stream and provides a direct download link. You can easily <strong className="text-fg">download twitter gif</strong> media to share in your group chats, insert into presentations, or preserve as memes. Simply copy the post link, paste it into Downloadit, and tap download.
               </p>
             </div>
           </section>
@@ -560,7 +524,7 @@ export default function TwitterVideoDownloaderPage() {
                 </div>
               </div>
               <p>
-                If you have been looking for an easy way to <strong className="text-fg">save twitter videos to gallery</strong> or want a reliable solution for <em className="text-fg-subtle">mobile mein twitter video kaise save kare</em>, Downloadit gives you a fast, app-free path to downloading X videos directly to your phone.
+                Downloadit gives you a fast, app-free path to saving X videos directly to your phone&apos;s gallery or downloads folder.
               </p>
             </div>
           </section>
@@ -688,32 +652,6 @@ export default function TwitterVideoDownloaderPage() {
               </div>
               <p>
                 We do not inject watermarks, alter audio synchronization, or truncate videos. When you paste a public Twitter post link, you receive the exact progressive MP4 stream served by X&apos;s delivery servers — cleanly, quickly, and securely.
-              </p>
-            </div>
-          </section>
-
-          {/* H2: Is Twitter Video Downloader Free? */}
-          <section
-            id="is-twitter-video-downloader-free"
-            className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-[var(--shadow-card)]"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-accent-light text-accent">
-                <DollarSign className="h-4 w-4" />
-              </span>
-              <span className="text-[12px] font-bold uppercase tracking-wider text-accent">
-                Pricing &amp; Limits
-              </span>
-            </div>
-            <h2 className="text-[24px] sm:text-[30px] font-extrabold tracking-tight text-fg mb-4">
-              Is Twitter Video Downloader Free?
-            </h2>
-            <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
-              <p>
-                Yes, Downloadit&apos;s <strong className="text-fg">free twitter video downloader</strong> is completely free of charge. There are no registration tiers, no hidden membership fees, no trial periods, and no credit card requirements. You can perform as many <strong className="text-fg">twitter video download free</strong> operations as you need throughout the day.
-              </p>
-              <p>
-                There are no arbitrary limits on how many videos you can save or how long the videos can be, as long as the source post is publicly viewable on Twitter or X. Our mission is to keep online media saving accessible, transparent, and completely free for personal archiving and offline viewing.
               </p>
             </div>
           </section>

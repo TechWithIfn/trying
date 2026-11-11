@@ -20,7 +20,7 @@ import {
   getYtDlpVersion,
   isYtDlpAvailable,
   isYtDlpVersionOutdated,
-} from "./lib/youtube/ytdlp.js";
+} from "./lib/ytdlp.js";
 
 // Local development / traditional hosting entry point.
 // On Vercel serverless, api/index.ts serves the exported app instead and

@@ -4,7 +4,7 @@ import { SITE_URL } from "@/config/site";
 
 const PRIVACY_TITLE = "Privacy Policy | Downloadit";
 const PRIVACY_DESCRIPTION =
-  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram, Pinterest, YouTube, Facebook or Twitter/X downloader.";
+  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram, Pinterest, Facebook or Twitter/X downloader.";
 
 export const metadata: Metadata = {
   title: { absolute: PRIVACY_TITLE },
@@ -34,8 +34,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="October 2026" crumbPath="/privacy">
       <p>
-        Downloadit does not require an account, sign-up, or login for Instagram, Pinterest,
-        YouTube, Facebook or Twitter/X links. We do not keep a download
+        Downloadit does not require an account, sign-up, or login for Instagram, Pinterest, Facebook or Twitter/X links. We do not keep a download
         history in your browser.
       </p>
       <p>

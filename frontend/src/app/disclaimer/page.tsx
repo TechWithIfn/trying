@@ -4,7 +4,7 @@ import { SITE_URL } from "@/config/site";
 
 const DISCLAIMER_TITLE = "Disclaimer | Downloadit";
 const DISCLAIMER_DESCRIPTION =
-  "Read the Downloadit disclaimer covering third-party content, Instagram, Pinterest, YouTube, Facebook and Twitter/X links, and responsible use.";
+  "Read the Downloadit disclaimer covering third-party content, Instagram, Pinterest, Facebook and Twitter/X links, and responsible use.";
 
 export const metadata: Metadata = {
   title: { absolute: DISCLAIMER_TITLE },
@@ -43,7 +43,7 @@ export default function DisclaimerPage() {
         have the right to download and use any media you save.
       </p>
       <p>
-        The service depends on Instagram, Pinterest, YouTube, Facebook and X&apos;s own availability and behavior, which change
+        The service depends on Instagram, Pinterest, Facebook and X&apos;s own availability and behavior, which change
         without notice. Availability, results and accuracy are therefore not guaranteed, and
         the service may be interrupted or modified at any time. The service is provided
         as-is, without warranties of any kind.

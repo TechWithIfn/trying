@@ -3,9 +3,8 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
@@ -13,10 +12,7 @@ import {
   Zap,
   Sparkles,
   ArrowRight,
-  Monitor,
   HelpCircle,
-  Repeat,
-  Lock,
   Layers,
   HeartHandshake,
   Image as ImageIcon,
@@ -26,95 +22,48 @@ import {
 
 const PAGE = TOOL_PAGES.instagramVideo;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Instagram Downloader – Reels, Stories, Videos, Photos & Audio | Downloadit",
-  },
-  description:
-    "Download Instagram Reels, Stories, Videos, Photos and Carousel posts online with Downloadit. Save supported Instagram media and extract audio as MP3 for free.",
-  alternates: {
-    canonical: "https://downloadit.pro/instagram-video-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Instagram Downloader – Reels, Stories, Videos, Photos & Audio | Downloadit",
-    description:
-      "Download Instagram Reels, Stories, Videos, Photos and Carousel posts online with Downloadit. Save supported Instagram media and extract audio as MP3 for free.",
-    url: "https://downloadit.pro/instagram-video-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Instagram Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Instagram Downloader – Reels, Stories, Videos, Photos & Audio | Downloadit",
-    description:
-      "Download Instagram Reels, Stories, Videos, Photos and Carousel posts online with Downloadit. Save supported Instagram media and extract audio as MP3 for free.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
-    q: "How to download Instagram Reels online?",
-    a: "Open the Instagram app, tap the Share icon on any public Reel, and select 'Copy link'. Paste that URL into Downloadit above, click 'Download Media', preview the video, and tap 'Download' to save the original vertical 9:16 MP4 to your device.",
+    q: "Which Instagram media types can Downloadit save?",
+    a: "The tool handles public Reels, standard feed videos, single photos, multi-photo or mixed carousels, active Stories, and the audio track of a video. Paste a post URL and Downloadit detects which media the post contains.",
   },
   {
-    q: "How to download Instagram videos?",
-    a: "Locate the public Instagram video post or feed clip you want to save. Copy the link from the Share menu or your browser address bar, paste it into Downloadit, and download the progressive MP4 file in available HD quality.",
+    q: "Do I need a different downloader for each Instagram format?",
+    a: "No. The main page accepts any public Instagram post link. If you want a page focused on one format, the Reels, Photo, Story, and Audio tools each cover a specific media type.",
   },
   {
-    q: "How to download Instagram Stories?",
-    a: "Copy the link of any active public Instagram Story while it is still within its 24-hour window. Paste the link into Downloadit to preview and download the Story video (MP4) or photo (JPEG) anonymously.",
+    q: "Can Downloadit save a carousel that mixes photos and videos?",
+    a: "Yes. Each slide in a public carousel is listed separately, so you can preview the items and download the photos or video clips you need.",
   },
   {
-    q: "How to download Instagram photos?",
-    a: "Open the public photo post, copy the post URL, and paste it into Downloadit. Our engine resolves the original uncompressed source JPEG directly from Instagram's servers for instant saving.",
+    q: "What happens to an Instagram Story after 24 hours?",
+    a: "Stories expire from public view after roughly 24 hours. Downloadit can only retrieve a Story while it is still active; once Instagram removes it, no tool can fetch the original.",
   },
   {
-    q: "How to download Instagram carousel posts?",
-    a: "Paste the link of any multi-image or multi-video carousel post into Downloadit. The downloader retrieves all slides, allowing you to preview and download individual pictures or save the complete carousel album.",
+    q: "Why does an Instagram link return no media?",
+    a: "Common causes are a private account, a deleted or archived post, a profile URL instead of a post URL, an expired Story, or a text-only post. Make sure the link opens a public post that contains a video, photo, or carousel.",
   },
   {
-    q: "How to convert Instagram videos to MP4?",
-    a: "Instagram streams its public videos in native MP4 format. When you use Downloadit, you get the direct progressive MP4 file with AAC audio, compatible across all phones, tablets, PCs, and video editors without conversion.",
+    q: "Can I use Downloadit without an Instagram login?",
+    a: "Yes. Downloadit never asks for an Instagram username, password, or session cookie. Only publicly viewable posts can be processed.",
   },
   {
-    q: "How to extract audio from Instagram Reels?",
-    a: "Paste the public Reel or video link into Downloadit and select Audio mode (or visit our dedicated Instagram Audio Downloader). Our backend extracts the sound track and packages it as a standalone MP3 file.",
+    q: "Is there a charge to use the Instagram downloader?",
+    a: "No. Downloadit does not require a subscription, account, or payment details. The service is intended for personal, offline viewing.",
   },
   {
-    q: "Can I download Instagram videos without an app?",
-    a: "Yes. Downloadit is 100% web-based. You do not need to install APK files, third-party mobile apps, or browser extensions. Everything runs safely within your standard mobile or desktop web browser.",
+    q: "Does Downloadit keep the media I download?",
+    a: "No. Downloadit does not maintain a library of saved Instagram media. Files are requested from Instagram's delivery network when you download and are passed to your browser.",
   },
   {
-    q: "Is Instagram Downloader free?",
-    a: "Yes, Downloadit's Instagram Downloader is completely free to use. There are no subscriptions, registration fees, or daily download restrictions. You can download as many public media items as you need.",
+    q: "Does the Instagram downloader work in a mobile browser?",
+    a: "Yes. It works in Safari on iPhone and iPad and in Chrome, Firefox, or Samsung Internet on Android, as well as desktop browsers. Saved files go to the browser's download location.",
   },
   {
-    q: "Does Instagram Downloader work on Android?",
-    a: "Yes. Open Chrome, Firefox, or Samsung Internet on your Android device, paste the Instagram link into Downloadit, and download your media directly into your Downloads folder and Gallery.",
-  },
-  {
-    q: "Does Instagram Downloader work on iPhone?",
-    a: "Yes. On iOS devices (iPhone and iPad), use Safari or Chrome to paste the URL. Once downloaded, tap the file in Safari Downloads, open the Share sheet, and tap 'Save Video' or 'Save Image' to store it in Apple Photos.",
-  },
-  {
-    q: "Why is my Instagram download link not working?",
-    a: "A download link may fail if: (1) the account is private, (2) the post was deleted or archived, (3) the link copied is a profile grid URL (instagram.com/username) rather than an individual post URL, or (4) the temporary CDN token expired. Ensure the post is public and refresh to retry.",
-  },
-  {
-    q: "Can I download videos from a private Instagram account?",
-    a: "No. Downloadit respects privacy guidelines and Instagram's access controls. Private accounts require authenticated follower sessions and cannot be accessed by an anonymous online downloader.",
+    q: "Can I save only the audio from an Instagram video?",
+    a: "Yes. Use the dedicated Instagram Audio Downloader, paste the public video or Reel link, and download the soundtrack as an MP3.",
   },
 ];
 
@@ -156,14 +105,14 @@ const INSTAGRAM_CATEGORIES = [
     name: "Instagram Reels Downloader",
     href: "/instagram-reels-downloader",
     icon: Film,
-    desc: "Download vertical 9:16 viral Reels as high-definition MP4 files with synchronized original audio.",
+    desc: "Download vertical 9:16 Reels as MP4 files with the original audio.",
     badge: "Reels",
   },
   {
     name: "Instagram Video Downloader",
     href: "/instagram-video-downloader",
     icon: Film,
-    desc: "Save standard feed videos, long-form interviews, and IG video posts in 1080p and 720p HD.",
+    desc: "Save standard feed videos and longer Instagram video posts in the available MP4 quality.",
     badge: "Videos",
   },
   {
@@ -195,24 +144,24 @@ export default function InstagramMainDownloaderPage() {
     "@graph": [
       {
         "@type": "WebPage",
-        "@id": "https://downloadit.pro/instagram-video-downloader/#webpage",
-        url: "https://downloadit.pro/instagram-video-downloader",
+        "@id": "https://www.downloadit.pro/instagram-video-downloader/#webpage",
+        url: "https://www.downloadit.pro/instagram-video-downloader",
         name: "Instagram Downloader – Reels, Stories, Videos, Photos & Audio | Downloadit",
         description:
           "Download Instagram Reels, Stories, Videos, Photos and Carousel posts online with Downloadit. Save supported Instagram media and extract audio as MP3 for free.",
         inLanguage: "en",
         isPartOf: {
-          "@id": "https://downloadit.pro/#website",
+          "@id": "https://www.downloadit.pro/#website",
         },
         breadcrumb: {
-          "@id": "https://downloadit.pro/instagram-video-downloader/#breadcrumbs",
+          "@id": "https://www.downloadit.pro/instagram-video-downloader/#breadcrumbs",
         },
       },
       {
         "@type": "WebApplication",
-        "@id": "https://downloadit.pro/instagram-video-downloader/#app",
+        "@id": "https://www.downloadit.pro/instagram-video-downloader/#app",
         name: "Downloadit Instagram Downloader",
-        url: "https://downloadit.pro/instagram-video-downloader",
+        url: "https://www.downloadit.pro/instagram-video-downloader",
         applicationCategory: "UtilitiesApplication",
         operatingSystem: "Web Browser",
         inLanguage: "en",
@@ -226,25 +175,25 @@ export default function InstagramMainDownloaderPage() {
       },
       {
         "@type": "BreadcrumbList",
-        "@id": "https://downloadit.pro/instagram-video-downloader/#breadcrumbs",
+        "@id": "https://www.downloadit.pro/instagram-video-downloader/#breadcrumbs",
         itemListElement: [
           {
             "@type": "ListItem",
             position: 1,
             name: "Home",
-            item: "https://downloadit.pro",
+            item: "https://www.downloadit.pro",
           },
           {
             "@type": "ListItem",
             position: 2,
             name: "Instagram Downloader",
-            item: "https://downloadit.pro/instagram-video-downloader",
+            item: "https://www.downloadit.pro/instagram-video-downloader",
           },
         ],
       },
       {
         "@type": "FAQPage",
-        "@id": "https://downloadit.pro/instagram-video-downloader/#faq",
+        "@id": "https://www.downloadit.pro/instagram-video-downloader/#faq",
         mainEntity: FAQS.map((item) => ({
           "@type": "Question",
           name: item.q,
@@ -538,16 +487,16 @@ export default function InstagramMainDownloaderPage() {
             </h2>
             <div className="space-y-4 text-[14.5px] sm:text-[15.5px] leading-[1.75] text-fg-muted">
               <p>
-                Many online downloader websites (such as fastdl, igram, snapinsta, or saveinsta) subject visitors to aggressive pop-ups, deceptive download banners, forced redirects, or mandatory software installations. Downloadit was engineered with a completely different philosophy: fast, clean, and honest.
+                Many online downloader sites overwhelm visitors with pop-ups, misleading download buttons, forced redirects, or mandatory software installations. Downloadit is built around a simpler workflow: paste a public link, preview the media, and save the file.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4">
                 <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <ShieldCheck className="h-4 w-4 text-primary" />
-                    <h3 className="text-[15px] font-bold text-fg">100% Anonymous &amp; Private</h3>
+                    <h3 className="text-[15px] font-bold text-fg">No Login Required</h3>
                   </div>
                   <p className="text-[13px] leading-relaxed text-fg-muted">
-                    We never ask for your Instagram account, password, or cookies. No personal data is stored, and downloads leave no footprint on the creator&apos;s profile.
+                    We never ask for your Instagram account, password, or cookies.
                   </p>
                 </div>
                 <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
@@ -562,10 +511,10 @@ export default function InstagramMainDownloaderPage() {
                 <div className="rounded-xl border border-border/80 bg-bg/50 p-4">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Zap className="h-4 w-4 text-primary" />
-                    <h3 className="text-[15px] font-bold text-fg">High-Speed CDN Direct Links</h3>
+                    <h3 className="text-[15px] font-bold text-fg">Direct CDN Retrieval</h3>
                   </div>
                   <p className="text-[13px] leading-relaxed text-fg-muted">
-                    Files stream directly from edge delivery servers for maximum download speeds without artificial throttling or download queues.
+                    Files are requested from Instagram&apos;s delivery servers and passed to your browser without an extra conversion queue.
                   </p>
                 </div>
                 <div className="rounded-xl border border-border/80 bg-bg/50 p-4">

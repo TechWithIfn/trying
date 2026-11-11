@@ -6,24 +6,25 @@ import Breadcrumb from "@/components/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { getAllPosts } from "@/lib/blog";
 
+const BLOG_TITLE = "Downloadit Blog – Media Saving Guides & Fixes";
+const BLOG_DESCRIPTION =
+  "Practical guides for saving public Instagram, Pinterest, Facebook, X and Threads media, fixing download issues, and understanding copyright.";
+
 export const metadata: Metadata = {
-  title: { absolute: "Downloadit Blog – Instagram, Pinterest & YouTube Guides" },
-  description:
-    "Practical guides from Downloadit for saving public Instagram, Pinterest and YouTube media, fixing common issues, and understanding copyright.",
+  title: { absolute: BLOG_TITLE },
+  description: BLOG_DESCRIPTION,
   alternates: { canonical: "/blog" },
   openGraph: {
-    title: { absolute: "Downloadit Blog – Instagram, Pinterest & YouTube Guides" },
-    description:
-      "Practical guides from Downloadit for saving public Instagram, Pinterest and YouTube media, fixing common issues, and understanding copyright.",
+    title: { absolute: BLOG_TITLE },
+    description: BLOG_DESCRIPTION,
     url: `${SITE_URL}/blog`,
     type: "website",
     images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "Downloadit Blog" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: { absolute: "Blog – Instagram Saving Guides & Copyright Help | Downloadit" },
-    description:
-      "Practical guides from Downloadit: save your own Instagram content, back up reels, fix common issues, and understand copyright and permission basics.",
+    title: { absolute: BLOG_TITLE },
+    description: BLOG_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
@@ -52,7 +53,7 @@ export default function BlogIndexPage() {
             Downloadit Blog
           </h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Practical guides to saving public Instagram, Pinterest and YouTube
+            Practical guides to saving public Instagram, Pinterest 
             media, fixing what goes wrong, and using other people&apos;s work
             the right way. No filler —
             every article answers its question first.
@@ -88,7 +89,7 @@ export default function BlogIndexPage() {
             url: `${SITE_URL}/blog`,
             name: "Downloadit Blog",
             description:
-              "Practical guides to saving public Instagram, Pinterest and YouTube media responsibly.",
+              "Practical guides to saving public Instagram, Pinterest  media responsibly.",
             inLanguage: "en",
             isPartOf: { "@id": `${SITE_URL}/#website` },
             blogPost: posts.map((p) => ({

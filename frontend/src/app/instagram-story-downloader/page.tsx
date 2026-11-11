@@ -3,21 +3,16 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
-  ShieldCheck,
   Zap,
   Sparkles,
   ArrowRight,
   Monitor,
-  HelpCircle,
-  Repeat,
   Lock,
-  Layers,
   HeartHandshake,
   Image as ImageIcon,
   Music,
@@ -27,42 +22,7 @@ import {
 
 const PAGE = TOOL_PAGES.instagramStory;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Instagram Story Downloader – Save Stories Online | Downloadit",
-  },
-  description:
-    "Download Instagram Stories online with Downloadit. Save active public story videos and photos in high quality before they expire. Anonymous and free.",
-  alternates: {
-    canonical: "https://downloadit.pro/instagram-story-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Instagram Story Downloader – Save Stories Online | Downloadit",
-    description:
-      "Download Instagram Stories online with Downloadit. Save active public story videos and photos in high quality before they expire. Anonymous and free.",
-    url: "https://downloadit.pro/instagram-story-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Instagram Story Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Instagram Story Downloader – Save Stories Online | Downloadit",
-    description:
-      "Download Instagram Stories online with Downloadit. Save active public story videos and photos in high quality before they expire. Anonymous and free.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -75,7 +35,7 @@ const FAQS = [
   },
   {
     q: "Is downloading Instagram Stories anonymous?",
-    a: "Yes, completely anonymous. When you view a Story inside the Instagram app, your profile is logged in the creator's 'Seen by' viewer list. When using Downloadit, our servers fetch the public media stream directly without logging into any personal account, ensuring your identity is 100% private.",
+    a: "Yes. Downloadit does not log into your Instagram account, so fetching a public Story does not add you to the creator's viewer list. We do not ask for your profile or password.",
   },
   {
     q: "Can I download Stories from private Instagram accounts?",
@@ -91,7 +51,7 @@ const FAQS = [
   },
   {
     q: "Is Downloadit Instagram Story Downloader free?",
-    a: "Yes, Downloadit is 100% free with unlimited downloads. There are no fees, subscriptions, or daily limits.",
+    a: "Yes. Downloadit does not charge for Story downloads and requires no account or subscription. The tool is intended for saving active public Stories before they expire.",
   },
   {
     q: "Do I need an Instagram account to download Stories?",
@@ -102,8 +62,8 @@ const FAQS = [
     a: "No. Downloadit does not store, archive, or cache any user media on our servers. All files are fetched on demand and streamed directly to your browser.",
   },
   {
-    q: "Which devices and browsers are supported?",
-    a: "Downloadit works on all modern mobile phones, tablets, and desktop computers running iOS Safari, Android Chrome, Windows, Mac, and Linux browsers.",
+    q: "Which devices can save an Instagram Story?",
+    a: "The page works in current Safari, Chrome, Firefox, Edge, and Samsung Internet builds on iPhone, iPad, Android phones, Windows, macOS, and Linux. Downloaded MP4 or JPEG files go to your browser's default download location.",
   },
 ];
 
@@ -111,14 +71,14 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Reels Downloader",
     href: "/instagram-reels-downloader",
-    desc: "Download vertical short-form reels in 1080p HD MP4 with original audio and zero watermark.",
+    desc: "Download vertical short-form Reels in the highest MP4 quality available from the post.",
     icon: Film,
     badge: "Trending",
   },
   {
     title: "Instagram Video Downloader",
     href: "/instagram-video-downloader",
-    desc: "Save regular feed videos, long clips, and IGTV videos in full HD MP4.",
+    desc: "Save regular feed videos and longer clips in the available MP4 quality.",
     icon: Film,
     badge: "All Formats",
   },
@@ -132,7 +92,7 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Audio Downloader",
     href: "/instagram-audio-downloader",
-    desc: "Extract background tracks, trending sounds, and voiceovers to high-bitrate MP3.",
+    desc: "Extract background tracks, trending sounds, and voiceovers as MP3 audio.",
     icon: Music,
     badge: "MP3 Audio",
   },
@@ -145,12 +105,12 @@ export default function StoryDownloaderPage() {
     name: "Instagram Story Downloader – Save Stories Online",
     description:
       "Download Instagram Stories online with Downloadit. Save active public story videos and photos in high quality before they expire. Anonymous and free.",
-    url: "https://downloadit.pro/instagram-story-downloader",
+    url: "https://www.downloadit.pro/instagram-story-downloader",
     inLanguage: "en-US",
     isPartOf: {
       "@type": "WebSite",
       name: "Downloadit",
-      url: "https://downloadit.pro",
+      url: "https://www.downloadit.pro",
     },
   };
 
@@ -158,7 +118,7 @@ export default function StoryDownloaderPage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Downloadit Instagram Story Downloader",
-    url: "https://downloadit.pro/instagram-story-downloader",
+    url: "https://www.downloadit.pro/instagram-story-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
     offers: {
@@ -172,7 +132,7 @@ export default function StoryDownloaderPage() {
       "High definition vertical MP4 video with original audio",
       "Full-resolution JPEG image extraction",
       "No account login or registration required",
-      "Free and unlimited usage across all devices",
+      "Free to use without an account",
     ],
   };
 
@@ -184,19 +144,19 @@ export default function StoryDownloaderPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://downloadit.pro",
+        item: "https://www.downloadit.pro",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Instagram Downloader",
-        item: "https://downloadit.pro/instagram-video-downloader",
+        item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Instagram Story Downloader",
-        item: "https://downloadit.pro/instagram-story-downloader",
+        item: "https://www.downloadit.pro/instagram-story-downloader",
       },
     ],
   };
@@ -319,7 +279,7 @@ export default function StoryDownloaderPage() {
                   <h3 className="font-bold text-fg text-[16px]">Save Video or Photo</h3>
                 </div>
                 <p className="text-[14px] text-fg-muted leading-relaxed">
-                  Click <strong>Download</strong>. Your device will save the full HD MP4 video (with audio) or original
+                  Click <strong>Download</strong>. Your device will save the MP4 video (with audio) or original
                   JPEG picture right to your gallery or Downloads folder.
                 </p>
               </div>
@@ -359,7 +319,7 @@ export default function StoryDownloaderPage() {
               notification banners, or drop frames.
             </p>
             <p className="text-[15.5px] sm:text-[16.5px] text-fg-muted leading-relaxed">
-              Downloadit retrieves the direct master files. Video stories are served as clean, high-bitrate 1080p MP4
+              Downloadit retrieves the direct master files. Video stories are served as MP4 video in the available quality
               files with complete audio synchronization. Photo stories are served as uncompressed JPEGs. Neither contains
               watermarks or screen-recorder artifacts.
             </p>
@@ -444,7 +404,7 @@ export default function StoryDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <span>No Watermark</span>
+                  <span>No Added Watermark</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
                   Clean files without added logos, creator handles, or UI screen elements.
@@ -474,10 +434,10 @@ export default function StoryDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <HeartHandshake className="h-5 w-5 text-primary" />
-                  <span>Free &amp; Unlimited</span>
+                  <span>Free to Use</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  Save as many active stories as you like with zero subscriptions or restrictions.
+                  No subscription or account needed to save an active Story.
                 </p>
               </div>
             </div>
@@ -535,7 +495,7 @@ export default function StoryDownloaderPage() {
                 href="/"
                 className="inline-flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-primary transition-colors"
               >
-                <span>&larr; Back to all Downloadit tools (YouTube, Pinterest, Facebook, Twitter/X, Threads)</span>
+                <span>&larr; Back to all Downloadit tools (Pinterest, Facebook, Twitter/X, Threads)</span>
               </Link>
             </div>
           </section>

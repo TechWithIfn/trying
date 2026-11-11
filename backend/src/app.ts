@@ -5,7 +5,6 @@ import downloadRouter from "./routes/download.js";
 import streamRouter from "./routes/stream.js";
 import audioRouter from "./routes/audio.js";
 import pinterestRouter from "./routes/pinterest.js";
-import youtubeRouter from "./routes/youtube.js";
 import facebookRouter from "./routes/facebook.js";
 import twitterRouter from "./routes/twitter.js";
 import threadsRouter from "./routes/threads.js";
@@ -212,7 +211,15 @@ app.use("/api/download", downloadRouter);
 app.use("/api/stream", streamRouter);
 app.use("/api/audio", audioRouter);
 app.use("/api/pinterest", pinterestRouter);
-app.use("/api/youtube", youtubeRouter);
+app.use("/api/youtube", (_req, res) => {
+  res.status(410).json({
+    success: false,
+    error: {
+      code: "FEATURE_DISCONTINUED",
+      message: "The YouTube downloader feature has been permanently discontinued in compliance with content provider policies.",
+    },
+  });
+});
 app.use("/api/facebook", facebookRouter);
 app.use("/api/twitter", twitterRouter);
 app.use("/api/threads", threadsRouter);

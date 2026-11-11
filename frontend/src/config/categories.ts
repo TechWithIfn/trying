@@ -106,24 +106,6 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
     ],
   },
   {
-    id: "youtube",
-    name: "YouTube Downloader",
-    shortName: "YouTube",
-    mainHref: "/youtube-video-downloader",
-    desc: "Videos, Shorts clips, and MP3/M4A audio extraction",
-    icon: YouTubeIcon,
-    color: "#ff0000",
-    badgeBg: "rgba(255, 0, 0, 0.09)",
-    items: [
-      {
-        name: "Video Downloader",
-        href: "/youtube-video-downloader",
-        desc: "Save YouTube videos and Shorts in MP4 or MP3",
-        icon: Play,
-      },
-    ],
-  },
-  {
     id: "facebook",
     name: "Facebook Downloader",
     shortName: "Facebook",

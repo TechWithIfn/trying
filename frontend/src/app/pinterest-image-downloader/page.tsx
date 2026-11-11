@@ -3,19 +3,15 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PinterestDownloader from "@/components/PinterestDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
-  ShieldCheck,
   Zap,
   Sparkles,
   ArrowRight,
   Monitor,
-  HelpCircle,
-  Repeat,
   Lock,
   Layers,
   HeartHandshake,
@@ -24,42 +20,7 @@ import {
 
 const PAGE = TOOL_PAGES.pinterestImage;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Pinterest Image & Carousel Downloader – Save Pins & Slides | Downloadit",
-  },
-  description:
-    "Download Pinterest images and multi-photo carousel Pins online with Downloadit. Save high-resolution JPEG pictures directly from public Pins for free. No login needed.",
-  alternates: {
-    canonical: "https://downloadit.pro/pinterest-image-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Pinterest Image & Carousel Downloader – Save Pins & Slides | Downloadit",
-    description:
-      "Download Pinterest images and multi-photo carousel Pins online with Downloadit. Save high-resolution JPEG pictures directly from public Pins for free. No login needed.",
-    url: "https://downloadit.pro/pinterest-image-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Pinterest Image and Carousel Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pinterest Image & Carousel Downloader – Save Pins & Slides | Downloadit",
-    description:
-      "Download Pinterest images and multi-photo carousel Pins online with Downloadit. Save high-resolution JPEG pictures directly from public Pins for free. No login needed.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -84,7 +45,7 @@ const FAQS = [
   },
   {
     q: "Is Downloadit Pinterest Image Downloader free?",
-    a: "Yes, Downloadit is 100% free with unlimited usage. You can download as many single photos and carousel slides as you need without paying fees or facing daily limits.",
+    a: "Yes. Downloadit does not charge for Pinterest image downloads and requires no account, subscription, or payment details. You can save single photos and carousel slides for personal use.",
   },
   {
     q: "Do I need a Pinterest account to download pictures?",
@@ -95,12 +56,12 @@ const FAQS = [
     a: "Yes. Downloadit is completely web-based and operates in your standard mobile or desktop web browser. You do not need to install any APK, mobile app, or browser extension.",
   },
   {
-    q: "Does Pinterest Downloader work on mobile?",
-    a: "Yes. Downloadit is fully responsive and optimized for mobile devices, working seamlessly across Safari on iPhone, Chrome on Android, Samsung Internet, and desktop browsers.",
+    q: "Can I save Pinterest images on a phone?",
+    a: "Yes. The image downloader works in mobile Safari on iPhone and iPad and in Chrome or Samsung Internet on Android. Tap a slide, then save the JPEG to your browser's Downloads folder and move it into Photos if needed.",
   },
   {
-    q: "Why is Pinterest showing an unsupported Pin error?",
-    a: "If a Pin is hosted on a secret board, has been deleted, or uses an unsupported interactive format, the backend cannot retrieve a valid public image stream. Ensure you provide a direct link to an active public Pin.",
+    q: "Why does a Pinterest image Pin show as unsupported?",
+    a: "An image Pin cannot be resolved when it belongs to a secret board, has been deleted, or uses an interactive format that does not expose a public image file. Use the direct URL of an active public image or carousel Pin.",
   },
 ];
 
@@ -111,12 +72,12 @@ export default function PinterestImageDownloaderPage() {
     name: "Pinterest Image & Carousel Downloader – Save Pins & Slides",
     description:
       "Download Pinterest images and multi-photo carousel Pins online with Downloadit. Save high-resolution JPEG pictures directly from public Pins for free. No login needed.",
-    url: "https://downloadit.pro/pinterest-image-downloader",
+    url: "https://www.downloadit.pro/pinterest-image-downloader",
     inLanguage: "en-US",
     isPartOf: {
       "@type": "WebSite",
       name: "Downloadit",
-      url: "https://downloadit.pro",
+      url: "https://www.downloadit.pro",
     },
   };
 
@@ -124,7 +85,7 @@ export default function PinterestImageDownloaderPage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Downloadit Pinterest Image & Carousel Downloader",
-    url: "https://downloadit.pro/pinterest-image-downloader",
+    url: "https://www.downloadit.pro/pinterest-image-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
     offers: {
@@ -138,7 +99,7 @@ export default function PinterestImageDownloaderPage() {
       "Supports mobile pin.it short links and desktop URLs",
       "No account login or software installation required",
       "Fast edge CDN image delivery",
-      "100% free and unlimited usage across all devices",
+      "Free to use with no account or subscription required",
     ],
   };
 
@@ -150,19 +111,19 @@ export default function PinterestImageDownloaderPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://downloadit.pro",
+        item: "https://www.downloadit.pro",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Pinterest Video Downloader",
-        item: "https://downloadit.pro/pinterest-video-downloader",
+        item: "https://www.downloadit.pro/pinterest-video-downloader",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Pinterest Image Downloader",
-        item: "https://downloadit.pro/pinterest-image-downloader",
+        item: "https://www.downloadit.pro/pinterest-image-downloader",
       },
     ],
   };
@@ -432,17 +393,17 @@ export default function PinterestImageDownloaderPage() {
                   <span>Anonymous &amp; Secure</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  No login, password, or account linking required. 100% private browsing.
+                  No login, password, or account linking required.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <HeartHandshake className="h-5 w-5 text-primary" />
-                  <span>100% Free Forever</span>
+                  <span>Free to Use</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  Unlimited downloads with zero subscription paywalls, tokens, or hidden fees.
+                  No subscription paywall, tokens, or account required.
                 </p>
               </div>
             </div>
@@ -520,7 +481,7 @@ export default function PinterestImageDownloaderPage() {
                     </span>
                   </div>
                   <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                    Download Pinterest video Pins in progressive MP4 HD quality with crystal-clear audio and zero watermark.
+                    Download Pinterest video Pins in progressive MP4 quality with the original audio, without an added watermark.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-primary text-[13px] font-semibold mt-4 pt-3 border-t border-border/50">
@@ -563,7 +524,7 @@ export default function PinterestImageDownloaderPage() {
                 href="/"
                 className="inline-flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-primary transition-colors"
               >
-                <span>&larr; Back to all Downloadit tools (YouTube, Facebook, Twitter/X, Threads)</span>
+                <span>&larr; Back to all Downloadit tools (Facebook, Twitter/X, Threads)</span>
               </Link>
             </div>
           </section>

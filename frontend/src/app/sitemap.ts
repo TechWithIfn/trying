@@ -13,26 +13,25 @@ import { getAllPosts } from "@/lib/blog";
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: { path: string; lastModified: Date }[] = [
-    // Homepage and primary downloaders (refreshed in October 2026)
-    { path: "/", lastModified: new Date("2026-10-24T00:00:00.000Z") },
-    { path: "/instagram-reels-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/instagram-video-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/instagram-photo-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/instagram-story-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/instagram-audio-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/pinterest-video-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/pinterest-image-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/youtube-video-downloader", lastModified: new Date("2026-10-24T00:00:00.000Z") },
-    { path: "/facebook-video-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/twitter-video-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
-    { path: "/threads-video-downloader", lastModified: new Date("2026-11-10T00:00:00.000Z") },
+    // Homepage and primary downloaders (metadata and content refreshed 11 Nov 2026)
+    { path: "/", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/instagram-reels-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/instagram-video-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/instagram-photo-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/instagram-story-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/instagram-audio-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/pinterest-video-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/pinterest-image-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/facebook-video-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/twitter-video-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/threads-video-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
 
     // Blog index
-    { path: "/blog", lastModified: new Date("2026-10-24T00:00:00.000Z") },
+    { path: "/blog", lastModified: new Date("2026-11-11T00:00:00.000Z") },
 
     // Information and legal pages with verified update dates
-    { path: "/about", lastModified: new Date("2026-10-16T00:00:00.000Z") },
-    { path: "/help", lastModified: new Date("2026-10-15T00:00:00.000Z") },
+    { path: "/about", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/help", lastModified: new Date("2026-11-11T00:00:00.000Z") },
     { path: "/contact", lastModified: new Date("2026-10-01T00:00:00.000Z") },
     { path: "/advertise-with-us", lastModified: new Date("2026-09-15T00:00:00.000Z") },
     { path: "/privacy", lastModified: new Date("2026-10-01T00:00:00.000Z") },

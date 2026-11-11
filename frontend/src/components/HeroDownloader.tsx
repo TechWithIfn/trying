@@ -22,14 +22,12 @@ import {
   resolveTwitterUrl,
   resolveThreadsUrl,
   resolvePinterestUrl,
-  resolveYouTubeUrl,
   getApiBase,
   logApiFailure,
   isBrowserOffline,
   storyErrorMessage,
   type ResolveData,
   type ResolveStreamHandle,
-  type YouTubeResolveData,
   type MediaItem,
 } from "@/services/api";
 import { useLanguage } from "@/i18n";
@@ -39,7 +37,6 @@ import {
   PinterestIcon,
   ThreadsIcon,
   TwitterIcon,
-  YouTubeIcon,
 } from "@/components/ToolCategoryDropdown";
 
 // Post-resolve UI (players + result card) loads on demand: it is not part of
@@ -109,56 +106,18 @@ const HERO_CATEGORIES = [
 export const HOME_PLATFORMS = [
   { href: "/instagram-video-downloader", label: "Instagram", Icon: InstagramIcon, color: "#ec5fa8" },
   { href: "/pinterest-video-downloader", label: "Pinterest", Icon: PinterestIcon, color: "#e60023" },
-  { href: "/youtube-video-downloader", label: "YouTube", Icon: YouTubeIcon, color: "#ff0000" },
   { href: "/facebook-video-downloader", label: "Facebook", Icon: FacebookIcon, color: "#1877f2" },
   { href: "/twitter-video-downloader", label: "Twitter/X", Icon: TwitterIcon, color: "#0f172a" },
   { href: "/threads-video-downloader", label: "Threads", Icon: ThreadsIcon, color: "#0f172a" },
 ] as const;
 
-function convertYouTubeToResolveData(yt: YouTubeResolveData): ResolveData {
-  const mediaItems: MediaItem[] = yt.qualities.map((q) => ({
-    url: `${getApiBase()}/api/youtube/stream?v=${encodeURIComponent(yt.videoId)}&height=${q.height}`,
-    type: "video",
-    width: null,
-    height: q.height,
-    duration: yt.duration,
-    thumbnail: yt.thumbnail,
-    format: `${q.label} MP4`,
-  }));
-
-  if (yt.audioAvailable && yt.audioOptions) {
-    for (const opt of yt.audioOptions) {
-      mediaItems.push({
-        url: `${getApiBase()}/api/youtube/audio?v=${encodeURIComponent(yt.videoId)}&format=${encodeURIComponent(opt.format)}`,
-        type: "audio",
-        width: null,
-        height: null,
-        duration: yt.duration,
-        thumbnail: yt.thumbnail,
-        format: opt.format.toUpperCase(),
-      });
-    }
-  }
-
-  return {
-    type: "VIDEO",
-    sourceUrl: yt.sourceUrl,
-    thumbnail: yt.thumbnail,
-    title: yt.title,
-    author: yt.author,
-    mediaId: yt.videoId,
-    media: mediaItems,
-  };
-}
-
-export type SupportedPlatform = "instagram" | "pinterest" | "youtube" | "facebook" | "twitter" | "threads";
+export type SupportedPlatform = "instagram" | "pinterest" | "facebook" | "twitter" | "threads";
 
 export function detectPlatformFromUrl(raw: string): SupportedPlatform | null {
   const val = raw.trim().toLowerCase();
   if (!val) return null;
   if (val.includes("instagram.com") || val.includes("instagr.am")) return "instagram";
   if (val.includes("pinterest.") || val.includes("pin.it")) return "pinterest";
-  if (val.includes("youtube.com") || val.includes("youtu.be")) return "youtube";
   if (val.includes("facebook.com") || val.includes("fb.watch")) return "facebook";
   if (val.includes("twitter.com") || val.includes("x.com")) return "twitter";
   if (val.includes("threads.net") || val.includes("threads.com")) return "threads";

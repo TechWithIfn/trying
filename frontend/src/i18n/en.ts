@@ -262,14 +262,14 @@ export const en: Strings = {
     homeLabel: "Downloadit home",
   },
   help: {
-    metaTitle: "Help & Guide | Downloadit",
+    metaTitle: "Help Center – How to Download Public Media | Downloadit",
     metaDesc:
-      "Learn how to use Downloadit, troubleshoot common download issues, and find answers to frequently asked questions.",
+      "Learn how to use Downloadit on six platforms, troubleshoot common download issues, and find answers to frequently asked questions.",
     title: "How can we help?",
     subtitle: "Everything you need to know about using Downloadit.",
     s1title: "Getting started",
     steps: [
-      "Copy the URL of publicly accessible Instagram content.",
+      "Copy the URL of a publicly accessible post, video, Reel or Pin.",
       "Open Downloadit in your browser.",
       "Select the right content type tab if needed.",
       "Paste the URL into the input box.",
@@ -279,10 +279,10 @@ export const en: Strings = {
     ],
     s2title: "Supported content",
     s2note:
-      "Availability depends on whether the content is publicly accessible and supported by the current backend. Not every Instagram URL will work, and private content is never supported.",
+      "Availability depends on the platform, the media type and whether the content is publicly accessible. Not every URL will work, and private content is never supported.",
     s3title: "How Downloadit works",
     s3desc:
-      "Paste a link and Downloadit detects the content, shows you a preview, and lets you download it. Everything happens through public links — no login needed.",
+      "Paste a link and Downloadit detects the content, shows you a preview, and lets you download it. The same workflow covers Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads through public links — no login needed.",
     flow: ["Link", "Content Detection", "Media Preview", "Download"],
     s4title: "Audio download",
     s4steps: [
@@ -305,7 +305,7 @@ export const en: Strings = {
       },
       {
         q: "Why can't I download private content?",
-        a: "Downloadit only supports publicly accessible content and never bypasses private restrictions. Never share your Instagram password or session cookies.",
+        a: "Downloadit only supports publicly accessible content and never bypasses private restrictions. Never share your social-media password or session cookies.",
       },
       {
         q: "Why is audio extraction unavailable?",
@@ -318,7 +318,7 @@ export const en: Strings = {
     ],
     s6title: "Privacy & safety",
     privacy: [
-      "Downloadit never asks for your Instagram password.",
+      "Downloadit never asks for your social-media password.",
       "Only download content you are authorized to use.",
       "Private access controls are never bypassed.",
       "Media links may be temporary.",
@@ -328,16 +328,16 @@ export const en: Strings = {
     faq: [
       { q: "Is Downloadit free?", a: "Yes, Downloadit is free to use." },
       {
-        q: "Do I need an Instagram login?",
+        q: "Do I need an account on the source platform?",
         a: "No. Everything works through public links with no login.",
       },
       {
-        q: "Can I download private Instagram content?",
+        q: "Can I download private content?",
         a: "No. Only publicly accessible content is supported.",
       },
       {
         q: "Which content types are supported?",
-        a: "Reels, videos, carousels, stories and audio extraction from videos.",
+        a: "Instagram Reels, videos, photos, carousels, Stories and MP3 audio; Pinterest videos and images; YouTube video and audio; Facebook and Twitter/X video; Threads video and photos.",
       },
       {
         q: "Why did my media link expire?",
@@ -352,7 +352,7 @@ export const en: Strings = {
         a: "Check that the link is complete, public, and of a supported type, then try again.",
       },
       {
-        q: "Is my Instagram password required?",
+        q: "Is my social-media password required?",
         a: "Never. Downloadit will never ask for your password or cookies.",
       },
       {

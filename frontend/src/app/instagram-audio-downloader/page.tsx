@@ -3,67 +3,25 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
-  ShieldCheck,
   Zap,
   Sparkles,
   ArrowRight,
   Monitor,
-  HelpCircle,
-  Repeat,
   Lock,
-  Layers,
   HeartHandshake,
   Image as ImageIcon,
-  Music,
   Clock,
   Radio,
-  Volume2,
 } from "lucide-react";
 
 const PAGE = TOOL_PAGES.instagramAudio;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Instagram Audio Downloader – Extract Reels & Video Audio to MP3 | Downloadit",
-  },
-  description:
-    "Extract and download audio from Instagram Reels and videos as MP3 with Downloadit. Free online Instagram to MP3 converter with high quality audio.",
-  alternates: {
-    canonical: "https://downloadit.pro/instagram-audio-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Instagram Audio Downloader – Extract Reels & Video Audio to MP3 | Downloadit",
-    description:
-      "Extract and download audio from Instagram Reels and videos as MP3 with Downloadit. Free online Instagram to MP3 converter with high quality audio.",
-    url: "https://downloadit.pro/instagram-audio-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Instagram Audio Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Instagram Audio Downloader – Extract Reels & Video Audio to MP3 | Downloadit",
-    description:
-      "Extract and download audio from Instagram Reels and videos as MP3 with Downloadit. Free online Instagram to MP3 converter with high quality audio.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -88,7 +46,7 @@ const FAQS = [
   },
   {
     q: "Is Downloadit Instagram Audio Downloader free?",
-    a: "Yes, our audio extraction tool is 100% free and unlimited. You can convert and download as many Instagram soundtracks and audio clips as you need without paying any fees or subscriptions.",
+    a: "Yes. Downloadit does not charge for audio extraction and requires no account or subscription. You can convert public Instagram audio for personal use.",
   },
   {
     q: "Do I need to install any software or browser extensions?",
@@ -96,11 +54,11 @@ const FAQS = [
   },
   {
     q: "Does Downloadit store or archive extracted audio files?",
-    a: "No. Downloadit does not store, archive, or retain any converted audio tracks. Files are streamed dynamically to your browser and purged immediately to protect user privacy.",
+    a: "No. Downloadit does not keep a library of converted audio. The extracted MP3 is returned to your browser for download and is not published elsewhere by us.",
   },
   {
-    q: "Which devices and browsers are supported?",
-    a: "Downloadit works across iPhone, iPad, Android phones, Windows PCs, Mac, and Linux systems using Chrome, Safari, Firefox, Edge, or Samsung Internet.",
+    q: "Can I extract Instagram audio on my phone?",
+    a: "Yes. The tool runs in mobile Safari on iPhone and in Chrome or Samsung Internet on Android. The MP3 is saved to your browser's Downloads folder, where you can play it or move it into a music app.",
   },
 ];
 
@@ -108,14 +66,14 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Reels Downloader",
     href: "/instagram-reels-downloader",
-    desc: "Download vertical short-form reels in 1080p HD MP4 with original audio and zero watermark.",
+    desc: "Download vertical short-form Reels in the highest MP4 quality available from the post.",
     icon: Film,
     badge: "Trending",
   },
   {
     title: "Instagram Video Downloader",
     href: "/instagram-video-downloader",
-    desc: "Save regular feed videos, long clips, and IGTV videos in full HD MP4.",
+    desc: "Save regular feed videos and longer clips in the available MP4 quality.",
     icon: Film,
     badge: "All Formats",
   },
@@ -142,12 +100,12 @@ export default function AudioDownloaderPage() {
     name: "Instagram Audio Downloader – Extract Reels & Video Audio to MP3",
     description:
       "Extract and download audio from Instagram Reels and videos as MP3 with Downloadit. Free online Instagram to MP3 converter with high quality audio.",
-    url: "https://downloadit.pro/instagram-audio-downloader",
+    url: "https://www.downloadit.pro/instagram-audio-downloader",
     inLanguage: "en-US",
     isPartOf: {
       "@type": "WebSite",
       name: "Downloadit",
-      url: "https://downloadit.pro",
+      url: "https://www.downloadit.pro",
     },
   };
 
@@ -155,7 +113,7 @@ export default function AudioDownloaderPage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Downloadit Instagram Audio Downloader",
-    url: "https://downloadit.pro/instagram-audio-downloader",
+    url: "https://www.downloadit.pro/instagram-audio-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
     offers: {
@@ -169,7 +127,7 @@ export default function AudioDownloaderPage() {
       "High quality audio bitrate up to 320 kbps",
       "No account login or registration required",
       "Compatible with iPhone, Android, PC, and Mac",
-      "100% free with unlimited conversions",
+      "Free to use without an account",
     ],
   };
 
@@ -181,19 +139,19 @@ export default function AudioDownloaderPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://downloadit.pro",
+        item: "https://www.downloadit.pro",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Instagram Downloader",
-        item: "https://downloadit.pro/instagram-video-downloader",
+        item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Instagram Audio Downloader",
-        item: "https://downloadit.pro/instagram-audio-downloader",
+        item: "https://www.downloadit.pro/instagram-audio-downloader",
       },
     ],
   };
@@ -446,20 +404,20 @@ export default function AudioDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <Lock className="h-5 w-5 text-primary" />
-                  <span>100% Anonymous</span>
+                  <span>No Login Required</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  No Instagram account login or personal data required. Total privacy guaranteed.
+                  No Instagram account login or personal data required.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <HeartHandshake className="h-5 w-5 text-primary" />
-                  <span>Free &amp; Unlimited</span>
+                  <span>Free to Use</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  No daily conversion caps, subscriptions, or hidden paywalls.
+                  No subscription or account required to extract audio.
                 </p>
               </div>
 
@@ -527,7 +485,7 @@ export default function AudioDownloaderPage() {
                 href="/"
                 className="inline-flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-primary transition-colors"
               >
-                <span>&larr; Back to all Downloadit tools (YouTube, Pinterest, Facebook, Twitter/X, Threads)</span>
+                <span>&larr; Back to all Downloadit tools (Pinterest, Facebook, Twitter/X, Threads)</span>
               </Link>
             </div>
           </section>

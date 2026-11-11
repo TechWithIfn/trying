@@ -5,14 +5,13 @@ import {
   getYtDlpVersion,
   isYtDlpAvailable,
   isYtDlpVersionOutdated,
-} from "../lib/youtube/ytdlp.js";
+} from "../lib/ytdlp.js";
 import {
   getBinarySource,
   getMaterializeError,
   stagedBinaryInventory,
   stagedGzipInfo,
 } from "../lib/media-binary.js";
-import { youtubeRestrictionSnapshot } from "../lib/youtube/restriction.js";
 import { audioProviderStatus } from "../lib/audio-provider.js";
 import { capacitySnapshot } from "../lib/capacity.js";
 import { getResolverPoolSnapshot } from "../lib/resolver-pool.js";
@@ -85,8 +84,6 @@ router.get("/ready", async (_req: Request, res: Response) => {
   res.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "draining",
     engineReady: ffmpegAvailable && ytDlpAvailable,
-    // Active YouTube IP restriction (process-local) and its remaining window.
-    youtubeRestriction: youtubeRestrictionSnapshot(),
     provider: providerName,
     build,
     buildVersion: build,
@@ -156,9 +153,6 @@ router.get("/media", async (_req: Request, res: Response) => {
     ytDlpVersion: getYtDlpVersion(),
     ytDlpOutdated: isYtDlpVersionOutdated(),
     ytDlpSource: getBinarySource("yt-dlp"),
-    // Process-local circuit breaker: proves whether YouTube is currently
-    // blocking this host and how long until the next allowed attempt.
-    youtubeRestriction: youtubeRestrictionSnapshot(),
     // Names only (no paths): proves what the deployment bundle contained.
     stagedFiles: stagedBinaryInventory(),
     // Archive diagnostics: proves the staged ffmpeg.gz exists and is intact,

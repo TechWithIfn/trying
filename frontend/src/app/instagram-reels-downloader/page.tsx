@@ -3,21 +3,16 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
-  ShieldCheck,
   Zap,
   Sparkles,
   ArrowRight,
   Monitor,
-  HelpCircle,
-  Repeat,
   Lock,
-  Layers,
   HeartHandshake,
   Image as ImageIcon,
   Music,
@@ -27,42 +22,7 @@ import {
 
 const PAGE = TOOL_PAGES.instagramReels;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Instagram Reels Downloader – Download Reels Videos in HD | Downloadit",
-  },
-  description:
-    "Download Instagram Reels videos in high definition with audio using Downloadit. Free, fast and unlimited online Instagram Reels downloader. No watermark.",
-  alternates: {
-    canonical: "https://downloadit.pro/instagram-reels-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Instagram Reels Downloader – Download Reels Videos in HD | Downloadit",
-    description:
-      "Download Instagram Reels videos in high definition with audio using Downloadit. Free, fast and unlimited online Instagram Reels downloader. No watermark.",
-    url: "https://downloadit.pro/instagram-reels-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Instagram Reels Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Instagram Reels Downloader – Download Reels Videos in HD | Downloadit",
-    description:
-      "Download Instagram Reels videos in high definition with audio using Downloadit. Free, fast and unlimited online Instagram Reels downloader. No watermark.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -87,7 +47,7 @@ const FAQS = [
   },
   {
     q: "Is Downloadit Instagram Reels Downloader free?",
-    a: "Yes, Downloadit is 100% free with unlimited usage. You can download as many Instagram Reels as you want without paying subscription fees, purchasing tokens, or encountering daily download limits.",
+    a: "Yes. Downloadit does not charge for Reels downloads and requires no account or subscription. You can save public Reels for personal use without a paywall.",
   },
   {
     q: "Do I need an Instagram account or login to download Reels?",
@@ -106,8 +66,8 @@ const FAQS = [
     a: "No. Downloadit does not host, duplicate, or archive any videos on its servers. All downloads are fetched and streamed directly from Instagram's public edge delivery endpoints to your browser session in real time.",
   },
   {
-    q: "Which devices and browsers are supported?",
-    a: "Downloadit works across all modern operating systems and web browsers, including iOS (Safari, Chrome), Android (Chrome, Firefox, Samsung Internet), macOS, Windows, Linux, and iPadOS. No browser plugins or APK installations are required.",
+    q: "Can I save Instagram Reels on iPhone or Android?",
+    a: "Yes. On iPhone, use Safari, save the MP4, then open the file and choose 'Save Video' to add it to Photos. On Android, the file is saved to your browser's Downloads folder and appears in Gallery or Google Photos. No app or extension is needed.",
   },
 ];
 
@@ -115,7 +75,7 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Video Downloader",
     href: "/instagram-video-downloader",
-    desc: "Save regular feed videos, long clips, and IGTV videos in full HD MP4.",
+    desc: "Save regular feed videos and longer clips in the available MP4 quality.",
     icon: Film,
     badge: "All Formats",
   },
@@ -136,7 +96,7 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Audio Downloader",
     href: "/instagram-audio-downloader",
-    desc: "Extract background tracks, trending sounds, and voiceovers to high-bitrate MP3.",
+    desc: "Extract background tracks, trending sounds, and voiceovers as MP3 audio.",
     icon: Music,
     badge: "MP3 Audio",
   },
@@ -148,13 +108,13 @@ export default function ReelsDownloaderPage() {
     "@type": "WebPage",
     name: "Instagram Reels Downloader – Download Reels Videos in HD",
     description:
-      "Download Instagram Reels videos in high definition with audio using Downloadit. Free, fast and unlimited online Instagram Reels downloader. No watermark.",
-    url: "https://downloadit.pro/instagram-reels-downloader",
+      "Download Instagram Reels videos with audio using Downloadit. Free online Instagram Reels downloader for public posts, with no account required.",
+    url: "https://www.downloadit.pro/instagram-reels-downloader",
     inLanguage: "en-US",
     isPartOf: {
       "@type": "WebSite",
       name: "Downloadit",
-      url: "https://downloadit.pro",
+      url: "https://www.downloadit.pro",
     },
   };
 
@@ -162,7 +122,7 @@ export default function ReelsDownloaderPage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Downloadit Instagram Reels Downloader",
-    url: "https://downloadit.pro/instagram-reels-downloader",
+    url: "https://www.downloadit.pro/instagram-reels-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
     offers: {
@@ -188,19 +148,19 @@ export default function ReelsDownloaderPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://downloadit.pro",
+        item: "https://www.downloadit.pro",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Instagram Downloader",
-        item: "https://downloadit.pro/instagram-video-downloader",
+        item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Instagram Reels Downloader",
-        item: "https://downloadit.pro/instagram-reels-downloader",
+        item: "https://www.downloadit.pro/instagram-reels-downloader",
       },
     ],
   };
@@ -437,7 +397,7 @@ export default function ReelsDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <Film className="h-5 w-5 text-primary" />
-                  <span>Zero Watermark</span>
+                  <span>No Added Watermark</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
                   Clean files without superimposed logos, handles, or third-party promo graphics.
@@ -477,10 +437,10 @@ export default function ReelsDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <HeartHandshake className="h-5 w-5 text-primary" />
-                  <span>Free &amp; Unlimited</span>
+                  <span>Free to Use</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  Download as many reels as you want without rate limits, subscription paywalls, or hidden costs.
+                  No subscription or account required to save public Reels.
                 </p>
               </div>
             </div>
@@ -538,7 +498,7 @@ export default function ReelsDownloaderPage() {
                 href="/"
                 className="inline-flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-primary transition-colors"
               >
-                <span>&larr; Back to all Downloadit tools (YouTube, Pinterest, Facebook, Twitter/X, Threads)</span>
+                <span>&larr; Back to all Downloadit tools (Pinterest, Facebook, Twitter/X, Threads)</span>
               </Link>
             </div>
           </section>

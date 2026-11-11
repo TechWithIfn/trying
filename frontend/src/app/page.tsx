@@ -63,6 +63,20 @@ export default function Home() {
           }),
         }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "@id": `${SITE_URL}/#website`,
+            url: SITE_URL,
+            name: BRAND_NAME,
+            description: BRAND_DESCRIPTION,
+            inLanguage: "en-US",
+          }),
+        }}
+      />
     </>
   );
 }

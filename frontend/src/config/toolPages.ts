@@ -61,10 +61,6 @@ export interface PinterestToolPage extends BaseToolPage {
   modes: PinterestMode[];
 }
 
-export interface YouTubeToolPage extends BaseToolPage {
-  platform: "youtube";
-}
-
 export interface FacebookToolPage extends BaseToolPage {
   platform: "facebook";
 }
@@ -80,7 +76,6 @@ export interface ThreadsToolPage extends BaseToolPage {
 export type ToolPageConfig =
   | InstagramToolPage
   | PinterestToolPage
-  | YouTubeToolPage
   | FacebookToolPage
   | TwitterToolPage
   | ThreadsToolPage;
@@ -94,14 +89,14 @@ export const TOOL_PAGES = {
     titleB: "Downloader",
     badge: "Instagram Reels Downloader · Free & Fast",
     description:
-      "Save public Instagram Reels as MP4 with original audio. Paste any public Reel link, preview in HD, and download without an account.",
+      "Save public Instagram Reels as MP4 with original audio. Paste any public Reel link, preview the available quality, and download without an account.",
     placeholder: "Paste link",
     buttonLabel: "Download Reel",
     initialTab: "reels",
     trust: ["No account required", "Public Reels only", "Preview before saving"],
-    seoTitle: "Instagram Reels Downloader – Download Reels Videos in HD | Downloadit",
+    seoTitle: "Instagram Reels Downloader – Save Reels as MP4 | Downloadit",
     seoDescription:
-      "Download public Instagram Reels online for free with Downloadit. Save high-definition vertical MP4 Reels with clean audio. Fast, mobile-friendly, no login required.",
+      "Download public Instagram Reels as MP4 with the original audio. Paste a Reel link, preview the available quality and save it free — no login or app required.",
   },
   instagramVideo: {
     platform: "instagram",
@@ -116,9 +111,9 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Media",
     initialTab: "videos",
     trust: ["No account required", "Public media only", "Preview before saving"],
-    seoTitle: "Instagram Downloader – Reels, Stories, Videos, Photos & Audio | Downloadit",
+    seoTitle: "Instagram Downloader – Reels, Videos, Photos & Stories | Downloadit",
     seoDescription:
-      "Download Instagram Reels, Stories, Videos, Photos and Carousel posts online with Downloadit. Save supported Instagram media and extract audio as MP3 for free.",
+      "Download public Instagram media with one tool: Reels, videos, photos, carousels, Stories and MP3 audio. Paste a link, preview the result and save. No login.",
   },
   instagramPhoto: {
     platform: "instagram",
@@ -133,9 +128,9 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Photo",
     initialTab: "photos",
     trust: ["No account required", "Public posts only", "Original image quality"],
-    seoTitle: "Instagram Photo & Carousel Downloader – Save Images & Slides | Downloadit",
+    seoTitle: "Instagram Photo & Carousel Downloader – Save Images | Downloadit",
     seoDescription:
-      "Download Instagram photos and multi-slide carousel posts in original high resolution. Save single images or all slides as JPEG for free. No login required.",
+      "Download public Instagram photos and carousel slides at the resolution Instagram provides. Save a single image or every slide as JPEG. Free, no login required.",
   },
   instagramStory: {
     platform: "instagram",
@@ -145,14 +140,14 @@ export const TOOL_PAGES = {
     titleB: "Downloader",
     badge: "Instagram Story Downloader · Free & Fast",
     description:
-      "Save public Instagram Stories before they expire. Paste a Story link and download Story videos as MP4 or Story photos in HD — free, no login required.",
+      "Save public Instagram Stories before they expire. Paste a Story link and download Story videos as MP4 or Story photos at the available resolution — free, no login required.",
     placeholder: "Paste link",
     buttonLabel: "Download Story",
     initialTab: "stories",
     trust: ["No account required", "Live public Stories only", "Save within 24 hours"],
-    seoTitle: "Instagram Story Downloader – Save Stories Online | Downloadit",
+    seoTitle: "Instagram Story Downloader – Save Public Stories | Downloadit",
     seoDescription:
-      "Download public Instagram Stories anonymously before they expire. Save Story videos as MP4 and Story photos in original quality. Free, no login required.",
+      "Download public Instagram Stories while they are still live. Save Story photos as JPEG or videos as MP4 before the 24-hour window closes. No login required.",
   },
   instagramAudio: {
     platform: "instagram",
@@ -167,9 +162,9 @@ export const TOOL_PAGES = {
     buttonLabel: "Extract Audio",
     initialTab: "audio",
     trust: ["No account required", "Public Reels and videos only", "Full track as MP3"],
-    seoTitle: "Instagram Audio Downloader – Extract Reels & Video Audio to MP3 | Downloadit",
+    seoTitle: "Instagram Audio Downloader – Reels & Video to MP3 | Downloadit",
     seoDescription:
-      "Extract sound and music from public Instagram Reels and videos as high-quality MP3. Free online Instagram to MP3 converter with no software installation.",
+      "Extract audio from public Instagram Reels and videos as an MP3. Paste a link, preview the media and download the sound track. Free, no software, no login.",
   },
   pinterestVideo: {
     platform: "pinterest",
@@ -179,7 +174,7 @@ export const TOOL_PAGES = {
     titleB: "Downloader",
     badge: "Pinterest Video Downloader · Free & Easy",
     description:
-      "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
+      "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no added watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
     placeholder: "Paste link",
     buttonLabel: "Download Pin",
     modes: ["any"],
@@ -189,9 +184,9 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Preview before downloading",
     ],
-    seoTitle: "Pinterest Video Downloader – Download Pinterest Videos & Images | Downloadit",
+    seoTitle: "Pinterest Video Downloader – Save Public Video Pins | Downloadit",
     seoDescription:
-      "Download Pinterest videos and images online for free with Downloadit. Save public Pinterest Pins as MP4 videos or images, including supported carousel media. No login required.",
+      "Download public Pinterest video Pins as MP4. Paste a Pin link, preview the available media and save the video file. Free to use, no login or extension needed.",
   },
   pinterestImage: {
     platform: "pinterest",
@@ -211,30 +206,9 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Original image quality",
     ],
-    seoTitle: "Pinterest Image & Carousel Downloader – Save Pins & Slides | Downloadit",
+    seoTitle: "Pinterest Image Downloader – Save Images in High Resolution | Downloadit",
     seoDescription:
-      "Download Pinterest images and multi-photo carousel Pins online with Downloadit. Save high-resolution JPEG pictures directly from public Pins for free. No login needed.",
-  },
-  youtubeVideo: {
-    platform: "youtube",
-    path: "/youtube-video-downloader",
-    name: "YouTube Video Downloader",
-    titleA: "YouTube Video ",
-    titleB: "Downloader",
-    badge: "YouTube Video Downloader · Free & Easy",
-    description:
-      "Paste a public YouTube video link, choose an available quality up to 1080p, and download MP4 — or extract the audio as MP3 or M4A. No account, no watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste link",
-    buttonLabel: "Get Video",
-    trust: [
-      "Free to use",
-      "No account required",
-      "Public videos only",
-      "MP4 video or MP3/M4A audio",
-    ],
-    seoTitle: "YouTube Video Downloader – Download Videos in Supported Quality | Downloadit",
-    seoDescription:
-      "Free YouTube video downloader. Paste a public YouTube link, choose an available MP4 quality (up to 1080p), or extract the audio as MP3. No login, no app, no watermark added.",
+      "Download images from public Pinterest Pins, including supported carousel slides. Paste a Pin link, preview the pictures and save them in the format provided.",
   },
   facebookVideo: {
     platform: "facebook",
@@ -248,9 +222,9 @@ export const TOOL_PAGES = {
     placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: ["Public videos only", "No login required", "Preview before saving"],
-    seoTitle: "Facebook Video Downloader – Download FB Videos in HD | Downloadit",
+    seoTitle: "Facebook Video Downloader – Save Public FB Videos | Downloadit",
     seoDescription:
-      "Download Facebook videos online for free with Downloadit.pro. Paste a public Facebook video or Reel link, preview available media and save supported HD MP4 quality. No login required.",
+      "Download publicly accessible Facebook videos and Reels as MP4. Paste a post link, preview the available media and save it without a Facebook login.",
   },
   twitterVideo: {
     platform: "twitter",
@@ -264,9 +238,9 @@ export const TOOL_PAGES = {
     placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: ["Public posts only", "No login required", "Preview before saving"],
-    seoTitle: "Twitter Video Downloader – Download X Videos in MP4 HD | Downloadit",
+    seoTitle: "Twitter/X Video Downloader – Save Videos as MP4 | Downloadit",
     seoDescription:
-      "Download Twitter (X) videos online for free with Downloadit. Save public X videos as MP4 in available quality. Fast, easy, mobile-friendly and no login required.",
+      "Download videos and animated GIFs from public Twitter/X posts as MP4. Paste a post link, preview the available media and save it without an account.",
   },
   threadsVideo: {
     platform: "threads",
@@ -280,9 +254,9 @@ export const TOOL_PAGES = {
     placeholder: "Paste link",
     buttonLabel: "Get Media",
     trust: ["Public posts only", "No login required", "Video and images supported"],
-    seoTitle: "Threads Video Downloader – Download Threads Videos in HD | Downloadit",
+    seoTitle: "Threads Video Downloader – Save Videos & Photos | Downloadit",
     seoDescription:
-      "Download Threads videos online for free with Downloadit. Paste a public Threads post link, preview available media and save videos in supported MP4 quality. No login required.",
+      "Download videos and photos from public Threads posts. Paste a Threads link, preview the available media and save it to your device without logging in.",
   },
 } as const satisfies Record<string, ToolPageConfig>;
 

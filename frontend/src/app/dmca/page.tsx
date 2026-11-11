@@ -40,7 +40,7 @@ export default function DmcaPage() {
       <p>
         Downloadit respects the intellectual property rights of others.
         Downloadit only processes publicly available links: paste a link, and
-        the service resolves media that Instagram, Pinterest, YouTube, Facebook or X already serves publicly. It
+        the service resolves media that Instagram, Pinterest, Facebook or X already serves publicly. It
         does not host any media files, does not store copies of
         anyone&apos;s content, and does not bypass logins, private profiles,
         or platform access controls.

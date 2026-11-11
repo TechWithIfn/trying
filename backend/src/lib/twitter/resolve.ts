@@ -6,7 +6,7 @@ import {
   runYtDlp,
   YtDlpAbortedError,
   YtDlpProcessError,
-} from "../youtube/ytdlp.js";
+} from "../ytdlp.js";
 
 /**
  * Twitter/X extraction with yt-dlp.

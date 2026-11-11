@@ -59,7 +59,7 @@ export default function AdvertiseWithUsPage() {
           <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
             <p>
               Downloadit is a free tool people use to save public media from Instagram,
-              Pinterest and YouTube. If your product or service fits that audience,
+              Pinterest . If your product or service fits that audience,
               advertising on Downloadit puts your message in front of them while they
               download.
             </p>

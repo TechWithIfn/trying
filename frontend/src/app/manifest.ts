@@ -2,9 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Downloadit — Instagram Media Downloader",
+    name: "Downloadit — Multi-Platform Media Downloader",
     short_name: "Downloadit",
-    description: "Download public Instagram videos, Reels and carousels with Downloadit.",
+    description:
+      "Download public videos, photos and audio from Instagram, Pinterest, Facebook, Twitter/X and Threads.",
     start_url: "/",
     display: "standalone",
     background_color: "#f5f4fa",

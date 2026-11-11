@@ -17,11 +17,11 @@ const FAQS = [
   },
   {
     q: "Which video qualities are available?",
-    a: "Downloadit offers all real resolutions provided by the source video, including 1080p Full HD, 720p HD, 480p, and 360p. We never invent fake 4K or 8K options when the underlying YouTube stream only exists in 1080p.",
+    a: "Downloadit offers the real resolutions provided by the source video, including 1080p Full HD, 720p HD, 480p, and 360p where available. We do not invent fake 4K or 8K options when the underlying YouTube stream only exists in 1080p.",
   },
   {
     q: "Does audio downloading work for YouTube videos?",
-    a: "Yes. You can extract crystal-clear audio tracks as standalone MP3 or M4A files at bitrates up to 320 kbps for podcasts, speeches, and offline audio listening.",
+    a: "Yes. You can extract the audio track as a standalone MP3 or M4A file, with MP3 bitrates selectable from 64 to 320 kbps for offline listening.",
   },
   {
     q: "Can I download private or age-restricted YouTube videos?",
@@ -32,6 +32,73 @@ const FAQS = [
     a: "None whatsoever. Downloadit is completely web-based and runs in any modern browser on iPhone, Android, Windows, Mac, and Chromebooks.",
   },
 ];
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://www.downloadit.pro/youtube-video-downloader/#webpage",
+      url: "https://www.downloadit.pro/youtube-video-downloader",
+      name: "YouTube Video Downloader – MP4 Video & MP3 Audio | Downloadit",
+      description:
+        "Download public YouTube videos in an available MP4 quality up to 1080p, or extract the audio as MP3 or M4A. Paste a link, preview and save. No login required.",
+      inLanguage: "en",
+      isPartOf: {
+        "@id": "https://www.downloadit.pro/#website",
+      },
+      breadcrumb: {
+        "@id": "https://www.downloadit.pro/youtube-video-downloader/#breadcrumbs",
+      },
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://www.downloadit.pro/youtube-video-downloader/#app",
+      name: "Downloadit YouTube Video Downloader",
+      url: "https://www.downloadit.pro/youtube-video-downloader",
+      applicationCategory: "UtilitiesApplication",
+      operatingSystem: "Web Browser",
+      inLanguage: "en",
+      description:
+        "Free online tool to download public YouTube videos and Shorts as MP4, or extract audio as MP3 or M4A.",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://www.downloadit.pro/youtube-video-downloader/#breadcrumbs",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: "https://www.downloadit.pro",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "YouTube Video Downloader",
+          item: "https://www.downloadit.pro/youtube-video-downloader",
+        },
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://www.downloadit.pro/youtube-video-downloader/#faq",
+      mainEntity: FAQS.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.a,
+        },
+      })),
+    },
+  ],
+};
 
 export default function YouTubeVideoPageClient() {
   return (
@@ -73,10 +140,10 @@ export default function YouTubeVideoPageClient() {
                 <h3 className="text-[20px] font-bold text-fg mb-4">Features &amp; Benefits</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { title: "No Watermarks or Overlays", desc: "Enjoy clean video without promotional branding or altered pixels." },
-                    { title: "Shorts & Standard Videos", desc: "Seamlessly handles youtube.com/watch, youtu.be, and youtube.com/shorts URLs." },
-                    { title: "Audio Extraction Included", desc: "Easily extract high-quality MP3 sound without needing separate audio tools." },
-                    { title: "Private & Free", desc: "No registration, no tracking cookies, and no download limits." },
+                    { title: "No Watermarks or Overlays", desc: "Saved videos keep the source stream without a Downloadit watermark or overlay." },
+                    { title: "Shorts & Standard Videos", desc: "Handles youtube.com/watch, youtu.be, and youtube.com/shorts URLs." },
+                    { title: "Audio Extraction Included", desc: "Extract MP3 or M4A audio without a separate conversion tool." },
+                    { title: "Private & Free", desc: "No registration or account required, and no payment details to enter." },
                   ].map((item) => (
                     <div key={item.title} className="flex gap-3 rounded-xl border border-border/80 bg-card p-4">
                       <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />
@@ -139,7 +206,35 @@ export default function YouTubeVideoPageClient() {
               <div>
                 <h3 className="text-[20px] font-bold text-fg mb-3">How Does It Work?</h3>
                 <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
-                  When you paste a YouTube link, Downloadit analyzes the video metadata via our robust server backend, queries YouTube&apos;s available DASH and progressive media streams, and merges high-resolution video with AAC audio into a clean MP4 file ready for download.
+                  When you paste a YouTube link, Downloadit analyzes the video metadata on its server, queries the available DASH and progressive media streams, and combines the chosen video rendition with audio into a playable MP4 file. For audio downloads, the soundtrack is extracted and encoded as MP3 or M4A instead.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">MP4 Quality Options and Why They Vary</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  YouTube stores each upload in several resolutions. The downloader lists the options that exist for that specific video, so a 1080p upload can offer 1080p, 720p, 480p, and 360p, while an older or lower-resolution upload may top out at 720p or 480p. The saved file is not upscaled: if the source has no 4K stream, no 4K option is shown.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">Downloading YouTube Shorts</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Shorts use a vertical 9:16 layout, and their public links follow the <code className="text-xs bg-bg px-1.5 py-0.5 rounded border border-border">youtube.com/shorts/</code> pattern. Paste that link exactly as copied from the Share menu; the downloader resolves it the same way as a standard watch page and returns an MP4 with the original audio.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">MP3 vs M4A Audio</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  MP3 is the most broadly compatible choice for music players, ringtones, and older devices, with selectable bitrates from 64 to 320 kbps. M4A keeps audio in an AAC container, which is efficient on Apple devices and in many editing apps. Both are extracted from the video&apos;s audio track rather than re-recorded from the speakers.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[20px] font-bold text-fg mb-3">What Downloadit Cannot Download</h3>
+                <p className="text-[15px] sm:text-[16px] leading-[1.75] text-fg-muted">
+                  Private videos, age-restricted content, members-only posts, and videos that require a YouTube login are outside the tool&apos;s reach. Active live streams usually become downloadable only after the broadcast ends and YouTube publishes the final recording. Downloadit also cannot bypass copyright or region restrictions.
                 </p>
               </div>
             </div>
@@ -189,15 +284,7 @@ export default function YouTubeVideoPageClient() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: FAQS.map((item) => ({
-              "@type": "Question",
-              name: item.q,
-              acceptedAnswer: { "@type": "Answer", text: item.a },
-            })),
-          }),
+          __html: JSON.stringify(structuredData),
         }}
       />
     </>

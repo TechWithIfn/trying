@@ -3,65 +3,24 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PinterestDownloader from "@/components/PinterestDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
-  ShieldCheck,
   Zap,
   Sparkles,
   ArrowRight,
   Monitor,
-  HelpCircle,
-  Repeat,
   Lock,
   Layers,
   HeartHandshake,
   Image as ImageIcon,
-  Play,
-  Download,
 } from "lucide-react";
 
 const PAGE = TOOL_PAGES.pinterestVideo;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Pinterest Video Downloader – Download Pinterest Videos & Images | Downloadit",
-  },
-  description:
-    "Download Pinterest videos and images online for free with Downloadit. Save public Pinterest Pins as MP4 videos or images, including supported carousel media. No login required.",
-  alternates: {
-    canonical: "https://downloadit.pro/pinterest-video-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Pinterest Video Downloader – Download Pinterest Videos & Images | Downloadit",
-    description:
-      "Download Pinterest videos and images online for free with Downloadit. Save public Pinterest Pins as MP4 videos or images, including supported carousel media. No login required.",
-    url: "https://downloadit.pro/pinterest-video-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Pinterest Video Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pinterest Video Downloader – Download Pinterest Videos & Images | Downloadit",
-    description:
-      "Download Pinterest videos and images online for free with Downloadit. Save public Pinterest Pins as MP4 videos or images, including supported carousel media. No login required.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -94,7 +53,7 @@ const FAQS = [
   },
   {
     q: "Is Pinterest Video Downloader free?",
-    a: "Yes, Downloadit is 100% free with unlimited usage. You can download as many Pinterest video and image Pins as you need without subscriptions, paywalls, or daily limits.",
+    a: "Yes. Downloadit does not charge for Pinterest downloads and requires no account or subscription. You can save public video Pins and images for personal use.",
   },
   {
     q: "Do I need a Pinterest account to download videos?",
@@ -105,20 +64,8 @@ const FAQS = [
     a: "Yes. Downloadit is completely web-based and operates in your standard mobile or desktop web browser. You do not need to install APKs, iOS apps, or browser extensions.",
   },
   {
-    q: "How to download Pinterest images?",
-    a: "Paste any public Pinterest image Pin URL into Downloadit. Our tool identifies that the Pin is a picture and serves the uncompressed, original-resolution JPEG/PNG file directly from Pinterest servers.",
-  },
-  {
-    q: "How to save Pinterest photos in original quality?",
-    a: "Unlike taking screenshots that capture screen resolution and crop margins, Downloadit fetches the full-resolution master image (often up to 2000px+ height) directly from Pinterest's content delivery network.",
-  },
-  {
-    q: "How to download multiple images from a Pinterest Pin?",
-    a: "When a Pin is a carousel or multi-image collection, Downloadit parses the entire album and presents every individual image slide in the preview panel, allowing you to download each picture in original resolution.",
-  },
-  {
-    q: "Does Downloadit support Pinterest carousel images?",
-    a: "Yes. Our Pinterest resolver automatically unpacks multi-slide carousel Pins, displaying each slide with its own dedicated high-resolution download button.",
+    q: "Does Downloadit keep the audio track with Pinterest videos?",
+    a: "Yes. Pinterest's progressive MP4 renditions include their original audio, and Downloadit passes that stream through without removing or replacing the soundtrack.",
   },
   {
     q: "Why is my Pinterest video link not working?",
@@ -129,8 +76,8 @@ const FAQS = [
     a: "No. Downloadit strictly respects user privacy and platform security protocols. Content on secret boards, group boards requiring invite-only access, or private accounts cannot be retrieved.",
   },
   {
-    q: "Does Pinterest Downloader work on mobile?",
-    a: "Yes. Downloadit is fully responsive and optimized for mobile devices, working seamlessly across Chrome, Safari, Samsung Internet, and Firefox on Android and iOS.",
+    q: "Can I save Pinterest videos on a phone?",
+    a: "Yes. Open the page in Chrome or Samsung Internet on Android, or Safari on iPhone, paste the Pin link, and download the MP4. On iPhone, use Share > Save Video after the file finishes downloading to add it to Photos.",
   },
   {
     q: "Can I download Pinterest videos without a watermark?",
@@ -141,8 +88,8 @@ const FAQS = [
     a: "Downloadit delivers standard progressive MP4 video (H.264 video codec with AAC audio), ensuring maximum compatibility across all mobile phones, PCs, tablets, and video editing suites.",
   },
   {
-    q: "Why is Pinterest showing an unsupported Pin error?",
-    a: "If a Pin uses a restricted format (such as certain deprecated interactive widgets, story formats, or restricted ads) or is hosted on a secret board, the backend cannot retrieve a valid public MP4 or image stream. In such cases, an informative error message is displayed.",
+    q: "Why does a Pinterest video Pin fail to download?",
+    a: "A video Pin may fail if it sits on a secret board, has been deleted, uses a restricted interactive format, or is not actually a video. Paste the direct URL of an active public video Pin and try again; the page shows an error message when no public MP4 stream can be resolved.",
   },
 ];
 
@@ -153,12 +100,12 @@ export default function PinterestVideoDownloaderPage() {
     name: "Pinterest Video Downloader – Download Pinterest Videos & Images",
     description:
       "Download Pinterest videos and images online for free with Downloadit. Save public Pinterest Pins as MP4 videos or images, including supported carousel media. No login required.",
-    url: "https://downloadit.pro/pinterest-video-downloader",
+    url: "https://www.downloadit.pro/pinterest-video-downloader",
     inLanguage: "en-US",
     isPartOf: {
       "@type": "WebSite",
       name: "Downloadit",
-      url: "https://downloadit.pro",
+      url: "https://www.downloadit.pro",
     },
   };
 
@@ -166,7 +113,7 @@ export default function PinterestVideoDownloaderPage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Downloadit Pinterest Video Downloader",
-    url: "https://downloadit.pro/pinterest-video-downloader",
+    url: "https://www.downloadit.pro/pinterest-video-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
     offers: {
@@ -181,7 +128,7 @@ export default function PinterestVideoDownloaderPage() {
       "Supports mobile pin.it short links and desktop URLs",
       "Clean downloads with no added watermarks",
       "No account login or software installation required",
-      "100% free with unlimited downloads",
+      "Free to use without an account",
     ],
   };
 
@@ -193,13 +140,13 @@ export default function PinterestVideoDownloaderPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://downloadit.pro",
+        item: "https://www.downloadit.pro",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Pinterest Video Downloader",
-        item: "https://downloadit.pro/pinterest-video-downloader",
+        item: "https://www.downloadit.pro/pinterest-video-downloader",
       },
     ],
   };
@@ -517,7 +464,7 @@ export default function PinterestVideoDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <span>Zero Watermark</span>
+                  <span>No Added Watermark</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
                   Downloads pure source streams without adding watermarks, logos, or author overlays.
@@ -547,20 +494,20 @@ export default function PinterestVideoDownloaderPage() {
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <Lock className="h-5 w-5 text-primary" />
-                  <span>100% Anonymous</span>
+                  <span>No Login Required</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  No login, email, password, or account linking required. Complete privacy guaranteed.
+                  No login, email, password, or account linking required.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <HeartHandshake className="h-5 w-5 text-primary" />
-                  <span>Free &amp; Unlimited</span>
+                  <span>Free to Use</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  Save as many Pins as you need without rate limits, subscription fees, or hidden tokens.
+                  No subscription fee or account required to save public Pins.
                 </p>
               </div>
 
@@ -664,7 +611,7 @@ export default function PinterestVideoDownloaderPage() {
                     </span>
                   </div>
                   <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                    Download Instagram Reels, Stories, Videos, Photos, and Audio in HD MP4 with zero watermark.
+                    Download Instagram Reels, Stories, Videos, Photos, and Audio in the available MP4 quality, without an added watermark.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 text-primary text-[13px] font-semibold mt-4 pt-3 border-t border-border/50">
@@ -679,7 +626,7 @@ export default function PinterestVideoDownloaderPage() {
                 href="/"
                 className="inline-flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-primary transition-colors"
               >
-                <span>&larr; Back to all Downloadit tools (YouTube, Facebook, Twitter/X, Threads)</span>
+                <span>&larr; Back to all Downloadit tools (Facebook, Twitter/X, Threads)</span>
               </Link>
             </div>
           </section>

@@ -3,19 +3,15 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ToolDownloader from "@/components/ToolDownloader";
-import { TOOL_PAGES } from "@/config/toolPages";
+import { TOOL_PAGES, toolMetadata } from "@/config/toolPages";
 import {
-  CheckCircle2,
   ChevronDown,
   Film,
   Smartphone,
-  ShieldCheck,
   Zap,
   Sparkles,
   ArrowRight,
   Monitor,
-  HelpCircle,
-  Repeat,
   Lock,
   Layers,
   HeartHandshake,
@@ -26,42 +22,7 @@ import {
 
 const PAGE = TOOL_PAGES.instagramPhoto;
 
-export const metadata: Metadata = {
-  title: {
-    absolute: "Instagram Photo & Carousel Downloader – Save Images & Slides | Downloadit",
-  },
-  description:
-    "Download Instagram photos and carousel albums in full resolution with Downloadit. Save single pictures or all slides from multi-image posts for free online.",
-  alternates: {
-    canonical: "https://downloadit.pro/instagram-photo-downloader",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  openGraph: {
-    type: "website",
-    title: "Instagram Photo & Carousel Downloader – Save Images & Slides | Downloadit",
-    description:
-      "Download Instagram photos and carousel albums in full resolution with Downloadit. Save single pictures or all slides from multi-image posts for free online.",
-    url: "https://downloadit.pro/instagram-photo-downloader",
-    images: [
-      {
-        url: "/og-downloadit.png",
-        width: 1200,
-        height: 630,
-        alt: "Downloadit Instagram Photo and Carousel Downloader online tool",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Instagram Photo & Carousel Downloader – Save Images & Slides | Downloadit",
-    description:
-      "Download Instagram photos and carousel albums in full resolution with Downloadit. Save single pictures or all slides from multi-image posts for free online.",
-    images: ["/og-downloadit.png"],
-  },
-};
+export const metadata: Metadata = toolMetadata(PAGE);
 
 const FAQS = [
   {
@@ -70,7 +31,7 @@ const FAQS = [
   },
   {
     q: "How to download Instagram carousel posts?",
-    a: "Paste the URL of any multi-image or multi-slide carousel post into Downloadit. Our tool extracts every individual photo and video slide within the album. You can inspect each slide in the preview and download them individually or save the full collection.",
+    a: "Paste the URL of a multi-image or multi-slide carousel post into Downloadit. The tool lists every photo and video slide in the album so you can inspect each item and save the ones you need.",
   },
   {
     q: "Can I download all photos from a carousel at once?",
@@ -86,7 +47,7 @@ const FAQS = [
   },
   {
     q: "Is Downloadit Instagram Photo Downloader free?",
-    a: "Yes. Downloadit is completely free and unrestricted. There are no download quotas, subscription paywalls, or hidden charges. You can download as many single photos and carousel slides as you need.",
+    a: "Yes. Downloadit does not charge for photo downloads and does not require an account or subscription. You can save single photos and carousel slides for personal use.",
   },
   {
     q: "Do I need an Instagram account or login to download pictures?",
@@ -101,8 +62,8 @@ const FAQS = [
     a: "No. Downloadit does not host, duplicate, or store any images on our servers. All pictures are fetched on-the-fly directly from Instagram's content delivery network to your browser.",
   },
   {
-    q: "Which devices and browsers are supported?",
-    a: "Downloadit works across all devices, including Apple iPhone (Safari), Android phones (Chrome, Samsung Internet), iPadOS, Windows PCs, and Mac computers without requiring any software installation.",
+    q: "Can I save Instagram photos on a phone or tablet?",
+    a: "Yes. On iPhone or iPad, open the page in Safari, save the JPEG, then move it from Downloads into Photos if needed. On Android, the file goes to your browser's Downloads folder and usually appears in Gallery or Google Photos.",
   },
 ];
 
@@ -110,14 +71,14 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Reels Downloader",
     href: "/instagram-reels-downloader",
-    desc: "Download vertical short-form reels in 1080p HD MP4 with original audio and zero watermark.",
+    desc: "Download vertical short-form Reels in the highest MP4 quality available from the post.",
     icon: Film,
     badge: "Trending",
   },
   {
     title: "Instagram Video Downloader",
     href: "/instagram-video-downloader",
-    desc: "Save regular feed videos, long clips, and IGTV videos in full HD MP4.",
+    desc: "Save regular feed videos and longer clips in the available MP4 quality.",
     icon: Film,
     badge: "All Formats",
   },
@@ -131,7 +92,7 @@ const OTHER_TOOLS = [
   {
     title: "Instagram Audio Downloader",
     href: "/instagram-audio-downloader",
-    desc: "Extract background tracks, trending sounds, and voiceovers to high-bitrate MP3.",
+    desc: "Extract background tracks, trending sounds, and voiceovers as MP3 audio.",
     icon: Music,
     badge: "MP3 Audio",
   },
@@ -144,12 +105,12 @@ export default function PhotoDownloaderPage() {
     name: "Instagram Photo & Carousel Downloader – Save Images & Slides",
     description:
       "Download Instagram photos and carousel albums in full resolution with Downloadit. Save single pictures or all slides from multi-image posts for free online.",
-    url: "https://downloadit.pro/instagram-photo-downloader",
+    url: "https://www.downloadit.pro/instagram-photo-downloader",
     inLanguage: "en-US",
     isPartOf: {
       "@type": "WebSite",
       name: "Downloadit",
-      url: "https://downloadit.pro",
+      url: "https://www.downloadit.pro",
     },
   };
 
@@ -157,7 +118,7 @@ export default function PhotoDownloaderPage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "Downloadit Instagram Photo & Carousel Downloader",
-    url: "https://downloadit.pro/instagram-photo-downloader",
+    url: "https://www.downloadit.pro/instagram-photo-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
     offers: {
@@ -171,7 +132,7 @@ export default function PhotoDownloaderPage() {
       "Direct original JPEG images without extra compression",
       "Mixed carousel support for both photos and video clips",
       "No account login or registration required",
-      "100% free and unlimited downloads",
+      "Free to use without an account",
     ],
   };
 
@@ -183,19 +144,19 @@ export default function PhotoDownloaderPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://downloadit.pro",
+        item: "https://www.downloadit.pro",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Instagram Downloader",
-        item: "https://downloadit.pro/instagram-video-downloader",
+        item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: "Instagram Photo Downloader",
-        item: "https://downloadit.pro/instagram-photo-downloader",
+        item: "https://www.downloadit.pro/instagram-photo-downloader",
       },
     ],
   };
@@ -463,17 +424,17 @@ export default function PhotoDownloaderPage() {
                   <span>Anonymous &amp; Secure</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  No Instagram account connection or personal details required. Completely private.
+                  No Instagram account connection or personal details required.
                 </p>
               </div>
 
               <div className="rounded-2xl border border-border bg-card p-5 space-y-2">
                 <div className="flex items-center gap-2 text-primary font-bold text-[15px]">
                   <HeartHandshake className="h-5 w-5 text-primary" />
-                  <span>100% Free Forever</span>
+                  <span>Free to Use</span>
                 </div>
                 <p className="text-[13.5px] text-fg-muted leading-relaxed">
-                  Unlimited downloads with zero subscription fees, hidden charges, or rate limiting.
+                  No subscription fee or account required to save photos.
                 </p>
               </div>
             </div>
@@ -531,7 +492,7 @@ export default function PhotoDownloaderPage() {
                 href="/"
                 className="inline-flex items-center gap-2 text-sm font-medium text-fg-muted hover:text-primary transition-colors"
               >
-                <span>&larr; Back to all Downloadit tools (YouTube, Pinterest, Facebook, Twitter/X, Threads)</span>
+                <span>&larr; Back to all Downloadit tools (Pinterest, Facebook, Twitter/X, Threads)</span>
               </Link>
             </div>
           </section>

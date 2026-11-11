@@ -11,7 +11,6 @@ import {
   PinterestIcon,
   ThreadsIcon,
   TwitterIcon,
-  YouTubeIcon,
 } from "@/components/ToolCategoryDropdown";
 import {
   Download,
@@ -26,9 +25,16 @@ import {
   ChevronDown,
   ArrowRight,
   Sparkles,
+  AlertTriangle,
+  FileVideo,
+  FileImage,
+  FileAudio,
+  Lock,
+  Scale,
+  HelpCircle,
 } from "lucide-react";
 
-const POPULAR_DOWNLOADERS = [
+const SUPPORTED_PLATFORMS = [
   {
     name: "Instagram Downloader",
     shortName: "Instagram",
@@ -37,7 +43,8 @@ const POPULAR_DOWNLOADERS = [
     color: "#ec5fa8",
     badgeBg: "rgba(236, 95, 168, 0.12)",
     desc: "Download high-definition Reels, long video posts, swipe carousels, full-size photos, and live stories with original audio.",
-    mediaTypes: ["Reels (MP4)", "Videos", "Photos", "Carousels", "Stories", "Audio (MP3)"],
+    mediaTypes: ["Reels (MP4)", "Feed Videos", "Photos", "Carousels", "Stories", "Audio (MP3)"],
+    supportedUrls: "instagram.com/reel/, instagram.com/p/, instagram.com/stories/",
   },
   {
     name: "Pinterest Downloader",
@@ -46,18 +53,9 @@ const POPULAR_DOWNLOADERS = [
     Icon: PinterestIcon,
     color: "#e60023",
     badgeBg: "rgba(230, 0, 35, 0.10)",
-    desc: "Save video pins, recipe clips, aesthetic Idea pins, and original-resolution image boards directly to your device.",
-    mediaTypes: ["Pin Videos (MP4)", "Idea Pins", "Original Images (JPG/PNG)", "Carousels"],
-  },
-  {
-    name: "YouTube Downloader",
-    shortName: "YouTube",
-    href: "/youtube-video-downloader",
-    Icon: YouTubeIcon,
-    color: "#ff0000",
-    badgeBg: "rgba(255, 0, 0, 0.09)",
-    desc: "Download public YouTube videos, trending Shorts, and extract crystal-clear sound tracks in MP3 or M4A format.",
-    mediaTypes: ["Videos up to 1080p", "Shorts (9:16)", "Audio (MP3 / M4A)"],
+    desc: "Save video Pins, recipe clips, aesthetic Idea pins, and original-resolution image boards directly to your device.",
+    mediaTypes: ["Pin Videos (MP4)", "Original Photos (JPG/PNG)", "Carousel Albums"],
+    supportedUrls: "pinterest.com/pin/, pin.it mobile links",
   },
   {
     name: "Facebook Downloader",
@@ -68,6 +66,7 @@ const POPULAR_DOWNLOADERS = [
     badgeBg: "rgba(24, 119, 242, 0.10)",
     desc: "Save publicly accessible Facebook feed videos, viral Reels, and Watch streams in progressive MP4 format.",
     mediaTypes: ["Watch Videos (MP4)", "Facebook Reels", "Public Post Videos"],
+    supportedUrls: "facebook.com/watch/, fb.watch/, facebook.com/reel/",
   },
   {
     name: "Twitter/X Downloader",
@@ -77,7 +76,8 @@ const POPULAR_DOWNLOADERS = [
     color: "#0f172a",
     badgeBg: "rgba(15, 23, 42, 0.10)",
     desc: "Download MP4 videos and animated GIFs from public tweets and posts on twitter.com and x.com without signing in.",
-    mediaTypes: ["Tweet Videos (MP4)", "Looped GIFs", "Best Supported Quality"],
+    mediaTypes: ["Tweet Videos (MP4)", "Looped GIFs", "Best Available Bitrate"],
+    supportedUrls: "x.com/*/status/, twitter.com/*/status/",
   },
   {
     name: "Threads Downloader",
@@ -87,44 +87,45 @@ const POPULAR_DOWNLOADERS = [
     color: "#0f172a",
     badgeBg: "rgba(15, 23, 42, 0.10)",
     desc: "Save media clips and high-resolution photos shared by creators across the public Threads network with ease.",
-    mediaTypes: ["Threads Video (MP4)", "Original Photos", "Multi-Media Posts"],
+    mediaTypes: ["Threads Video (MP4)", "Original Photos", "Multi-Image Posts"],
+    supportedUrls: "threads.net/@user/post/",
   },
 ] as const;
 
 const WHY_CHOOSE_ITEMS = [
   {
-    title: "Free to Use",
-    desc: "100% free tool with no subscription, no hidden payments, and no download credits required.",
+    title: "100% Free to Use",
+    desc: "No subscription fees, no credit card requirements, and no daily download quotas.",
     Icon: CheckCircle2,
     color: "#10b981",
   },
   {
-    title: "No Registration Required",
-    desc: "Start downloading immediately. We never ask for your email, phone number, or social media logins.",
+    title: "No Account Required",
+    desc: "Start saving media immediately. We never ask for your email, password, or social media logins.",
     Icon: Shield,
     color: "#7c4df5",
   },
   {
-    title: "Simple and Fast",
-    desc: "High-speed media extraction engine resolves public links in seconds with smooth, real-time feedback.",
+    title: "Direct Edge Delivery",
+    desc: "Our resolver fetches direct progressive streams from public content delivery networks in seconds.",
     Icon: Zap,
     color: "#f58e5b",
   },
   {
-    title: "Multiple Supported Platforms",
-    desc: "One central hub for Instagram, Pinterest, YouTube, Facebook, Twitter/X, and Threads media.",
+    title: "Five Supported Platforms",
+    desc: "Dedicated media resolution for Instagram, Pinterest, Facebook, Twitter/X, and Threads.",
     Icon: Globe,
     color: "#0ea5e9",
   },
   {
-    title: "Easy-to-Use Interface",
-    desc: "Clean, responsive design made for touchscreens and desktop monitors alike. Just paste and save.",
+    title: "Responsive Across Devices",
+    desc: "Optimized for mobile touchscreens on iPhone and Android as well as desktop monitors on Mac and Windows.",
     Icon: Smartphone,
     color: "#ec5fa8",
   },
   {
-    title: "Privacy-Conscious Experience",
-    desc: "We do not store your files, maintain user profiles, or track your personal browsing habits.",
+    title: "Privacy-Conscious Architecture",
+    desc: "We do not maintain user profiles, log personal browsing histories, or archive your downloaded media.",
     Icon: EyeOff,
     color: "#6366f1",
   },
@@ -134,77 +135,78 @@ const HOW_TO_STEPS = [
   {
     num: "01",
     title: "Copy the Media Link",
-    desc: "Open the public video, Reel, Pin, or post on the source platform and copy its share link to your clipboard.",
+    desc: "Open the public post, Reel, Pin, or video on Instagram, Pinterest, Facebook, Twitter/X, or Threads and copy its direct URL to your clipboard.",
     Icon: Link2,
   },
   {
     num: "02",
-    title: "Paste and Preview",
-    desc: "Paste the URL into the Downloadit search box above. Our resolver detects the platform and displays the media preview.",
+    title: "Paste into Downloadit",
+    desc: "Paste the URL into the input field above. Our engine instantly identifies the source network and verifies the public link.",
     Icon: ScanSearch,
   },
   {
     num: "03",
-    title: "Download Your Media",
-    desc: "Choose your preferred available quality or format (such as MP4 or MP3) and save the file directly to your device.",
+    title: "Preview and Choose Format",
+    desc: "Review the title, author, and media preview. Choose your preferred available rendition such as high-definition MP4 or uncompressed JPEG.",
+    Icon: FileVideo,
+  },
+  {
+    num: "04",
+    title: "Save to Your Device",
+    desc: "Click Download to save the file directly to your smartphone's camera roll or your computer's local Downloads folder.",
     Icon: Download,
   },
 ] as const;
 
 const FAQS = [
   {
-    q: "Is Downloadit free?",
-    a: "Yes, Downloadit is completely free to use. There are no registration fees, subscription costs, or hidden charges. You can download as many public videos and media items as you need.",
+    q: "What is Downloadit and what can I download with it?",
+    a: "Downloadit is a free, web-based utility designed to help users download publicly accessible media for offline personal viewing, archiving, and research. You can save public videos (MP4), full-resolution images (JPEG/PNG), carousel albums, and extract audio (MP3) from five major networks: Instagram, Pinterest, Facebook, Twitter/X, and Threads.",
   },
   {
-    q: "Do I need to create an account?",
-    a: "No. You never need to create an account, log in, or give us your social media passwords. Downloadit works directly with public links that are already viewable without an account.",
+    q: "Is Downloadit completely free to use?",
+    a: "Yes. Downloadit is 100% free with unlimited usage. There are no subscriptions, paywalls, premium tiers, or download limits. The website is supported by standard non-intrusive online advertising.",
   },
   {
-    q: "Which platforms are supported?",
-    a: "Downloadit supports six major platforms: Instagram (Reels, Videos, Photos, Stories, Audio), Pinterest (Videos, Pins, Images), YouTube (Videos, Shorts, MP3/M4A Audio), Facebook (Watch Videos, Reels), Twitter/X (Videos, GIFs), and Threads (Videos, Images).",
+    q: "Do I need to register or create an account?",
+    a: "No. You never need to create an account, register your email, or provide any personal social media credentials. Downloadit processes links completely anonymously.",
   },
   {
-    q: "How do I download Instagram Reels?",
-    a: "Open the Instagram Reel in the Instagram app or browser, tap Share, and select 'Copy link'. Next, paste that link into the input box on Downloadit and tap 'Get Media'. Preview the Reel and select Download to save the MP4 to your phone or computer.",
+    q: "Can I download content from private profiles or secret boards?",
+    a: "No. Downloadit strictly respects platform access controls and user privacy. We cannot and do not bypass passwords, followers-only restrictions, secret boards, or login requirements. Only publicly accessible media can be resolved.",
   },
   {
-    q: "Can I download Pinterest videos?",
-    a: "Yes. Simply copy the link to any public Pinterest video pin or Idea pin, paste it into Downloadit, and save the original MP4 file with sound.",
+    q: "What video and photo formats does Downloadit provide?",
+    a: "Videos are delivered in universal progressive MP4 format (H.264 video with AAC stereo audio) up to 1080p Full HD resolution. Photos and carousel slides are delivered in original-quality JPEG or PNG. Extracted audio tracks are packaged in standard MP3 format.",
   },
   {
-    q: "Does Downloadit support YouTube Shorts?",
-    a: "Yes. Both regular YouTube videos and vertical YouTube Shorts are fully supported. You can download them as MP4 videos in supported quality up to 1080p, or extract the audio track as an MP3 file.",
+    q: "Why did my link fail to download?",
+    a: "The most common reasons for resolution failure are: (1) the post is set to private or followers-only, (2) the media has expired or been deleted by the author, (3) an incomplete or truncated URL was pasted, or (4) a profile URL was entered instead of a specific post link. Confirm that the link opens in a private or logged-out browser window, then try again.",
   },
   {
-    q: "Can I download Facebook videos?",
-    a: "Yes, Downloadit can download public Facebook feed videos, Facebook Reels, and Watch clips as MP4 files. The post must be public and accessible without logging in.",
+    q: "Does Downloadit keep copies of downloaded files or log my downloads?",
+    a: "No. Downloadit does not host, duplicate, or archive any media files on its servers. All files are streamed on demand directly from public edge delivery endpoints to your browser session. Furthermore, we maintain no user logs or download history.",
   },
   {
-    q: "Does Downloadit support Twitter/X?",
-    a: "Yes. Paste any public tweet or post link containing a video or animated GIF. Downloadit will extract the progressive MP4 stream for instant downloading.",
+    q: "How do I save downloaded videos to my camera roll on iPhone / iPad?",
+    a: "On iOS using Safari, tap the Download button. Safari will display a download prompt; confirm the download. Once complete, tap the download icon in Safari's address bar, select the file, tap the Share icon, and select 'Save Video' to add it directly to your Apple Photos library.",
   },
   {
-    q: "Can I download Threads media?",
-    a: "Yes. Public Threads posts with video or images can be downloaded by copying the post link and pasting it into Downloadit.",
+    q: "How do I save media on Android devices?",
+    a: "On Android using Chrome or Samsung Internet, tap Download. The file will save immediately to your device's internal Downloads folder and will instantly appear in Google Photos, Samsung Gallery, or your preferred media app.",
   },
   {
-    q: "Why is my link not working?",
-    a: "Common reasons include: the post is set to private, the creator deleted the post, the content is region-locked or age-restricted, or you copied a user profile URL rather than a specific post URL. Make sure to copy the direct URL of an individual public post.",
+    q: "What are the rules regarding copyright and fair use?",
+    a: "All intellectual property rights remain with the original creators and copyright holders. Downloadit is intended strictly for personal, non-commercial use, creator backups, and offline viewing. Users are legally responsible for respecting applicable copyright laws and must not re-upload, distribute, or monetize downloaded media without authorization.",
   },
   {
-    q: "Why is some media unavailable?",
-    a: "Platforms frequently update their media delivery systems and sign their CDN links with expiration tokens. If a preview fails, refresh the page and paste the link again. Also note that private accounts, restricted groups, and copyright-protected DRM media cannot be accessed.",
-  },
-  {
-    q: "Is my download history stored?",
-    a: "No. Downloadit does not keep a log of your downloads, search history, or personal identity. All processing happens in real-time between your browser and the public content servers.",
+    q: "How can I contact support or report an issue?",
+    a: "If you encounter an issue or have a question, visit our Help Center or Contact Us page. You can reach our support team directly via email at supportdownloadit.pro@gmail.com.",
   },
 ] as const;
 
 export default function HomeClient() {
   const [activeTab, setActiveTab] = useState<DownloaderTab | null>(null);
-  const [openFaq, setOpenFaq] = useState<number | null>(0); // First FAQ open by default
 
   useEffect(() => {
     const requestedTab = new URLSearchParams(window.location.search).get("tab");
@@ -228,15 +230,10 @@ export default function HomeClient() {
 
   const scrollToDownloader = () => {
     document.querySelector("#main-downloader")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    // Focus the input
     setTimeout(() => {
       const input = document.getElementById("downloadit-url-input") || document.getElementById("downloadit-url-input-mobile");
       input?.focus();
     }, 400);
-  };
-
-  const toggleFaq = (idx: number) => {
-    setOpenFaq((prev) => (prev === idx ? null : idx));
   };
 
   return (
@@ -244,49 +241,53 @@ export default function HomeClient() {
       <Header activeDownloaderTab={activeTab} onDownloaderTabChange={handleDownloaderTabChange} />
 
       <main id="main-content" className="flex-1">
-        {/* ── Section 1 & 2: Hero & Main Download Box ── */}
+        {/* ── Section 1: Hero & Main Download Box ── */}
         <div id="main-downloader">
           <HeroDownloader
             variant="home"
             activeTab={activeTab}
             onActiveTabChange={setActiveTab}
             badge="FAST • FREE • NO LOGIN REQUIRED"
-            titleA="Download Your Favorite Media "
-            titleB="in One Place"
-            subtitle="One simple downloader for Instagram, Pinterest, YouTube, Facebook, Twitter/X and Threads."
+            titleA="Download Videos, Photos & Audio "
+            titleB="from 5 Platforms"
+            subtitle="One simple, privacy-conscious downloader for Instagram, Pinterest, Facebook, Twitter/X and Threads."
             placeholder="Paste link"
           />
         </div>
 
-        {/* ── Below the Fold: Trust Indicators & Supported Platforms ── */}
+        {/* ── Section 2: Trust Badges & Supported Networks Bar ── */}
         <section
           id="supported-platforms"
-          className="mx-auto max-w-[1240px] px-4 pt-12 pb-14 sm:px-6 sm:pt-16 sm:pb-20 lg:px-8 xl:px-12"
-          aria-label="Supported Platforms and Features"
+          className="mx-auto max-w-[1240px] px-4 pt-10 pb-12 sm:px-6 sm:pt-14 sm:pb-16 lg:px-8 xl:px-12"
+          aria-label="Supported Platforms and Trust Overview"
         >
           {/* Trust indicators */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[13px] sm:text-[14px] font-medium text-fg-muted mb-8 sm:mb-10">
             <span className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              No account required
+              100% Free &amp; Unlimited
             </span>
             <span className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              Public content only
+              No Account Required
             </span>
             <span className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              No download history
+              Public Media Only
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-success" />
+              Zero Download Logs
             </span>
           </div>
 
-          {/* Supported Platforms */}
+          {/* Quick Platform Navigation Chips */}
           <div className="flex flex-col items-center justify-center text-center">
             <span className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-fg-subtle mb-3 sm:mb-4">
-              Works with public media from 6 top networks
+              Select a dedicated platform downloader
             </span>
             <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5">
-              {POPULAR_DOWNLOADERS.map((platform) => {
+              {SUPPORTED_PLATFORMS.map((platform) => {
                 const Icon = platform.Icon;
                 return (
                   <Link
@@ -306,7 +307,302 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* ── Section 4: Why Choose Downloadit? ── */}
+        {/* ── Section 3: Original Introduction & What Downloadit Is ── */}
+        <section
+          id="about-intro"
+          className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 xl:px-12"
+          aria-labelledby="about-intro-heading"
+        >
+          <div className="rounded-[28px] border border-border/80 bg-card p-6 sm:p-10 lg:p-12 shadow-[var(--shadow-card)] space-y-6">
+            <div className="max-w-3xl">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-light px-3.5 py-1 text-[11px] font-bold tracking-wider uppercase text-primary-strong">
+                <Sparkles size={13} />
+                Welcome to Downloadit.pro
+              </span>
+              <h2
+                id="about-intro-heading"
+                className="mt-3 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px] leading-tight"
+              >
+                Fast, Safe, and Independent Online Media Downloader
+              </h2>
+              <p className="mt-3 text-[15px] sm:text-[16px] leading-relaxed text-fg-muted">
+                Downloadit is a purpose-built web tool created to give everyday users and digital creators a transparent,
+                reliable way to save publicly available social media content. Whether you are archiving your own creative posts,
+                saving visual design inspiration for a moodboard, or keeping educational video tutorials for offline reference,
+                Downloadit makes media saving fast and straightforward.
+              </p>
+              <p className="mt-3 text-[15px] sm:text-[16px] leading-relaxed text-fg-muted">
+                Unlike ad-bloated conversion websites that require sketchy browser extensions or software downloads, Downloadit
+                operates entirely within your web browser. We connect directly to public content delivery endpoints to retrieve
+                the master progressive MP4 video stream or uncompressed JPEG picture, ensuring that your downloaded media retains
+                its full original quality without watermarks.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border-light">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-bg/50">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FileVideo className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-fg text-[14.5px]">HD Video (MP4)</h3>
+                  <p className="text-[12.5px] text-fg-muted mt-0.5">Progressive 720p &amp; 1080p MP4 videos with synchronized stereo audio.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-bg/50">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FileImage className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-fg text-[14.5px]">Original Photos (JPEG)</h3>
+                  <p className="text-[12.5px] text-fg-muted mt-0.5">Full-resolution master photos and multi-slide carousel albums without downscaling.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-bg/50">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <FileAudio className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-fg text-[14.5px]">Clear Audio (MP3)</h3>
+                  <p className="text-[12.5px] text-fg-muted mt-0.5">High-fidelity MP3 sound extraction from supported public video posts.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 4: Detailed 5 Platform Cards ── */}
+        <section
+          id="platform-guide"
+          className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8 xl:px-12"
+          aria-labelledby="platform-guide-heading"
+        >
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
+              Supported Networks
+            </p>
+            <h2
+              id="platform-guide-heading"
+              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
+            >
+              Comprehensive 5-Platform Coverage
+            </h2>
+            <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
+              Explore the exact media types and link formats supported across each platform tool.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+            {SUPPORTED_PLATFORMS.map((platform) => {
+              const Icon = platform.Icon;
+              return (
+                <div
+                  key={platform.shortName}
+                  className="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-xs transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                          style={{ background: platform.badgeBg, color: platform.color }}
+                        >
+                          <Icon size={22} />
+                        </span>
+                        <div>
+                          <h3 className="text-[17px] font-bold text-fg">{platform.name}</h3>
+                          <span className="text-[11px] font-semibold text-fg-subtle uppercase tracking-wider">Public Media</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-[13.5px] leading-relaxed text-fg-muted mb-4">
+                      {platform.desc}
+                    </p>
+
+                    <div className="space-y-2 pt-3 border-t border-border-light text-[12.5px]">
+                      <div>
+                        <span className="font-semibold text-fg">Supported formats:</span>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {platform.mediaTypes.map((type) => (
+                            <span
+                              key={type}
+                              className="inline-block px-2 py-0.5 rounded-md bg-bg text-fg-muted text-[11.5px]"
+                            >
+                              {type}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-1">
+                        <span className="font-semibold text-fg">Accepted links:</span>
+                        <p className="text-[11.5px] text-fg-subtle font-mono mt-0.5">{platform.supportedUrls}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-border-light flex items-center justify-between">
+                    <span className="text-[11.5px] font-bold text-primary-strong uppercase tracking-wider">
+                      Verified Tool
+                    </span>
+                    <Link
+                      href={platform.href}
+                      aria-label={`Open dedicated ${platform.name}`}
+                      className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-primary hover:underline group"
+                    >
+                      <span>Open Tool</span>
+                      <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── Section 5: How It Works (Step-by-Step) ── */}
+        <section
+          id="how-to-use"
+          className="mx-auto max-w-[1240px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 xl:px-12"
+          aria-labelledby="how-to-use-heading"
+        >
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
+              Simple 4-Step Process
+            </p>
+            <h2
+              id="how-to-use-heading"
+              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
+            >
+              How to Save Media with Downloadit
+            </h2>
+            <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
+              Save any public video, photo, or audio track in four effortless steps on phone, tablet, or PC.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {HOW_TO_STEPS.map((step) => {
+              const Icon = step.Icon;
+              return (
+                <div
+                  key={step.num}
+                  className="relative flex flex-col items-center rounded-2xl border border-border bg-card p-6 text-center shadow-xs transition-transform hover:-translate-y-1"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-light text-primary mb-4">
+                    <Icon size={22} strokeWidth={2.2} />
+                  </span>
+                  <span className="text-[12px] font-extrabold tracking-widest text-primary-strong">
+                    STEP {step.num}
+                  </span>
+                  <h3 className="mt-1 text-[16px] font-bold text-fg">{step.title}</h3>
+                  <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">
+                    {step.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── Section 6: Supported Media vs Real Limitations (Transparency & Trust) ── */}
+        <section
+          id="capabilities-limitations"
+          className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8 xl:px-12"
+          aria-labelledby="capabilities-heading"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            {/* What Downloadit CAN Do */}
+            <div className="rounded-[24px] border border-success/30 bg-card p-6 sm:p-8 space-y-4">
+              <div className="flex items-center gap-2.5 text-success">
+                <CheckCircle2 className="h-6 w-6 shrink-0" />
+                <h3 id="capabilities-heading" className="text-[20px] font-bold text-fg">
+                  What Downloadit Supports
+                </h3>
+              </div>
+              <ul className="space-y-3 text-[14px] leading-relaxed text-fg-muted">
+                <li className="flex items-start gap-2">
+                  <span className="text-success font-bold mt-0.5">✓</span>
+                  <span><strong>Public Videos:</strong> High-definition progressive MP4 streams from Instagram Reels, Facebook Watch, Pinterest video pins, Twitter/X clips, and Threads.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-success font-bold mt-0.5">✓</span>
+                  <span><strong>Master Photos &amp; Carousels:</strong> Original full-resolution JPEG and PNG images from public posts, including multi-slide carousel albums.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-success font-bold mt-0.5">✓</span>
+                  <span><strong>Active Instagram Stories:</strong> Anonymous downloading of live public stories within their active 24-hour window.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-success font-bold mt-0.5">✓</span>
+                  <span><strong>Clean Files:</strong> Downloads are direct master files without promotional overlays, third-party watermarks, or altered audio tracks.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* What Downloadit CANNOT Do (Real Limitations) */}
+            <div className="rounded-[24px] border border-warning/30 bg-card p-6 sm:p-8 space-y-4">
+              <div className="flex items-center gap-2.5 text-warning">
+                <AlertTriangle className="h-6 w-6 shrink-0" />
+                <h3 className="text-[20px] font-bold text-fg">
+                  Important Service Limitations
+                </h3>
+              </div>
+              <ul className="space-y-3 text-[14px] leading-relaxed text-fg-muted">
+                <li className="flex items-start gap-2">
+                  <span className="text-warning font-bold mt-0.5">✕</span>
+                  <span><strong>No Private Content:</strong> Posts, pins, or profiles set to private, secret, or followers-only cannot be retrieved under any circumstance.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-warning font-bold mt-0.5">✕</span>
+                  <span><strong>No Expired Stories:</strong> Once an Instagram story passes its 24-hour lifespan, platform servers purge it; expired media cannot be recovered.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-warning font-bold mt-0.5">✕</span>
+                  <span><strong>No Access Control Bypassing:</strong> We do not circumvent passwords, paywalls, DRM encryption, or account security mechanisms.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-warning font-bold mt-0.5">✕</span>
+                  <span><strong>No Bulk Channel Scraping:</strong> Downloadit processes individual post links one at a time to prevent infrastructure abuse.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 7: Copyright, Fair Use & Responsible Use ── */}
+        <section
+          id="responsible-use"
+          className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 xl:px-12"
+          aria-labelledby="responsible-use-heading"
+        >
+          <div className="rounded-[24px] border border-border bg-card p-6 sm:p-8 flex flex-col md:flex-row items-start gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-light text-primary">
+              <Scale className="h-6 w-6" />
+            </div>
+            <div className="space-y-2">
+              <h3 id="responsible-use-heading" className="text-[18px] font-bold text-fg">
+                Copyright Compliance &amp; Responsible Use
+              </h3>
+              <p className="text-[14px] leading-relaxed text-fg-muted">
+                Downloadit respects the intellectual property rights of content creators, photographers, artists, and media publishers.
+                Our service is intended solely for personal archiving, creative inspiration, educational research, and offline backup
+                of your own published media.
+              </p>
+              <p className="text-[13.5px] leading-relaxed text-fg-muted">
+                Downloading copyrighted works without permission for commercial redistribution, unauthorized public broadcasts, or re-uploading
+                to monetize third-party content violates copyright laws and the terms of service of the respective platforms. Please respect
+                the original creators by seeking permission and providing appropriate attribution when referencing their work.
+                For copyright infringement inquiries, visit our <Link href="/dmca" className="text-primary underline">DMCA / Copyright Policy</Link>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section 8: Why Choose Downloadit? ── */}
         <section
           id="why-choose-us"
           className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8 xl:px-12"
@@ -325,7 +621,7 @@ export default function HomeClient() {
                 Why Choose Downloadit?
               </h2>
               <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
-                Built for speed, simplicity, and respect for your device. No malware, no popups, and no sign-up forms.
+                Built for speed, simplicity, and total respect for user privacy. No spyware, no popups, and no sign-up forms.
               </p>
             </div>
 
@@ -352,121 +648,7 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* ── Section 5: How to Use Downloadit ── */}
-        <section
-          id="how-to-use"
-          className="mx-auto max-w-[1240px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 xl:px-12"
-          aria-labelledby="how-to-use-heading"
-        >
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
-              Simple 3-Step Process
-            </p>
-            <h2
-              id="how-to-use-heading"
-              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
-            >
-              How to Use Downloadit
-            </h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
-              Save any public media in three effortless steps on desktop, tablet, or smartphone.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            {HOW_TO_STEPS.map((step) => {
-              const Icon = step.Icon;
-              return (
-                <div
-                  key={step.num}
-                  className="relative flex flex-col items-center rounded-2xl border border-border bg-card p-6 text-center shadow-xs transition-transform hover:-translate-y-1"
-                >
-                  <span
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-light text-primary mb-4"
-                  >
-                    <Icon size={22} strokeWidth={2.2} />
-                  </span>
-                  <span className="text-[12px] font-extrabold tracking-widest text-primary-strong">
-                    STEP {step.num}
-                  </span>
-                  <h3 className="mt-1 text-[17px] font-bold text-fg">{step.title}</h3>
-                  <p className="mt-2 text-[13.5px] leading-relaxed text-fg-muted">
-                    {step.desc}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Section 6: Platform Guide ── */}
-        <section
-          id="platform-guide"
-          className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8 xl:px-12"
-          aria-labelledby="platform-guide-heading"
-        >
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
-              Detailed Platform Coverage
-            </p>
-            <h2
-              id="platform-guide-heading"
-              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
-            >
-              Complete Media Support Guide
-            </h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
-              Learn what content each dedicated downloader can save and find the perfect tool for your workflow.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
-            {POPULAR_DOWNLOADERS.map((platform) => {
-              const Icon = platform.Icon;
-              return (
-                <div
-                  key={platform.shortName}
-                  className="flex flex-col justify-between rounded-xl border border-border/80 bg-card p-5 transition-colors hover:border-primary/40"
-                >
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                        style={{ background: platform.badgeBg, color: platform.color }}
-                      >
-                        <Icon size={20} />
-                      </span>
-                      <div>
-                        <h3 className="text-[16px] font-bold text-fg">{platform.name}</h3>
-                        <span className="text-[11px] font-semibold text-fg-subtle">Public media only</span>
-                      </div>
-                    </div>
-                    <p className="text-[13px] leading-relaxed text-fg-muted">
-                      {platform.desc}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-border-light flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-primary-strong uppercase tracking-wider">
-                      Verified Tool
-                    </span>
-                    <Link
-                      href={platform.href}
-                      aria-label={`Learn more about ${platform.name}`}
-                      className="inline-flex items-center gap-1 text-[13px] font-bold text-primary hover:underline"
-                    >
-                      <span>Learn More</span>
-                      <span className="sr-only"> about {platform.shortName}</span>
-                      <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Section 7: Frequently Asked Questions ── */}
+        {/* ── Section 9: Frequently Asked Questions (Server-Rendered Native Accordion) ── */}
         <section
           id="faq"
           className="mx-auto max-w-[960px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8"
@@ -483,45 +665,29 @@ export default function HomeClient() {
               Frequently Asked Questions
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
-              Honest answers to the most common questions about Downloadit and media saving.
+              Honest, detailed answers about Downloadit, supported media types, and downloading guidelines.
             </p>
           </div>
 
           <div className="space-y-3">
-            {FAQS.map((faq, idx) => {
-              const isOpen = openFaq === idx;
-              return (
-                <div
-                  key={faq.q}
-                  className="rounded-2xl border border-border bg-card transition-colors overflow-hidden"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleFaq(idx)}
-                    aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:bg-primary-light/30"
-                  >
-                    <span className="text-[15px] sm:text-[16px] font-bold text-fg leading-snug">
-                      {faq.q}
-                    </span>
-                    <ChevronDown
-                      className="h-5 w-5 shrink-0 text-fg-muted transition-transform duration-200"
-                      style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-                    />
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-5 pb-5 pt-1 text-[14px] leading-relaxed text-fg-muted border-t border-border-light bg-bg/40 animate-fade-in">
-                      {faq.a}
-                    </div>
-                  )}
+            {FAQS.map((faq, idx) => (
+              <details
+                key={idx}
+                className="group rounded-2xl border border-border bg-card transition-colors hover:border-primary/40 open:border-primary/50"
+              >
+                <summary className="flex cursor-pointer items-center justify-between p-5 text-[15.5px] font-bold text-fg select-none">
+                  <span className="pr-4">{faq.q}</span>
+                  <ChevronDown className="h-5 w-5 shrink-0 text-fg-muted transition-transform duration-200 group-open:rotate-180 group-open:text-primary" />
+                </summary>
+                <div className="px-5 pb-5 pt-1 text-[14.5px] text-fg-muted leading-relaxed border-t border-border/40">
+                  {faq.a}
                 </div>
-              );
-            })}
+              </details>
+            ))}
           </div>
         </section>
 
-        {/* ── Section 8: Final Call to Action ── */}
+        {/* ── Section 10: Call to Action Banner ── */}
         <section
           id="cta"
           className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 xl:px-12 mb-8"
@@ -537,10 +703,10 @@ export default function HomeClient() {
                 Start Saving Media Today
               </span>
               <h2 className="text-[26px] sm:text-[36px] font-extrabold tracking-tight text-white leading-tight">
-                Ready to Download Your Favorite Media?
+                Ready to Save Your Favorite Public Media?
               </h2>
               <p className="text-[14px] sm:text-[16px] text-white/90 leading-relaxed max-w-xl mx-auto">
-                Paste your media link and get started in seconds. Fast, free, and completely anonymous.
+                Paste your Instagram, Pinterest, Facebook, Twitter/X, or Threads link above to get started in seconds.
               </p>
               <div className="pt-4">
                 <button
@@ -556,7 +722,7 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* ── FAQ Structured Data for Google Rich Results ── */}
+        {/* ── FAQ Structured Data for Google Search ── */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
