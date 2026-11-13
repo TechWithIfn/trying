@@ -142,10 +142,7 @@ export default function Header({
   }, [mobileOpen, closeMobileMenu]);
 
   const toggleCategory = (id: string) => {
-    setExpandedCategories((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    setExpandedCategories((prev) => ({ [id]: !prev[id] }));
   };
 
   const iconBtn =
@@ -210,18 +207,28 @@ export default function Header({
 
           {/* CENTER: Home + Categories (Desktop only, mathematically centered) */}
           <nav
-            className="hidden md:flex shrink-0 items-center justify-center gap-2"
+            className="flex shrink-0 items-center justify-center gap-1 sm:gap-2"
             aria-label="Main Navigation"
           >
             <Link
               href="/"
-              className={`rounded-full px-4 py-1.5 text-[14px] font-semibold transition-colors ${
+              className={`hidden rounded-full px-4 py-1.5 text-[14px] font-semibold transition-colors md:inline-flex ${
                 onHome
                   ? "bg-primary-light text-primary-strong"
                   : "text-fg-muted hover:bg-primary-light hover:text-primary"
               }`}
             >
               Home
+            </Link>
+            <Link
+              href="/blog"
+              className={`hidden rounded-full px-4 py-1.5 text-[14px] font-semibold transition-colors md:inline-flex ${
+                pathname === "/blog" || pathname.startsWith("/blog/")
+                  ? "bg-primary-light text-primary-strong"
+                  : "text-fg-muted hover:bg-primary-light hover:text-primary"
+              }`}
+            >
+              Guides
             </Link>
 
             <ToolCategoryDropdown />
@@ -259,9 +266,9 @@ export default function Header({
                 aria-expanded={langOpen}
               >
                 <Globe className="h-4 w-4 shrink-0" strokeWidth={2} />
-                <span className="text-[13px]">{current.short}</span>
+                <span className="site-lang-label text-[13px]">{current.short}</span>
                 <ChevronDown
-                  className="h-3 w-3 shrink-0 opacity-60 transition-transform duration-200"
+                  className="site-lang-chevron h-3 w-3 shrink-0 opacity-60 transition-transform duration-200"
                   style={{ transform: langOpen ? "rotate(180deg)" : "rotate(0deg)" }}
                   strokeWidth={2}
                   aria-hidden="true"
@@ -433,6 +440,18 @@ export default function Header({
             <span>Home</span>
           </Link>
 
+          <Link
+            href="/blog"
+            onClick={closeMobileMenu}
+            className={`flex min-h-[44px] items-center gap-3 rounded-2xl px-3.5 py-2.5 text-[15px] font-semibold transition-colors ${
+              pathname === "/blog" || pathname.startsWith("/blog/")
+                ? "bg-primary-light text-primary-strong"
+                : "text-fg hover:bg-primary-light hover:text-primary"
+            }`}
+          >
+            <span>Guides</span>
+          </Link>
+
           {/* Categories Title */}
           <div className="mt-2 flex items-center justify-between px-2 pt-2 pb-1 border-t border-border-light">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-fg-subtle">
@@ -455,7 +474,7 @@ export default function Header({
                     type="button"
                     onClick={() => toggleCategory(cat.id)}
                     aria-expanded={isExpanded}
-                    className="flex w-full min-h-[46px] items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-primary-light/50"
+                    className="flex w-full min-h-[52px] items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-primary-light/50"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span

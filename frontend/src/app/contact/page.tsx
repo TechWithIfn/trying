@@ -6,9 +6,9 @@ import Breadcrumb from "@/components/Breadcrumb";
 import ProseSection from "@/components/ProseSection";
 import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
-const CONTACT_TITLE = "Contact Downloadit – Support & Feedback";
+const CONTACT_TITLE = "Contact Downloadit – Questions, Feedback & Support";
 const CONTACT_DESCRIPTION =
-  "Contact Downloadit for technical support, broken download reports, general questions and copyright concerns.";
+  "Contact Downloadit for technical support, broken download reports, general questions and copyright concerns. Use support@downloadit.pro for a reply.";
 
 export const metadata: Metadata = {
   title: { absolute: CONTACT_TITLE },

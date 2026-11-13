@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import Breadcrumb from "@/components/Breadcrumb";
 import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
-const ADVERTISE_TITLE = "Advertise With Us | Downloadit";
+const ADVERTISE_TITLE = "Advertise With Downloadit – Reach Public Media Fans";
 const ADVERTISE_DESCRIPTION =
   "Reach people downloading public Instagram Reels, videos, carousels and audio with Downloadit. Learn about advertising options and how to contact us.";
 
@@ -58,10 +58,11 @@ export default function AdvertiseWithUsPage() {
           <p className="mt-2 text-[14px] text-fg-subtle">Last updated: September 2026</p>
           <div className="mt-6 flex flex-col gap-4 text-[16px] leading-[1.75] text-fg-muted">
             <p>
-              Downloadit is a free tool people use to save public media from Instagram,
-              Pinterest . If your product or service fits that audience,
-              advertising on Downloadit puts your message in front of them while they
-              download.
+              Downloadit is a free browser tool for saving public media from Instagram,
+              Pinterest, Facebook, X and Threads. People come here to keep their own
+              posts, class material, or a public reference they already have the right
+              to store. If your product fits that audience, write to us before you
+              assume a placement exists.
             </p>
             <h2 className="text-[20px] font-bold text-fg">How advertising works here</h2>
             <p>
@@ -103,7 +104,7 @@ export default function AdvertiseWithUsPage() {
           <p className="mt-8 text-[16px] text-fg-muted">
             Prefer the downloader itself?{" "}
             <Link href="/" className="font-semibold text-primary-strong hover:underline">
-              Back to the Instagram downloader
+              Back to Downloadit
             </Link>
             .
           </p>

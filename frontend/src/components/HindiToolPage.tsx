@@ -17,25 +17,7 @@ import {
   type HindiToolPage as HindiToolPageData,
 } from "@/config/hindiPages";
 
-const PLATFORM_LABELS: Record<string, string> = {
-  instagram: "इंस्टाग्राम",
-  facebook: "फेसबुक",
-  twitter: "ट्विटर/X",
-  pinterest: "पिनट्रेस्ट",
-  threads: "थ्रेड्स",
-};
-
-const PLATFORM_PATHS: Record<string, string> = {
-  instagram: "/hi/instagram-video-downloader",
-  facebook: "/hi/facebook-video-downloader",
-  twitter: "/hi/twitter-video-downloader",
-  pinterest: "/hi/pinterest-video-downloader",
-  threads: "/hi/threads-video-downloader",
-};
-
 export default function HindiToolPage({ page }: { page: HindiToolPageData }) {
-  const platformLabel = PLATFORM_LABELS[page.platform];
-  const platformPath = PLATFORM_PATHS[page.platform];
   const canonical = `${SITE_URL}/hi/${page.slug}`;
   const englishUrl = `${SITE_URL}/${page.slug}`;
 
@@ -74,13 +56,7 @@ export default function HindiToolPage({ page }: { page: HindiToolPageData }) {
     "@id": `${canonical}/#breadcrumbs`,
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "होम", item: `${SITE_URL}/hi` },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: `${platformLabel} डाउनलोडर`,
-        item: `${SITE_URL}${platformPath}`,
-      },
-      { "@type": "ListItem", position: 3, name: page.name, item: canonical },
+      { "@type": "ListItem", position: 2, name: page.name, item: canonical },
     ],
   };
 
@@ -119,7 +95,6 @@ export default function HindiToolPage({ page }: { page: HindiToolPageData }) {
         <Breadcrumb
           items={[
             { name: "होम", path: "/hi" },
-            { name: `${platformLabel} डाउनलोडर`, path: platformPath },
             { name: page.name, path: `/hi/${page.slug}` },
           ]}
           showSchema={false}

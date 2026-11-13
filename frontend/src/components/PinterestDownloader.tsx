@@ -205,7 +205,7 @@ export default function PinterestDownloader({
   badge,
   modes,
   benefits,
-  placeholder = "Paste link",
+  placeholder = "Paste",
   buttonLabel,
 }: PinterestDownloaderProps) {
   const { t } = useLanguage();
@@ -740,12 +740,11 @@ export default function PinterestDownloader({
                       type="button"
                       onClick={handlePaste}
                       disabled={busy}
-                      className="flex h-13 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
+                      className="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl border border-border text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
                       style={{ background: "var(--bg)" }}
-                      aria-label={t.common.paste}
+                      aria-label="Insert copied link"
                     >
-                      <Clipboard className="h-3.5 w-3.5" />
-                      {t.common.paste}
+                      <Clipboard className="h-4 w-4" />
                     </button>
 
                     <button type="submit" disabled={busy} className="gradient-btn h-13 shrink-0 px-7 text-[16px]">
@@ -804,12 +803,11 @@ export default function PinterestDownloader({
                         type="button"
                         onClick={handlePaste}
                         disabled={busy}
-                        className="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
+                        className="flex h-12 min-h-[48px] w-12 shrink-0 items-center justify-center rounded-xl border border-border text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
                         style={{ background: "var(--bg)" }}
-                        aria-label={t.common.paste}
+                        aria-label="Insert copied link"
                       >
                         <Clipboard className="h-4 w-4 shrink-0" />
-                        <span className="btn-label truncate">{t.common.paste}</span>
                       </button>
                       <button type="submit" disabled={busy} className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-3 text-[16px]">
                         {busy ? (
@@ -831,6 +829,16 @@ export default function PinterestDownloader({
                   </div>
                 </div>
               </form>
+              {benefitItems.length > 0 && (
+                <ul className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-fg-subtle sm:gap-x-5 sm:text-[13px]">
+                  {benefitItems.map(({ label }) => (
+                    <li key={label} className="inline-flex items-center gap-1.5">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                      {label}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
             </div>
         </div>
@@ -888,18 +896,6 @@ export default function PinterestDownloader({
         </div>
       </div>
     </section>
-
-    {/* Trust indicators rendered outside the hero so they appear below the fold */}
-    <div className="mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12">
-      <ul className="mx-auto flex max-w-[840px] flex-wrap items-center justify-center gap-x-5 gap-y-2 px-1 pb-6 pt-3 sm:pb-8 sm:pt-4">
-        {benefitItems.map(({ icon: Icon, label }) => (
-          <li key={label} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted">
-            <Icon size={15} strokeWidth={2.2} className="shrink-0" style={{ color: "var(--primary-strong)" }} />
-            {label}
-          </li>
-        ))}
-      </ul>
-    </div>
     </>
   );
 }

@@ -7,6 +7,7 @@ import {
   resolveTwitterPost,
   TwitterResolveError,
 } from "../lib/twitter/resolve.js";
+import { hostOfUrl } from "../lib/upstream.js";
 
 const router = Router();
 const RESOLVE_TIMEOUT_MS = 45_000;
@@ -70,10 +71,14 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
       res.setHeader("Retry-After", "5");
     }
     logger.warn("[TWITTER] resolve failed", {
+      platform: "twitter",
       requestId,
+      host: hostOfUrl(typeof req.body?.url === "string" ? req.body.url : null),
+      upstreamStatus: null,
       category: mapped.code,
       status: mapped.status,
       duration: Date.now() - startedAt,
+      message: mapped.message,
     });
     // The message is already user-safe: never forward raw stderr, URLs,
     // cookies or extractor internals to the client.

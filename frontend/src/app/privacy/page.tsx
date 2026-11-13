@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const PRIVACY_TITLE = "Privacy Policy – How Downloadit Handles Your Data";
+const PRIVACY_TITLE = "Privacy Policy – How Downloadit Handles Your Data Online";
 const PRIVACY_DESCRIPTION =
   "Read how Downloadit handles links, logs, cookies and optional advertising data when you use the Instagram, Pinterest, Facebook, X or Threads downloader.";
 

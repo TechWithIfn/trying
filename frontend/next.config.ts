@@ -22,6 +22,7 @@ const isProduction = process.env.NODE_ENV === "production";
 const SCRIPT_SRC_EVAL = isProduction ? "" : " 'unsafe-eval'";
 
 const nextConfig: NextConfig = {
+  trailingSlash: false,
   // The repo has a second lockfile at its root (for the dev runner), which
   // makes Turbopack infer the parent folder as the project root. Pin it to
   // this app so only frontend files are watched and traced.
@@ -46,61 +47,6 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         has: [{ type: "host", value: "downloadit.pro" }],
         destination: "https://www.downloadit.pro/:path*",
-        permanent: true,
-      },
-      {
-        source: "/instagram-downloader",
-        destination: "/instagram-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/pinterest-downloader",
-        destination: "/pinterest-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/youtube-downloader",
-        destination: "/youtube-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/youtube-shorts-downloader",
-        destination: "/youtube-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/facebook-downloader",
-        destination: "/facebook-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/facebook-reel-downloader",
-        destination: "/facebook-reels-downloader",
-        permanent: true,
-      },
-      {
-        source: "/twitter-downloader",
-        destination: "/twitter-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/x-video-downloader",
-        destination: "/twitter-video-downloader",
-        permanent: true,
-      },
-      {
-        source: "/x-gif-downloader",
-        destination: "/twitter-gif-downloader",
-        permanent: true,
-      },
-      {
-        source: "/pinterest-mp4-downloader",
-        destination: "/pinterest-to-mp4",
-        permanent: true,
-      },
-      {
-        source: "/threads-downloader",
-        destination: "/threads-video-downloader",
         permanent: true,
       },
     ];

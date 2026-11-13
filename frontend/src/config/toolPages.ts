@@ -90,13 +90,13 @@ export const TOOL_PAGES = {
     badge: "Instagram Reels Downloader · Free & Fast",
     description:
       "Save public Instagram Reels as MP4 with original audio. Paste any public Reel link, preview the available quality, and download without an account.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Download Reel",
     initialTab: "reels",
     trust: ["No account required", "Public Reels only", "Preview before saving"],
-    seoTitle: "Instagram Reels Downloader – Save HD MP4 Free",
+    seoTitle: "Instagram Reels Downloader – Save Reels in HD | Downloadit",
     seoDescription:
-      "Download public Instagram Reels as MP4 with the original audio. Paste a Reel link, preview the available quality and save it free — no login or app required.",
+      "Download public Instagram Reels as MP4 with the original sound. Free, no login. Paste the link and save the Reel in seconds. Public media only.",
   },
   instagramVideo: {
     platform: "instagram",
@@ -107,13 +107,13 @@ export const TOOL_PAGES = {
     badge: "Instagram Downloader · Free & Fast",
     description:
       "Download public Instagram Reels, Stories, Videos, Photos, and Carousels as MP4 or JPEG. Preview first, no login required.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Download Media",
     initialTab: "videos",
     trust: ["No account required", "Public media only", "Preview before saving"],
-    seoTitle: "Instagram Downloader – Reels, Photos, Video & Audio",
+    seoTitle: "Instagram Video Downloader – Free HD MP4 | Downloadit",
     seoDescription:
-      "Download public Instagram media with one tool: Reels, videos, photos, carousels, Stories and MP3 audio. Paste a link, preview the result and save. No login.",
+      "Download public Instagram videos as MP4 in the quality the post offers. Free, no login. Paste the link and save the file to your device. Public media only.",
   },
   instagramPhoto: {
     platform: "instagram",
@@ -124,13 +124,13 @@ export const TOOL_PAGES = {
     badge: "Instagram Photo Downloader · Free & Fast",
     description:
       "Download public Instagram photos and full carousels at original resolution — flip through the slides and save single images or the full collection.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Download Photo",
     initialTab: "photos",
     trust: ["No account required", "Public posts only", "Original image quality"],
-    seoTitle: "Instagram Photo Downloader – Save Photos & Carousels",
+    seoTitle: "Instagram Photo Downloader – Save HD Photos | Downloadit",
     seoDescription:
-      "Download public Instagram photos and carousel slides at the resolution Instagram provides. Save a single image or every slide as JPEG. Free, no login required.",
+      "Download public Instagram photos and carousel images as JPEG. Free, no login. Paste the link and save the pictures. Only public media is supported.",
   },
   instagramStory: {
     platform: "instagram",
@@ -141,13 +141,13 @@ export const TOOL_PAGES = {
     badge: "Instagram Story Downloader · Free & Fast",
     description:
       "Save public Instagram Stories before they expire. Paste a Story link and download Story videos as MP4 or Story photos at the available resolution — free, no login required.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Download Story",
     initialTab: "stories",
     trust: ["No account required", "Live public Stories only", "Save within 24 hours"],
-    seoTitle: "Instagram Story Downloader – Save Public Stories Free",
+    seoTitle: "Instagram Story Downloader – Save Public Stories | Downloadit",
     seoDescription:
-      "Download public Instagram Stories while they are still live. Save Story photos as JPEG or videos as MP4 before the 24-hour window closes. No login required.",
+      "Download public Instagram Stories while they are still live, as MP4 or JPEG. Free, no login. Paste the link and save. Only public media is supported.",
   },
   instagramAudio: {
     platform: "instagram",
@@ -158,13 +158,13 @@ export const TOOL_PAGES = {
     badge: "Instagram Audio Downloader · Free & Fast",
     description:
       "Extract sound and music from public Instagram Reels and videos as MP3 — free online Instagram to MP3 converter with no software required.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Extract Audio",
     initialTab: "audio",
     trust: ["No account required", "Public Reels and videos only", "Full track as MP3"],
-    seoTitle: "Instagram Audio Downloader – Reels to MP3 Free",
+    seoTitle: "Instagram Audio Downloader – Reels to MP3 | Downloadit",
     seoDescription:
-      "Extract audio from public Instagram Reels and videos as an MP3. Paste a link, preview the media and download the sound track. Free, no software, no login.",
+      "Save the audio from a public Instagram Reel or video as an MP3 file. Free, no login. Paste the link and save the sound. Only public media is supported.",
   },
   pinterestVideo: {
     platform: "pinterest",
@@ -175,7 +175,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Video Downloader · Free & Easy",
     description:
       "Paste a public Pinterest video pin link, preview the video, and download it as MP4. No account, no added watermark, nothing to install. Works on iPhone, Android, Windows and Mac.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Download Pin",
     modes: ["any"],
     trust: [
@@ -184,9 +184,9 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Preview before downloading",
     ],
-    seoTitle: "Pinterest Video Downloader – Save Pin Videos Free",
+    seoTitle: "Pinterest Video Downloader – Save Pins as MP4 | Downloadit",
     seoDescription:
-      "Download public Pinterest video Pins as MP4. Paste a Pin link, preview the available media and save the video file. Free to use, no login or extension needed.",
+      "Download public Pinterest video Pins as MP4. Free, no login. Paste the Pin link and save the video to your device. Only public media is supported.",
   },
   pinterestImage: {
     platform: "pinterest",
@@ -197,7 +197,7 @@ export const TOOL_PAGES = {
     badge: "Pinterest Image Downloader · Free & Easy",
     description:
       "Paste a public Pinterest image pin link, preview the available media, and download the pictures in their original format. The same pin link also works as a Pinterest carousel downloader — no account needed.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Download Pin",
     modes: ["any"],
     trust: [
@@ -206,9 +206,9 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Original image quality",
     ],
-    seoTitle: "Pinterest Image Downloader – Save HD Images Free",
+    seoTitle: "Pinterest Image Downloader – HD Photos Free | Downloadit",
     seoDescription:
-      "Download images from public Pinterest Pins, including supported carousel slides. Paste a Pin link, preview the pictures and save them in the format provided.",
+      "Download public Pinterest images and carousel photos as JPEG. Free, no login. Paste the Pin link and save the pictures. Only public media is supported.",
   },
   facebookVideo: {
     platform: "facebook",
@@ -219,12 +219,12 @@ export const TOOL_PAGES = {
     badge: "Facebook Video Downloader · Free & Easy",
     description:
       "Save publicly accessible Facebook videos, Reels and Watch videos as MP4. Paste a link, preview it, and download without a Facebook login.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Get Video",
     trust: ["Public videos only", "No login required", "Preview before saving"],
-    seoTitle: "Facebook Video Downloader – Save Public Videos Free",
+    seoTitle: "Facebook Video Downloader – Free HD MP4 | Downloadit",
     seoDescription:
-      "Download publicly accessible Facebook videos and Reels as MP4. Paste a post link, preview the available media and save it without a Facebook login.",
+      "Download public Facebook videos as MP4 in the quality the post offers. Free, no login. Paste the link and save the file. Only public media is supported.",
   },
   twitterVideo: {
     platform: "twitter",
@@ -235,12 +235,12 @@ export const TOOL_PAGES = {
     badge: "Twitter/X Video Downloader · Free & Easy",
     description:
       "Download publicly accessible Twitter/X videos as MP4. Paste a public post link, preview the available video, and save it without a login.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Get Video",
     trust: ["Public posts only", "No login required", "Preview before saving"],
-    seoTitle: "Twitter/X Video Downloader – Save MP4 Videos Free",
+    seoTitle: "Twitter Video Downloader – Save X Videos MP4 | Downloadit",
     seoDescription:
-      "Download videos and animated GIFs from public Twitter/X posts as MP4. Paste a post link, preview the available media and save it without an account.",
+      "Download public X and Twitter videos as MP4. Free, no login. Paste the post link and save the clip to your device. Only public media is supported.",
   },
   threadsVideo: {
     platform: "threads",
@@ -251,12 +251,12 @@ export const TOOL_PAGES = {
     badge: "Threads Video Downloader · Free & Easy",
     description:
       "Download videos and images from public Threads posts. Paste a link, preview supported media, and save it without a login.",
-    placeholder: "Paste link",
+    placeholder: "Paste",
     buttonLabel: "Get Media",
     trust: ["Public posts only", "No login required", "Video and images supported"],
-    seoTitle: "Threads Video Downloader – Save Videos & Photos Free",
+    seoTitle: "Threads Video Downloader – Save Videos Free | Downloadit",
     seoDescription:
-      "Download videos and photos from public Threads posts. Paste a Threads link, preview the available media and save it to your device without logging in.",
+      "Download public Threads videos as MP4. Free, no login. Paste the post link and save the video file to your device. Only public media is supported.",
   },
 } as const satisfies Record<string, ToolPageConfig>;
 

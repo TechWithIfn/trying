@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const DISCLAIMER_TITLE = "Disclaimer – Downloadit Public Media Notice";
+const DISCLAIMER_TITLE = "Disclaimer – Downloadit Public Media Service Notice";
 const DISCLAIMER_DESCRIPTION =
   "Read the Downloadit disclaimer covering third-party public media, platform affiliation, copyright responsibility and the limits of the service.";
 

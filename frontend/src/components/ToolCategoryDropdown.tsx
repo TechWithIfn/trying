@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, ArrowRight } from "lucide-react";
+import { ChevronDown, ArrowRight, X } from "lucide-react";
 import { PLATFORM_CATEGORIES } from "@/config/categories";
 
 export function FacebookIcon({ className, size = 24 }: { className?: string; size?: number; strokeWidth?: number }) {
@@ -48,72 +49,107 @@ export function ThreadsIcon({ className, size = 24 }: { className?: string; size
   );
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export default function ToolCategoryDropdown() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [openPlatform, setOpenPlatform] = useState<string | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = "downloadit-categories-dropdown";
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogId = "downloadit-categories-dialog";
+  const titleId = "downloadit-categories-title";
+  const tallestCount = Math.max(...PLATFORM_CATEGORIES.map((cat) => cat.items.length));
+  const tallestId = PLATFORM_CATEGORIES.find((cat) => cat.items.length === tallestCount)?.id;
 
   const close = useCallback((refocus = false) => {
     setOpen(false);
+    setOpenPlatform(null);
     if (refocus) toggleRef.current?.focus({ preventScroll: true });
   }, []);
 
-  // Close on route change
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     queueMicrotask(() => {
       setOpen(false);
+      setOpenPlatform(null);
     });
   }, [pathname]);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (e: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("touchstart", onPointerDown);
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtml = html.style.overflow;
+    const previousOverflow = body.style.overflow;
+    const previousPad = body.style.paddingRight;
+    const before = window.innerWidth - html.clientWidth;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    const removed = before - (window.innerWidth - html.clientWidth);
+    if (removed > 0) body.style.paddingRight = `${removed}px`;
     return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("touchstart", onPointerDown);
+      html.style.overflow = previousHtml;
+      body.style.overflow = previousOverflow;
+      body.style.paddingRight = previousPad;
     };
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusable = () =>
+      Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => !el.closest("[hidden]") && el.getClientRects().length > 0
+      );
+
+    focusable()[0]?.focus({ preventScroll: true });
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
         close(true);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     };
+
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, close]);
 
-  const toggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const toggle = () => {
     setOpen((prev) => !prev);
   };
 
   return (
-    <div ref={containerRef} className="relative inline-flex items-center">
+    <div className="relative inline-flex items-center">
       <button
         ref={toggleRef}
         type="button"
         onClick={toggle}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={menuId}
-        aria-label="Categories menu"
-        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${open
+        aria-controls={dialogId}
+        aria-label="Categories"
+        className={`site-categories-btn flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:px-3.5 ${open
             ? "bg-primary-light text-primary-strong shadow-xs"
             : "text-fg-muted hover:bg-primary-light hover:text-primary"
           }`}
@@ -127,109 +163,117 @@ export default function ToolCategoryDropdown() {
         />
       </button>
 
-      {/* Categories Dropdown Mega Menu */}
-      <div
-        ref={menuRef}
-        id={menuId}
-        role="menu"
-        aria-label="Downloader Categories"
-        aria-hidden={!open}
-        className={`categories-dropdown-menu absolute left-1/2 -translate-x-1/2 top-full z-50 mt-2.5 w-[760px] max-w-[calc(100vw-2rem)] rounded-2xl p-4 transition-all duration-200 ease-out ${open
-            ? "visible translate-y-0 scale-100 opacity-100"
-            : "invisible -translate-y-1 scale-[0.98] opacity-0 pointer-events-none"
-          }`}
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          boxShadow: "0 18px 50px rgba(60, 40, 120, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06)",
-        }}
-      >
-        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-1 pb-2.5">
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary-strong">
-              Downloadit Hub
-            </p>
-            <h3 className="text-[15px] font-bold leading-snug text-fg">
-              Explore All Downloaders by Platform
-            </h3>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-bg/60 px-2.5 py-1 text-[11px] font-semibold text-fg-muted">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-            {PLATFORM_CATEGORIES.length} Platforms · Fast &amp; Free
-          </span>
-        </div>
+      {mounted && open && createPortal(
+        <div className="hub-modal-root">
+          <button
+            type="button"
+            className="hub-modal-backdrop"
+            aria-label="Close categories"
+            onClick={() => close(true)}
+          />
+          <div
+            ref={dialogRef}
+            id={dialogId}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            className="hub-modal"
+          >
+            <div className="hub-modal-header">
+              <h2 id={titleId} className="hub-modal-title">Explore All Downloaders by Platform</h2>
+              <span className="hub-modal-badge">{PLATFORM_CATEGORIES.length} Platforms · Fast & Free</span>
+              <button type="button" className="hub-modal-close" aria-label="Close" onClick={() => close(true)}>
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
 
-        <div className="grid max-h-[75vh] grid-cols-1 items-start gap-2.5 overflow-y-auto p-1 sm:grid-cols-2 lg:grid-cols-3">
-          {PLATFORM_CATEGORIES.map((cat) => {
-            const CatIcon = cat.icon;
-            return (
-              <div
-                key={cat.id}
-                className="group/card flex h-fit flex-col rounded-xl border border-border/70 p-2.5 transition-colors hover:border-primary/30 hover:bg-bg/50 sm:p-3"
-                style={{ background: "var(--card)" }}
-              >
-                {/* Platform Header */}
-                <Link
-                  href={cat.mainHref}
-                  role="menuitem"
-                  tabIndex={open ? 0 : -1}
-                  onClick={() => close()}
-                  className="mb-1 flex items-start justify-between gap-2 border-b border-border/40 pb-1.5 transition-colors group-hover/card:text-primary"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                      style={{ background: cat.badgeBg, color: cat.color }}
-                    >
-                      <CatIcon size={15} />
-                    </span>
-                    <span className="break-words text-[13px] font-bold leading-snug text-fg transition-colors group-hover/card:text-primary sm:text-[13.5px]">
-                      {cat.name}
-                    </span>
+            <div className="hub-grid">
+              {PLATFORM_CATEGORIES.map((cat) => {
+                const CatIcon = cat.icon;
+                return (
+                  <div
+                    key={cat.id}
+                    className={`hub-card${cat.id === tallestId ? " hub-card--span" : ""}`}
+                  >
+                    <Link href={cat.mainHref} onClick={() => close()} className="hub-card-head">
+                      <span className="hub-card-icon" style={{ background: cat.badgeBg, color: cat.color }}>
+                        <CatIcon size={18} />
+                      </span>
+                      <span className="hub-card-title">{cat.name}</span>
+                      <ArrowRight className="hub-card-arrow" aria-hidden="true" />
+                    </Link>
+                    <div className="hub-card-tools">
+                      {cat.items.map((sub) => {
+                        const SubIcon = sub.icon;
+                        const selected = pathname === sub.href;
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            title={sub.desc}
+                            onClick={() => close()}
+                            className={`hub-tool${selected ? " is-selected" : ""}`}
+                          >
+                            <SubIcon size={16} className="hub-tool-icon" strokeWidth={2.2} aria-hidden="true" />
+                            <span className="hub-tool-copy">
+                              <span className="hub-tool-name">{sub.name}</span>
+                              <span className="hub-tool-desc">{sub.desc}</span>
+                            </span>
+                            <ArrowRight className="hub-tool-arrow" aria-hidden="true" />
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-primary opacity-40 transition-all group-hover/card:translate-x-0.5 group-hover/card:opacity-100" />
-                </Link>
+                );
+              })}
+            </div>
 
-                {/* Sub items */}
-                <div className="space-y-0">
-                  {cat.items.map((sub) => {
-                    const SubIcon = sub.icon;
-                    const isSubSelected = pathname === sub.href;
-                    return (
-                      <Link
-                        key={sub.name}
-                        href={sub.href}
-                        role="menuitem"
-                        tabIndex={open ? 0 : -1}
-                        onClick={() => close()}
-                        className={`flex flex-col rounded-lg px-1.5 py-1.5 transition-colors ${
-                          isSubSelected
-                            ? "bg-primary-light text-primary-strong"
-                            : "text-fg hover:bg-primary-light/60"
-                        }`}
-                      >
-                        <div className="flex items-start gap-1.5">
-                          <SubIcon
-                            size={12.5}
-                            className="mt-0.5 shrink-0 text-primary opacity-80"
-                            strokeWidth={2.2}
-                          />
-                          <span className="min-w-0 break-words text-[12px] font-semibold leading-snug text-fg">
-                            {sub.name}
-                          </span>
-                        </div>
-                        <span className="pl-[18px] text-[10.5px] leading-snug text-fg-subtle">
-                          {sub.desc}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+            <div className="hub-accordion">
+              {PLATFORM_CATEGORIES.map((cat) => {
+                const CatIcon = cat.icon;
+                const expanded = openPlatform === cat.id;
+                return (
+                  <div key={cat.id} className="hub-acc-item">
+                    <button
+                      type="button"
+                      className="hub-acc-row"
+                      aria-expanded={expanded}
+                      onClick={() => setOpenPlatform(expanded ? null : cat.id)}
+                    >
+                      <span className="hub-card-icon" style={{ background: cat.badgeBg, color: cat.color }}>
+                        <CatIcon size={18} />
+                      </span>
+                      <span className="hub-acc-name">{cat.name}</span>
+                      <ChevronDown className={`hub-acc-chevron${expanded ? " is-open" : ""}`} aria-hidden="true" />
+                    </button>
+                    {expanded && (
+                      <div className="hub-acc-panel">
+                        {cat.items.map((sub) => (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            title={sub.desc}
+                            onClick={() => close()}
+                            className="hub-tool"
+                          >
+                            <span className="hub-tool-copy">
+                              <span className="hub-tool-name">{sub.name}</span>
+                              <span className="hub-tool-desc">{sub.desc}</span>
+                            </span>
+                            <ArrowRight className="hub-tool-arrow" aria-hidden="true" />
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

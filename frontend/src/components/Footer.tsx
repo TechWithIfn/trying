@@ -27,7 +27,6 @@ const COMPANY_LINKS = [
   { label: "Blog", href: "/blog" },
   { label: "Help Center", href: "/help" },
   { label: "Report Content", href: "/report" },
-  { label: "हिन्दी गाइड", href: "/hi" },
 ] as const;
 
 const LEGAL_LINKS = [

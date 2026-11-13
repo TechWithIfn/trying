@@ -79,7 +79,7 @@ function decodeHtmlEntities(text: string): string {
   return decoded;
 }
 
-const TITLE_PREVIEW_LENGTH = 120;
+const TITLE_PREVIEW_LENGTH = 12;
 
 function titlePreview(text: string): { text: string; isLong: boolean } {
   let chars: string[];
@@ -811,7 +811,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     }
     return 0;
   });
-  // Titles longer than 20 characters collapse behind Show more/less.
+  // Titles longer than 12 characters collapse behind Show more/less.
   const [captionExpanded, setCaptionExpanded] = useState(false);
   // Real duration/resolution observed from the <video> element (never faked).
   const [realDuration, setRealDuration] = useState<number | null>(null);
@@ -1880,7 +1880,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
                   show over the poster, while playing only a compact Download
                   remains. A Close control returns to the poster. */}
               {showTopMediaControls && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2.5 p-2.5 sm:p-3">
+                <div className="media-cta-row pointer-events-none absolute inset-x-0 top-0 z-20 justify-between">
                   {isImageItem ? (
                     <button
                       type="button"

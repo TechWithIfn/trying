@@ -6,13 +6,6 @@ import Header from "@/components/Header";
 import HeroDownloader, { type DownloaderTab } from "@/components/HeroDownloader";
 import Footer from "@/components/Footer";
 import {
-  FacebookIcon,
-  InstagramIcon,
-  PinterestIcon,
-  ThreadsIcon,
-  TwitterIcon,
-} from "@/components/ToolCategoryDropdown";
-import {
   Download,
   Link2,
   ScanSearch,
@@ -33,72 +26,6 @@ import {
 } from "lucide-react";
 import { PLATFORM_CATEGORIES } from "@/config/categories";
 import { SUPPORT_EMAIL } from "@/config/site";
-
-const SUPPORTED_PLATFORMS = [
-  {
-    name: "Instagram Downloader",
-    shortName: "Instagram",
-    href: "/instagram-video-downloader",
-    Icon: InstagramIcon,
-    color: "#ec5fa8",
-    badgeBg: "rgba(236, 95, 168, 0.12)",
-    desc: "Download high-definition Reels, long video posts, swipe carousels, full-size photos, and live stories with original audio.",
-    mediaTypes: ["Reels (MP4)", "Feed Videos", "Photos", "Carousels", "Stories", "Audio (MP3)"],
-    supportedUrls: "instagram.com/reel/, instagram.com/p/, instagram.com/stories/",
-  },
-  {
-    name: "Pinterest Downloader",
-    shortName: "Pinterest",
-    href: "/pinterest-video-downloader",
-    Icon: PinterestIcon,
-    color: "#e60023",
-    badgeBg: "rgba(230, 0, 35, 0.10)",
-    desc: "Save video Pins, recipe clips, aesthetic Idea pins, and original-resolution image boards directly to your device.",
-    mediaTypes: ["Pin Videos (MP4)", "Original Photos (JPG/PNG)", "Carousel Albums"],
-    supportedUrls: "pinterest.com/pin/, pin.it mobile links",
-  },
-  {
-    name: "Facebook Downloader",
-    shortName: "Facebook",
-    href: "/facebook-video-downloader",
-    Icon: FacebookIcon,
-    color: "#1877f2",
-    badgeBg: "rgba(24, 119, 242, 0.10)",
-    desc: "Save publicly accessible Facebook feed videos, viral Reels, and Watch streams in progressive MP4 format.",
-    mediaTypes: ["Watch Videos (MP4)", "Facebook Reels", "Public Post Videos"],
-    supportedUrls: "facebook.com/watch/, fb.watch/, facebook.com/reel/",
-  },
-  {
-    name: "Twitter/X Downloader",
-    shortName: "Twitter/X",
-    href: "/twitter-video-downloader",
-    Icon: TwitterIcon,
-    color: "#0f172a",
-    badgeBg: "rgba(15, 23, 42, 0.10)",
-    desc: "Download MP4 videos and animated GIFs from public tweets and posts on twitter.com and x.com without signing in.",
-    mediaTypes: ["Tweet Videos (MP4)", "Looped GIFs", "Best Available Bitrate"],
-    supportedUrls: "x.com/*/status/, twitter.com/*/status/",
-  },
-  {
-    name: "Threads Downloader",
-    shortName: "Threads",
-    href: "/threads-video-downloader",
-    Icon: ThreadsIcon,
-    color: "#0f172a",
-    badgeBg: "rgba(15, 23, 42, 0.10)",
-    desc: "Save media clips and high-resolution photos shared by creators across the public Threads network with ease.",
-    mediaTypes: ["Threads Video (MP4)", "Original Photos", "Multi-Image Posts"],
-    supportedUrls: "threads.net/@user/post/",
-  },
-] as const;
-
-const PLATFORM_CARD_DESKTOP_PLACEMENT = [
-  "lg:col-start-1 lg:row-start-1 lg:row-span-2",
-  "lg:col-start-2 lg:row-start-1",
-  "lg:col-start-3 lg:row-start-1",
-  "lg:col-start-2 lg:row-start-2",
-  "lg:col-start-3 lg:row-start-2",
-] as const;
 
 const WHY_CHOOSE_ITEMS = [
   {
@@ -155,7 +82,7 @@ const HOW_TO_STEPS = [
   {
     num: "03",
     title: "Preview and Choose Format",
-    desc: "Review the title, author, and media preview. Choose your preferred available rendition such as high-definition MP4 or uncompressed JPEG.",
+    desc: "Review the title, author, and media preview, then save the MP4, JPEG, or MP3 the public post provides.",
     Icon: FileVideo,
   },
   {
@@ -177,7 +104,7 @@ const FAQS = [
   },
   {
     q: "Do I need to register or create an account?",
-    a: "No. You never need to create an account, register your email, or provide any personal social media credentials. Downloadit processes links completely anonymously.",
+    a: "No. You never need to create an account, register your email, or provide a social media login. Downloadit only asks for the public link.",
   },
   {
     q: "Can I download content from private profiles or secret boards?",
@@ -185,7 +112,7 @@ const FAQS = [
   },
   {
     q: "What video and photo formats does Downloadit provide?",
-    a: "Videos are delivered in universal progressive MP4 format (H.264 video with AAC stereo audio) up to 1080p Full HD resolution. Photos and carousel slides are delivered in original-quality JPEG or PNG. Extracted audio tracks are packaged in standard MP3 format.",
+    a: "Videos are saved as the progressive MP4 the platform provides for that public post. Photos are saved as JPEG or PNG when that is the file the post serves. Audio from a supported video can be saved as MP3. Downloadit does not upscale a low-resolution upload.",
   },
   {
     q: "Why did my link fail to download?",
@@ -215,6 +142,7 @@ const FAQS = [
 
 export default function HomeClient() {
   const [activeTab, setActiveTab] = useState<DownloaderTab | null>(null);
+  const [seoOpen, setSeoOpen] = useState(false);
 
   useEffect(() => {
     const requestedTab = new URLSearchParams(window.location.search).get("tab");
@@ -250,6 +178,7 @@ export default function HomeClient() {
 
       <main id="main-content" className="flex-1">
         {/* ── Section 1: Hero & Main Download Box ── */}
+        <div className="home-landing">
         <div id="main-downloader">
           <HeroDownloader
             variant="home"
@@ -258,62 +187,11 @@ export default function HomeClient() {
             badge="FAST • FREE • NO LOGIN REQUIRED"
             titleA="Download Videos, Photos & Audio "
             titleB="Online with Downloadit"
-            subtitle="One simple media downloader for Instagram, Pinterest, Facebook, Twitter/X and Threads."
-            placeholder="Paste link"
+            subtitle="Downloadit saves public Instagram, Pinterest, Facebook, X and Threads media in your browser. No account is required."
+            placeholder="Paste"
           />
         </div>
-
-        {/* ── Section 2: Trust Badges & Supported Networks Bar ── */}
-        <section
-          id="supported-platforms"
-          className="mx-auto max-w-[1240px] px-4 pt-6 pb-10 sm:px-6 sm:pt-8 sm:pb-12 lg:px-8 xl:px-12"
-          aria-label="Supported Platforms and Trust Overview"
-        >
-          {/* Trust indicators */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[13px] sm:text-[14px] font-medium text-fg-muted mb-8 sm:mb-10">
-            <span className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              100% Free &amp; Unlimited
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              No Account Required
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              Public Media Only
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 rounded-full bg-success" />
-              Zero Download Logs
-            </span>
-          </div>
-
-          {/* Quick Platform Navigation Chips */}
-          <div className="flex flex-col items-center justify-center text-center">
-            <span className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-fg-subtle mb-3 sm:mb-4">
-              Select a dedicated platform downloader
-            </span>
-            <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5">
-              {SUPPORTED_PLATFORMS.map((platform) => {
-                const Icon = platform.Icon;
-                return (
-                  <Link
-                    key={platform.name}
-                    href={platform.href}
-                    title={platform.name}
-                    className="flex min-h-[44px] items-center gap-2.5 rounded-2xl border border-border bg-card px-4 py-2 text-[13.5px] font-bold text-fg-muted shadow-xs transition-all duration-200 hover:border-primary/40 hover:bg-primary-light/50 hover:text-primary hover:-translate-y-0.5"
-                  >
-                    <span style={{ color: platform.color }}>
-                      <Icon size={19} />
-                    </span>
-                    <span>{platform.shortName}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        </div>
 
         {/* ── Section 3: Original Introduction & What Downloadit Is ── */}
         <section
@@ -321,7 +199,8 @@ export default function HomeClient() {
           className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 xl:px-12"
           aria-labelledby="about-intro-heading"
         >
-          <div className="rounded-[28px] border border-border/80 bg-card p-6 sm:p-10 lg:p-12 shadow-[var(--shadow-card)] space-y-6">
+          <div className={`seo-card rounded-[28px] border border-border/80 bg-card p-6 sm:p-10 lg:p-12 shadow-[var(--shadow-card)] space-y-6${seoOpen ? " is-open" : ""}`}>
+            <div className="seo-collapse space-y-6">
             <div className="max-w-3xl">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-light px-3.5 py-1 text-[11px] font-bold tracking-wider uppercase text-primary-strong">
                 <Sparkles size={13} />
@@ -341,9 +220,8 @@ export default function HomeClient() {
               </p>
               <p className="mt-3 text-[15px] sm:text-[16px] leading-relaxed text-fg-muted">
                 Unlike ad-bloated conversion websites that require sketchy browser extensions or software downloads, Downloadit
-                operates entirely within your web browser. We connect directly to public content delivery endpoints to retrieve
-                the master progressive MP4 video stream or uncompressed JPEG picture, ensuring that your downloaded media retains
-                its full original quality without watermarks.
+                operates entirely within your web browser. It requests the public file the platform already serves, as MP4,
+                JPEG, or MP3. The saved file matches that source, including any mark the creator put on the post.
               </p>
             </div>
 
@@ -354,7 +232,7 @@ export default function HomeClient() {
                 </div>
                 <div>
                   <h3 className="font-bold text-fg text-[14.5px]">HD Video (MP4)</h3>
-                  <p className="text-[12.5px] text-fg-muted mt-0.5">Progressive 720p &amp; 1080p MP4 videos with synchronized stereo audio.</p>
+                  <p className="text-[12.5px] text-fg-muted mt-0.5">The progressive MP4 the public post already provides, with its audio.</p>
                 </div>
               </div>
 
@@ -364,7 +242,7 @@ export default function HomeClient() {
                 </div>
                 <div>
                   <h3 className="font-bold text-fg text-[14.5px]">Original Photos (JPEG)</h3>
-                  <p className="text-[12.5px] text-fg-muted mt-0.5">Full-resolution master photos and multi-slide carousel albums without downscaling.</p>
+                  <p className="text-[12.5px] text-fg-muted mt-0.5">JPEG or PNG photos and carousel slides in the size the post serves.</p>
                 </div>
               </div>
 
@@ -378,100 +256,98 @@ export default function HomeClient() {
                 </div>
               </div>
             </div>
+            </div>
+            <button
+              type="button"
+              className="seo-read-more"
+              aria-expanded={seoOpen}
+              onClick={() => setSeoOpen((open) => !open)}
+            >
+              {seoOpen ? "Show less" : "Read more"}
+            </button>
           </div>
         </section>
 
         {/* ── Section 4: Explore All Downloaders by Platform ── */}
         <section
           id="platform-guide"
-          className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8 xl:px-12"
+          className="mx-auto max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8 xl:px-12"
           aria-labelledby="platform-guide-heading"
         >
-          <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
-              Downloadit Hub
-            </p>
+          <div className="mx-auto mb-4 max-w-2xl text-center">
             <h2
               id="platform-guide-heading"
-              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[30px]"
+              className="text-[24px] font-extrabold tracking-tight text-fg sm:text-[30px]"
             >
               Explore All Downloaders by Platform
             </h2>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[12px] font-semibold text-fg-muted">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-                {PLATFORM_CATEGORIES.length} Platforms · Fast &amp; Free
-              </span>
-            </div>
-            <p className="mt-2.5 text-[14px] leading-relaxed text-fg-muted sm:text-[15px]">
+            <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[15px]">
               Choose a platform to open every supported downloader, feature and public media type.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-            {PLATFORM_CATEGORIES.map((platform, index) => {
+          <div className="platform-hub-grid">
+            {PLATFORM_CATEGORIES.map((platform) => {
               const Icon = platform.icon;
               return (
                 <article
                   key={platform.id}
-                  className={`group flex flex-col rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 hover:border-primary/40 hover:shadow-sm sm:p-5 ${PLATFORM_CARD_DESKTOP_PLACEMENT[index] ?? ""}`}
+                  className="platform-hub-card group"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-3">
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                       style={{ background: platform.badgeBg, color: platform.color }}
                     >
-                      <Icon size={20} />
+                      <Icon size={16} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="break-words text-[15.5px] font-bold leading-snug text-fg">
+                      <h3 className="platform-hub-title">
                         {platform.name}
                       </h3>
-                      <p className="mt-1 text-[12px] leading-snug text-fg-muted">
+                      <p className="truncate text-[12px] leading-snug text-fg-muted">
                         {platform.desc}
                       </p>
                     </div>
                   </div>
 
-                  <ul className="mt-3.5 space-y-1 border-t border-border-light pt-3">
-                    {platform.items.map((item) => {
-                      const ItemIcon = item.icon;
-                      return (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            className="group/item -mx-1.5 flex items-start gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-primary-light/50"
-                          >
-                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary-light text-primary">
-                              <ItemIcon size={12.5} strokeWidth={2.2} aria-hidden="true" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block break-words text-[12.5px] font-semibold leading-snug text-fg transition-colors group-hover/item:text-primary">
-                                {item.name}
-                              </span>
-                              <span className="mt-0.5 block break-words text-[11.5px] leading-snug text-fg-muted">
-                                {item.desc}
-                              </span>
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
+                  <ul className="mt-3 border-t border-border-light">
+                    {platform.items.map((item) => (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          title={item.desc}
+                          className="platform-hub-item group/item"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-fg group-hover/item:text-primary">
+                            {item.name}
+                            <span className="ml-1.5 font-medium text-fg-muted">· {item.desc}</span>
+                          </span>
+                          <ArrowRight size={14} className="shrink-0 text-fg-subtle transition-transform group-hover/item:translate-x-0.5 group-hover/item:text-primary" aria-hidden="true" />
+                        </Link>
+                      </li>
+                    ))}
                   </ul>
 
-                  <div className="mt-auto pt-3.5">
+                  <div className="mt-auto pt-2">
                     <Link
                       href={platform.mainHref}
                       aria-label={`Open ${platform.name}`}
                       className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-primary hover:underline"
                     >
                       <span>Open {platform.shortName} Downloader</span>
-                      <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                      <ArrowRight size={13} aria-hidden="true" />
                     </Link>
                   </div>
                 </article>
               );
             })}
+            <article className="platform-hub-card platform-hub-card--soon" aria-label="More downloaders coming soon">
+              <h3 className="platform-hub-title">More coming soon</h3>
+              <p className="mt-1 text-[13px] leading-snug text-fg-muted">
+                New public downloaders will appear here. The five platforms above are the ones Downloadit supports today.
+              </p>
+            </article>
           </div>
         </section>
 
@@ -481,19 +357,17 @@ export default function HomeClient() {
           className="mx-auto max-w-[1240px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8 xl:px-12"
           aria-labelledby="how-to-use-heading"
         >
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
-              Simple 4-Step Process
-            </p>
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <h2
               id="how-to-use-heading"
-              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
+              className="text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
             >
               How to Save Media with Downloadit
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
               Save any public video, photo, or audio track in four effortless steps on phone, tablet, or PC.
             </p>
+            <p className="how-zero-logs">Zero Download Logs</p>
           </div>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -538,7 +412,7 @@ export default function HomeClient() {
               <ul className="space-y-3 text-[14px] leading-relaxed text-fg-muted">
                 <li className="flex items-start gap-2">
                   <span className="text-success font-bold mt-0.5">✓</span>
-                  <span><strong>Public Videos:</strong> High-definition progressive MP4 streams from Instagram Reels, Facebook Watch, Pinterest video pins, Twitter/X clips, and Threads.</span>
+                  <span><strong>Public Videos:</strong> The progressive MP4 a public Instagram Reel, Facebook post, Pinterest Pin, X clip, or Threads post already provides.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-success font-bold mt-0.5">✓</span>
@@ -546,11 +420,11 @@ export default function HomeClient() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-success font-bold mt-0.5">✓</span>
-                  <span><strong>Active Instagram Stories:</strong> Anonymous downloading of live public stories within their active 24-hour window.</span>
+                  <span><strong>Active Instagram Stories:</strong> Public Stories can be saved while they are still live, inside the 24-hour window.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-success font-bold mt-0.5">✓</span>
-                  <span><strong>Clean Files:</strong> Downloads are direct master files without promotional overlays, third-party watermarks, or altered audio tracks.</span>
+                  <span><strong>Source File:</strong> Downloadit saves the public file the platform serves. Marks the creator placed on the post stay on the file.</span>
                 </li>
               </ul>
             </div>
@@ -666,13 +540,10 @@ export default function HomeClient() {
           className="mx-auto max-w-[960px] px-4 py-12 sm:px-6 sm:py-16 lg:px-8"
           aria-labelledby="faq-heading"
         >
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
-            <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
-              Got Questions?
-            </p>
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
             <h2
               id="faq-heading"
-              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
+              className="text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
             >
               Frequently Asked Questions
             </h2>
@@ -697,6 +568,45 @@ export default function HomeClient() {
               </details>
             ))}
           </div>
+        </section>
+
+        <section
+          id="guides"
+          className="mx-auto max-w-[1240px] px-4 py-8 sm:px-6 sm:py-12 lg:px-8 xl:px-12"
+          aria-labelledby="guides-heading"
+        >
+          <div className="mx-auto mb-6 max-w-2xl text-center">
+            <h2 id="guides-heading" className="text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]">
+              Guides for saving public media
+            </h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-fg-muted">
+              These explain what Downloadit can save, what it refuses, and when you need the creator&apos;s permission. Read them before you reuse a file.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              ["/blog/is-it-legal-download-instagram-videos", "Is it legal to download Instagram videos?", "Own files, private viewing, permission, and the cases where saving a public post is still the wrong move."],
+              ["/blog/instagram-copyright-basics-creators", "Instagram copyright basics for creators", "Who owns a post, what a public account does not give away, and what to do if someone reuses your work."],
+              ["/blog/private-vs-public-instagram-content", "Private vs public Instagram content", "Why a link you can open while logged in still fails, and how to tell a public post from a private one."],
+              ["/blog/permission-reuse-instagram-content", "How to get permission to reuse a post", "A practical way to ask the rights holder, and what to keep if they say yes."],
+              ["/blog/pinterest-copyright-basics", "Pinterest copyright basics", "The difference between viewing a Pin, saving it, and republishing it."],
+              ["/blog/downloader-not-working-fix", "Downloader not working?", "The checks that explain a failed link: privacy, expiry, the wrong URL, and an in-app browser."],
+            ].map(([href, title, text]) => (
+              <Link
+                key={href}
+                href={href}
+                className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-card)] transition-colors hover:border-primary/40"
+              >
+                <span className="block text-[16px] font-bold text-fg">{title}</span>
+                <span className="mt-2 block text-[14px] leading-relaxed text-fg-muted">{text}</span>
+              </Link>
+            ))}
+          </div>
+          <p className="mt-5 text-center">
+            <Link href="/blog" className="text-[14px] font-bold text-primary hover:underline">
+              Read all guides
+            </Link>
+          </p>
         </section>
 
         {/* ── Section 10: Call to Action Banner ── */}

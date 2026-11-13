@@ -8,7 +8,7 @@ import { SITE_URL } from "@/config/site";
 
 const REPORT_TITLE = "Report Content – Copyright & Takedown | Downloadit";
 const REPORT_DESCRIPTION =
-  "Report copyright, privacy or broken-link issues to Downloadit. Send the content URL and details through our takedown request form.";
+  "Report copyright, privacy or broken-link issues to Downloadit. Send the content URL and details through our takedown request form. We review each report.";
 
 export const metadata: Metadata = {
   title: { absolute: REPORT_TITLE },

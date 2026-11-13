@@ -3,7 +3,7 @@ import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
-const ABOUT_TITLE = "About Downloadit – Purpose, Platforms & Team";
+const ABOUT_TITLE = "About Downloadit – Our Purpose, Platforms & Support";
 const ABOUT_DESCRIPTION =
   "Learn who runs Downloadit, why the public-media downloader exists, which platforms it supports and how it handles privacy, copyright and support.";
 

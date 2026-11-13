@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   creator: BRAND_NAME,
   publisher: BRAND_NAME,
   alternates: {
-    canonical: "/",
+    canonical: SITE_URL,
   },
   openGraph: {
     title: BRAND_TITLE,
@@ -167,7 +167,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "WebApplication",
+              "@type": ["SoftwareApplication", "WebApplication"],
               "@id": `${SITE_URL}/#webapplication`,
               name: BRAND_NAME,
               url: SITE_URL,

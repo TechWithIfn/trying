@@ -53,14 +53,20 @@ if (trustProxyEnabled) {
  * app at all. Reading it per request makes the policy independent of import
  * order and still fails closed when nothing is configured.
  */
+const PRODUCTION_SITE_ORIGINS = ["https://www.downloadit.pro", "https://downloadit.pro"];
+
 function corsOriginSetting(): cors.CorsOptions["origin"] {
   const origins = (process.env.CORS_ORIGIN || "")
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  // Unset stays same-origin-only: reflecting any origin would let a
-  // third-party page drive the resolver from a visitor's browser.
-  return origins.length > 0 ? origins : false;
+  if (origins.length > 0) return origins;
+  // Vercel injects env per deployment. If CORS_ORIGIN was left empty, failing
+  // closed makes every browser call look like a network error and every
+  // platform shows the same "could not fetch" message. The public site
+  // origins are the only fallback; other origins are still rejected.
+  if (process.env.VERCEL) return PRODUCTION_SITE_ORIGINS;
+  return false;
 }
 
 app.use(

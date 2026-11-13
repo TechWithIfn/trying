@@ -28,7 +28,7 @@ Some creators publish work under a licence that states what is allowed. Read the
 
 ## What Downloadit does
 
-Downloadit resolves public media from supported Instagram, Pinterest and YouTube links. It does not decide who owns a file, grant permission, remove restrictions or make a use legal. Public-only access is a technical limit, not a copyright opinion. Use the [Pinterest Image Downloader](/pinterest-image-downloader) or [Pinterest Video Downloader](/pinterest-video-downloader) only for content you have the right to save.
+Downloadit resolves public media from supported Instagram, Pinterest, Facebook, X and Threads links. It does not decide who owns a file, grant permission, remove restrictions or make a use legal. Public-only access is a technical limit, not a copyright opinion. Use the [Pinterest Image Downloader](/pinterest-image-downloader) or [Pinterest Video Downloader](/pinterest-video-downloader) only for content you have the right to save.
 
 ## Common mistakes
 

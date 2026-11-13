@@ -3,8 +3,10 @@ import { generateToken } from "../lib/crypto.js";
 import { logger } from "../lib/logger.js";
 import { checkRateLimit, routeRateLimitConfig } from "../lib/rate-limit.js";
 import { getClientIp } from "../lib/media-proxy.js";
-import { runYtDlp, YtDlpAbortedError, YtDlpProcessError } from "../lib/ytdlp.js";
+import { runYtDlp, YtDlpAbortedError, YtDlpNotAvailableError, YtDlpProcessError, getYtDlpRetryAfterMs, isRetryableYtDlpError } from "../lib/ytdlp.js";
+import { withRetry } from "../lib/retry.js";
 import { validateThreadsUrl } from "../lib/validators/threads-url.js";
+import { readUpstreamSignal, describeUpstreamFailure } from "../lib/upstream.js";
 
 const router = Router();
 const RESOLVE_TIMEOUT_MS = 45_000;
@@ -13,8 +15,30 @@ function failure(code: string, message: string) {
   return { success: false, error: { code, message } };
 }
 
-function classify(stderr: string): { code: string; message: string; status: number } {
+function classify(stderr: string, sourceUrl: string): { code: string; message: string; status: number } {
   const text = stderr.toLowerCase();
+  const upstream = readUpstreamSignal(stderr, sourceUrl);
+  if (upstream.rateLimited) {
+    return { code: "PLATFORM_BUSY", message: "Threads is temporarily limiting download requests. Please try again in a few minutes.", status: 503 };
+  }
+  if (upstream.blocked) {
+    return { code: "PLATFORM_BLOCKED", message: "Threads is refusing download requests from this server right now. This is usually temporary — please try again later.", status: 503 };
+  }
+  // A profile or share URL that our own validator already rejected never
+  // reaches yt-dlp. "Unsupported URL" here means the current yt-dlp build has
+  // no Threads extractor (confirmed against 2026.10.26): the link shape was
+  // valid, and blaming the visitor is wrong.
+  if (/unsupported url/.test(text)) {
+    return {
+      code: "THREADS_EXTRACTOR_UNSUPPORTED",
+      message:
+        "Threads did not return a public media file for this link. If the post is public and includes a photo or video, try again in a few minutes. Text-only posts have nothing to save.",
+      status: 502,
+    };
+  }
+  if (/invalid_post|invalid post|not a valid/.test(text)) {
+    return { code: "THREADS_INVALID_POST", message: "That Threads link does not point to a single public post. Open the post, tap Share, then Copy link and paste that.", status: 400 };
+  }
   if (/login required|log in|private|not available|post unavailable|does not exist|suspended|protected/.test(text)) {
     return { code: "THREADS_CONTENT_UNAVAILABLE", message: "This Threads post is unavailable, private, or requires access.", status: 404 };
   }
@@ -69,10 +93,21 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
     if (!res.writableEnded) controller.abort();
   };
   res.on("close", onClose);
+  const source = checked.parsed;
   try {
-    const result = await runYtDlp(
-      ["--no-playlist", "--skip-download", "--dump-single-json", "--no-warnings", checked.parsed.normalized],
-      { timeoutMs: RESOLVE_TIMEOUT_MS, signal: controller.signal }
+    const result = await withRetry(
+      () =>
+        runYtDlp(
+          ["--no-playlist", "--skip-download", "--dump-single-json", "--no-warnings", source.normalized],
+          { timeoutMs: RESOLVE_TIMEOUT_MS, signal: controller.signal }
+        ),
+      {
+        attempts: 2,
+        signal: controller.signal,
+        isRetryable: isRetryableYtDlpError,
+        retryAfterMs: getYtDlpRetryAfterMs,
+        logContext: { platform: "threads", requestId, host: source.hostname },
+      }
     );
     const info = JSON.parse(result.stdout) as RawMedia & {
       id?: string;
@@ -121,9 +156,33 @@ router.post("/resolve", async (req: Request, res: Response): Promise<void> => {
       if (!res.headersSent) res.status(504).json(failure("THREADS_RESOLVE_TIMEOUT", "Threads did not respond in time. Please try again."));
       return;
     }
+    if (error instanceof YtDlpNotAvailableError) {
+      logger.error("[THREADS] extractor unavailable", {
+        platform: "threads",
+        requestId,
+        host: source.hostname,
+        upstreamStatus: null,
+        code: "SERVICE_ERROR",
+        durationMs: Date.now() - startedAt,
+      });
+      if (!res.headersSent) {
+        res.status(503).json(failure("SERVICE_ERROR", "Service issue on our side. Please try again in a minute."));
+      }
+      return;
+    }
     const stderr = error instanceof YtDlpProcessError ? error.stderr : error instanceof Error ? error.message : "unknown";
-    const mapped = classify(stderr);
-    logger.warn("[THREADS] resolve failed", { requestId, category: mapped.code, duration: Date.now() - startedAt, stderr: stderr.slice(0, 2000) });
+    const mapped = classify(stderr, checked.parsed.normalized);
+    logger.warn(
+      "[THREADS] resolve failed",
+      describeUpstreamFailure(
+        "threads",
+        requestId,
+        readUpstreamSignal(stderr, checked.parsed.normalized),
+        Date.now() - startedAt,
+        mapped.code
+      )
+    );
+    logger.debug("[THREADS] upstream stderr", { requestId, stderr: stderr.slice(0, 2000) });
     if (!res.headersSent) res.status(mapped.status).json(failure(mapped.code, mapped.message));
   } finally {
     res.off("close", onClose);
