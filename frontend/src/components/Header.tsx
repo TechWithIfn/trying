@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Globe,
   HelpCircle,
@@ -15,6 +15,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useLanguage, LANGUAGES } from "@/i18n";
+import Breadcrumb from "@/components/Breadcrumb";
+import { breadcrumbLabel } from "@/config/routeLabels";
 import type { DownloaderTab } from "@/components/HeroDownloader";
 import ToolCategoryDropdown, {
   FacebookIcon,
@@ -28,11 +30,45 @@ import { PLATFORM_CATEGORIES } from "@/config/categories";
 interface HeaderProps {
   activeDownloaderTab?: DownloaderTab | null;
   onDownloaderTabChange?: (tab: DownloaderTab | null) => void;
+  /** Set false when the page renders its own richer breadcrumb. */
+  showBreadcrumbs?: boolean;
 }
 
-export default function Header({ activeDownloaderTab }: HeaderProps) {
+/** Pages that have a real Hindi translation under /hi. */
+const HINDI_ROUTES = new Set([
+  "/instagram-video-downloader",
+  "/pinterest-video-downloader",
+  "/facebook-video-downloader",
+  "/twitter-video-downloader",
+  "/threads-video-downloader",
+  "/blog",
+  "/blog/backup-instagram-reels",
+  "/blog/download-instagram-stories-before-expire",
+  "/blog/download-pinterest-videos-iphone-android",
+  "/blog/instagram-link-expired-not-found",
+  "/blog/is-it-legal-download-instagram-videos",
+]);
+
+function hindiPathFor(pathname: string): string {
+  if (pathname === "/hi" || pathname.startsWith("/hi/")) return pathname;
+  if (pathname === "/") return "/hi";
+  if (HINDI_ROUTES.has(pathname)) return `/hi${pathname}`;
+  return "/hi";
+}
+
+function englishPathFor(pathname: string): string {
+  if (pathname === "/hi") return "/";
+  if (pathname.startsWith("/hi/")) return pathname.slice(3);
+  return pathname;
+}
+
+export default function Header({
+  activeDownloaderTab,
+  showBreadcrumbs = true,
+}: HeaderProps) {
   const { t, lang, setLang } = useLanguage();
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -114,6 +150,26 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
 
   const iconBtn =
     "site-icon-btn flex h-10 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[14px] font-semibold text-fg-muted transition-colors hover:bg-primary-light hover:text-primary";
+
+  const isHindiRoute = pathname === "/hi" || pathname.startsWith("/hi/");
+  const shouldShowBreadcrumbs =
+    showBreadcrumbs && pathname !== "/" && pathname !== "/hi";
+  const crumbItems = (() => {
+    if (!shouldShowBreadcrumbs) return [];
+    const englishPath = pathname.replace(/^\/hi(?=\/)/, "");
+    const items: { name: string; path?: string }[] = [
+      { name: "Home", path: "/" },
+    ];
+    if (isHindiRoute) items.push({ name: "हिन्दी", path: "/hi" });
+    if (englishPath.startsWith("/blog/")) {
+      items.push({ name: "Blog", path: "/blog" });
+    }
+    items.push({
+      name: breadcrumbLabel(englishPath),
+      path: pathname,
+    });
+    return items;
+  })();
 
   const platformLinks = [
     { href: "/instagram-video-downloader", label: "Instagram", Icon: InstagramIcon, color: "#ec5fa8" },
@@ -238,6 +294,11 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
                         onClick={() => {
                           setLang(l.code);
                           setLangOpen(false);
+                          router.push(
+                            l.code === "hi"
+                              ? hindiPathFor(pathname)
+                              : englishPathFor(pathname)
+                          );
                         }}
                         className="flex min-h-[40px] w-full items-center gap-2.5 rounded-xl px-3 text-left text-[13.5px] transition-colors hover:bg-primary-light"
                         style={{
@@ -289,6 +350,17 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
           </div>
         </div>
       </header>
+
+      {shouldShowBreadcrumbs && crumbItems.length > 1 && (
+        <div className="border-b border-border/40 bg-bg/60">
+          <Breadcrumb
+            items={crumbItems}
+            showSchema={false}
+            align="left"
+            containerClassName="mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8 xl:px-12"
+          />
+        </div>
+      )}
 
       {/* Mobile Drawer Overlay */}
       {mobileOpen && (
@@ -366,7 +438,7 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-fg-subtle">
               Categories
             </p>
-            <span className="text-[11px] font-semibold text-primary">6 Platforms</span>
+            <span className="text-[11px] font-semibold text-primary">{PLATFORM_CATEGORIES.length} Platforms</span>
           </div>
 
           {/* Expandable Platform Categories */}
@@ -393,10 +465,10 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
                         <CatIcon size={18} />
                       </span>
                       <div className="min-w-0">
-                        <span className="block text-[14px] font-bold text-fg truncate">
+                        <span className="block break-words text-[14px] font-bold leading-snug text-fg">
                           {cat.name}
                         </span>
-                        <span className="block text-[11px] text-fg-subtle truncate">
+                        <span className="block break-words text-[11px] leading-snug text-fg-subtle">
                           {cat.desc}
                         </span>
                       </div>
@@ -427,20 +499,20 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
                             key={item.name}
                             href={item.href}
                             onClick={closeMobileMenu}
-                            className={`flex min-h-[42px] items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                            className={`flex min-h-[42px] items-start gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium transition-colors ${
                               isSelected
                                 ? "bg-primary-light text-primary font-bold"
                                 : "text-fg hover:bg-primary-light hover:text-primary"
                             }`}
                           >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-card text-primary shadow-xs">
+                            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-card text-primary shadow-xs">
                               <ItemIcon size={13} strokeWidth={2.2} />
                             </span>
                             <div className="min-w-0 flex-1">
-                              <span className="block text-[13px] font-semibold leading-tight text-fg truncate">
+                              <span className="block break-words text-[13px] font-semibold leading-snug text-fg">
                                 {item.name}
                               </span>
-                              <span className="block text-[10.5px] text-fg-muted truncate">
+                              <span className="block break-words text-[10.5px] leading-snug text-fg-muted">
                                 {item.desc}
                               </span>
                             </div>
@@ -483,7 +555,15 @@ export default function Header({ activeDownloaderTab }: HeaderProps) {
                 <button
                   key={l.code}
                   type="button"
-                  onClick={() => setLang(l.code)}
+                  onClick={() => {
+                    setLang(l.code);
+                    closeMobileMenu();
+                    router.push(
+                      l.code === "hi"
+                        ? hindiPathFor(pathname)
+                        : englishPathFor(pathname)
+                    );
+                  }}
                   className={`rounded-lg px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
                     active
                       ? "bg-primary text-white shadow-xs"

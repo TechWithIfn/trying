@@ -94,7 +94,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Reel",
     initialTab: "reels",
     trust: ["No account required", "Public Reels only", "Preview before saving"],
-    seoTitle: "Instagram Reels Downloader – Save Reels as MP4 | Downloadit",
+    seoTitle: "Instagram Reels Downloader – Save HD MP4 Free",
     seoDescription:
       "Download public Instagram Reels as MP4 with the original audio. Paste a Reel link, preview the available quality and save it free — no login or app required.",
   },
@@ -111,7 +111,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Media",
     initialTab: "videos",
     trust: ["No account required", "Public media only", "Preview before saving"],
-    seoTitle: "Instagram Downloader – Reels, Videos, Photos & Stories | Downloadit",
+    seoTitle: "Instagram Downloader – Reels, Photos, Video & Audio",
     seoDescription:
       "Download public Instagram media with one tool: Reels, videos, photos, carousels, Stories and MP3 audio. Paste a link, preview the result and save. No login.",
   },
@@ -128,7 +128,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Photo",
     initialTab: "photos",
     trust: ["No account required", "Public posts only", "Original image quality"],
-    seoTitle: "Instagram Photo & Carousel Downloader – Save Images | Downloadit",
+    seoTitle: "Instagram Photo Downloader – Save Photos & Carousels",
     seoDescription:
       "Download public Instagram photos and carousel slides at the resolution Instagram provides. Save a single image or every slide as JPEG. Free, no login required.",
   },
@@ -145,7 +145,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Download Story",
     initialTab: "stories",
     trust: ["No account required", "Live public Stories only", "Save within 24 hours"],
-    seoTitle: "Instagram Story Downloader – Save Public Stories | Downloadit",
+    seoTitle: "Instagram Story Downloader – Save Public Stories Free",
     seoDescription:
       "Download public Instagram Stories while they are still live. Save Story photos as JPEG or videos as MP4 before the 24-hour window closes. No login required.",
   },
@@ -162,7 +162,7 @@ export const TOOL_PAGES = {
     buttonLabel: "Extract Audio",
     initialTab: "audio",
     trust: ["No account required", "Public Reels and videos only", "Full track as MP3"],
-    seoTitle: "Instagram Audio Downloader – Reels & Video to MP3 | Downloadit",
+    seoTitle: "Instagram Audio Downloader – Reels to MP3 Free",
     seoDescription:
       "Extract audio from public Instagram Reels and videos as an MP3. Paste a link, preview the media and download the sound track. Free, no software, no login.",
   },
@@ -184,7 +184,7 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Preview before downloading",
     ],
-    seoTitle: "Pinterest Video Downloader – Save Public Video Pins | Downloadit",
+    seoTitle: "Pinterest Video Downloader – Save Pin Videos Free",
     seoDescription:
       "Download public Pinterest video Pins as MP4. Paste a Pin link, preview the available media and save the video file. Free to use, no login or extension needed.",
   },
@@ -206,7 +206,7 @@ export const TOOL_PAGES = {
       "Public pins only",
       "Original image quality",
     ],
-    seoTitle: "Pinterest Image Downloader – Save Images in High Resolution | Downloadit",
+    seoTitle: "Pinterest Image Downloader – Save HD Images Free",
     seoDescription:
       "Download images from public Pinterest Pins, including supported carousel slides. Paste a Pin link, preview the pictures and save them in the format provided.",
   },
@@ -222,7 +222,7 @@ export const TOOL_PAGES = {
     placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: ["Public videos only", "No login required", "Preview before saving"],
-    seoTitle: "Facebook Video Downloader – Save Public FB Videos | Downloadit",
+    seoTitle: "Facebook Video Downloader – Save Public Videos Free",
     seoDescription:
       "Download publicly accessible Facebook videos and Reels as MP4. Paste a post link, preview the available media and save it without a Facebook login.",
   },
@@ -238,7 +238,7 @@ export const TOOL_PAGES = {
     placeholder: "Paste link",
     buttonLabel: "Get Video",
     trust: ["Public posts only", "No login required", "Preview before saving"],
-    seoTitle: "Twitter/X Video Downloader – Save Videos as MP4 | Downloadit",
+    seoTitle: "Twitter/X Video Downloader – Save MP4 Videos Free",
     seoDescription:
       "Download videos and animated GIFs from public Twitter/X posts as MP4. Paste a post link, preview the available media and save it without an account.",
   },
@@ -254,13 +254,22 @@ export const TOOL_PAGES = {
     placeholder: "Paste link",
     buttonLabel: "Get Media",
     trust: ["Public posts only", "No login required", "Video and images supported"],
-    seoTitle: "Threads Video Downloader – Save Videos & Photos | Downloadit",
+    seoTitle: "Threads Video Downloader – Save Videos & Photos Free",
     seoDescription:
       "Download videos and photos from public Threads posts. Paste a Threads link, preview the available media and save it to your device without logging in.",
   },
 } as const satisfies Record<string, ToolPageConfig>;
 
 export type ToolPageKey = keyof typeof TOOL_PAGES;
+
+/** Main tool routes that have a real, translated Hindi page under /hi/. */
+const HINDI_TOOL_PATHS = new Set([
+  "/instagram-video-downloader",
+  "/pinterest-video-downloader",
+  "/facebook-video-downloader",
+  "/twitter-video-downloader",
+  "/threads-video-downloader",
+]);
 
 /**
  * Shared metadata for a tool route: unique absolute title, unique description,
@@ -275,7 +284,19 @@ export function toolMetadata(
   return {
     title: { absolute: page.seoTitle },
     description: page.seoDescription,
-    alternates: { canonical: page.path },
+    alternates: {
+      canonical: page.path,
+      languages: HINDI_TOOL_PATHS.has(page.path)
+        ? {
+            en: url,
+            hi: `${SITE_URL}/hi${page.path}`,
+            "x-default": url,
+          }
+        : {
+            en: url,
+            "x-default": url,
+          },
+    },
     robots: {
       index: true,
       follow: true,

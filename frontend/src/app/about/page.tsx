@@ -1,35 +1,41 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
-import { SITE_URL } from "@/config/site";
+import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
-const ABOUT_TITLE = "About Downloadit – Independent Public-Media Downloader";
+const ABOUT_TITLE = "About Downloadit – Purpose, Platforms & Team";
 const ABOUT_DESCRIPTION =
-  "Learn about Downloadit, how its independent Instagram, Pinterest, Facebook, Twitter/X and Threads downloader works, and what it does not access.";
+  "Learn who runs Downloadit, why the public-media downloader exists, which platforms it supports and how it handles privacy, copyright and support.";
 
 export const metadata: Metadata = {
   title: { absolute: ABOUT_TITLE },
   description: ABOUT_DESCRIPTION,
   alternates: { canonical: "/about" },
+  authors: [{ name: "Downloadit", url: SITE_URL }],
+  creator: "Downloadit",
+  publisher: "Downloadit",
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    title: ABOUT_TITLE,
+    title: { absolute: ABOUT_TITLE },
     description: ABOUT_DESCRIPTION,
     type: "website",
     siteName: "Downloadit",
     url: `${SITE_URL}/about`,
-    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "About — Downloadit" }],
+    images: [{ url: "/og-downloadit.png", width: 1200, height: 630, alt: "About Downloadit" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: ABOUT_TITLE,
+    title: { absolute: ABOUT_TITLE },
     description: ABOUT_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
 };
+
+const linkClass =
+  "font-semibold text-fg transition-colors hover:text-primary";
 
 export default function AboutPage() {
   const aboutJson = JSON.stringify({
@@ -41,8 +47,10 @@ export default function AboutPage() {
     description: ABOUT_DESCRIPTION,
     inLanguage: "en",
     isPartOf: { "@id": `${SITE_URL}/#website` },
-    about: { "@id": `${SITE_URL}/#webapplication` },
+    about: { "@id": `${SITE_URL}/#organization` },
+    mainEntity: { "@id": `${SITE_URL}/#organization` },
   });
+
   return (
     <>
       <script
@@ -50,138 +58,293 @@ export default function AboutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: aboutJson }}
       />
-    <LegalPage title="About Downloadit" updated="October 2026" crumbPath="/about">
-      <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
-      <p>
-        Downloadit is a free tool for saving media from public Instagram,
-        Pinterest and Facebook links.
-        Paste a link, preview what is found, and download it to your phone,
-        tablet or desktop. No account, no app install, no login — that is the
-        whole idea.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">Why it was built</h2>
-      <p>
-        It was built to make saving publicly accessible media clearer and more
-        convenient. The workflow is intentionally simple: paste a public link,
-        preview the available file, and save it. No popups in the way, no
-        password asked, and nothing to sign up for.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">Who runs Downloadit</h2>
-      <p>
-        Downloadit is an independent web service focused on public-media
-        downloads. The service is kept deliberately small, and support is
-        handled through the{" "}
-        <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">
-          Contact page
-        </Link>
-        .
-      </p>
-      <p>
-        The project focuses on a clear public-content workflow, honest error
-        messages, and practical support. If something breaks or you have a
-        concern, email the support address listed on the Contact page rather
-        than sending credentials or private account details.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">How it works, in simple words</h2>
-      <p>
-        Think of it like this: every public Instagram post, Pinterest pin video or Facebook video is a page anyone can open, with media
-        sitting on it. When
-        you paste a link,
-        Downloadit opens that same public page — exactly as a logged-out
-        stranger would see it — finds the media files on it, and shows them
-        back to you as a preview. You check the preview and save the file you
-        want. Nothing is copied in advance and nothing is stored on any
-        server in between.
-      </p>
-      <p>
-        Media links are short-lived by nature, so every request starts fresh
-        from the live link instead of a stored copy. Audio works the same way
-        except for one extra step: the sound is extracted on the server
-        first, which is why audio takes longer and can occasionally be busy.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">What it does and does not do</h2>
-      <p>What Downloadit does:</p>
-      <ul className="list-disc space-y-1 pl-6">
-        <li>Saves supported public photos, videos, reels, stories, pins, and audio.</li>
-        <li>Shows you a preview of the exact file before anything is downloaded.</li>
-        <li>Works in the browser with no account, no app, and no login.</li>
-      </ul>
-      <p>What it deliberately does not do:</p>
-      <ul className="list-disc space-y-1 pl-6">
-        <li>Open private accounts, Close Friends stories, or anything that needs a login.</li>
-        <li>Ask for a social-media password, cookie or account credential — not once, not ever.</li>
-        <li>Keep copies of your links or files, or track who downloads what.</li>
-      </ul>
-      <h2 className="text-[20px] font-bold text-fg">What you can download</h2>
-      <p>
-        The tool covers the media types people actually ask for:{" "}
-        <Link href="/instagram-reels-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Reels</Link>,{" "}
-        <Link href="/instagram-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">videos</Link>,{" "}
-        <Link href="/instagram-photo-downloader" className="font-semibold text-fg transition-colors hover:text-primary">carousels</Link>,{" "}
-        <Link href="/instagram-story-downloader" className="font-semibold text-fg transition-colors hover:text-primary">stories</Link>, and{" "}
-        <Link href="/instagram-audio-downloader" className="font-semibold text-fg transition-colors hover:text-primary">audio extracted as MP3</Link>.
-        Videos save as MP4, images keep their original JPG, PNG or WebP, and
-        stories keep whatever image or video format they were posted in. Downloadit also supports{" "}
-        <Link href="/pinterest-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest videos</Link>,{" "}
-        <Link href="/pinterest-image-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Pinterest images</Link>,{" "}
-        <Link href="/twitter-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Twitter/X videos</Link>,{" "}
-        <Link href="/threads-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">Threads media</Link> and{" "}
-        <Link href="/facebook-video-downloader" className="font-semibold text-fg transition-colors hover:text-primary">public Facebook videos</Link>. The{" "}
-        <Link href="/help" className="font-semibold text-fg transition-colors hover:text-primary">Help page</Link>{" "}
-        walks through each of these with troubleshooting for the common
-        failures.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">Public content only</h2>
-      <p>
-        One rule governs everything: public content only. The test is what a
-        logged-out stranger can view. Private accounts, private boards,
-        deleted posts, expired stories and login-walled videos fail that test
-        and return a clear message instead of a file. Access controls are never
-        bypassed, and the service does not ask for social-media passwords or
-        account credentials.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">Privacy by design</h2>
-      <p>
-        Privacy follows from that design. There are no accounts, so there is
-        nothing to tie your activity to — no download history in your browser,
-        no profile, no tracking of who saved what. Pasted links exist
-        transiently to complete your request and then expire. Your files live
-        on your device and nowhere else. I run no analytics that identifies
-        visitors, and I would rather shut a feature off than add tracking to
-        keep it running.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">Honest limitations</h2>
-      <p>
-        A few honest limitations. Media URLs expire quickly, so a link that
-        worked minutes ago may need re-resolving. Audio depends on server-side
-        processing and can be temporarily unavailable at busy moments. Long
-        videos are big files that need storage space and a steady connection.
-        And Instagram changes its own site regularly — when something shifts
-        on their end, resolution can break until things are adjusted. The
-        tool reports these situations plainly rather than pretending
-        everything is fine.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">An independent service</h2>
-      <p>
-        Downloadit is an independent service and is not affiliated with,
-        endorsed by, or sponsored by Instagram, Meta, Pinterest, Google, Facebook or X. It only reads what is
-        already publicly available through normal links, and you are
-        responsible for having the right to download and reuse anything you
-        save — see the <Link href="/terms" className="font-semibold text-fg transition-colors hover:text-primary">Terms</Link> and{" "}
-        <Link href="/dmca" className="font-semibold text-fg transition-colors hover:text-primary">DMCA pages</Link> if
-        you are unsure.
-      </p>
-      <h2 className="text-[20px] font-bold text-fg">Contact</h2>
-      <p>
-        Questions, broken links, or reports? The fastest route is the{" "}
-        <Link href="/contact" className="font-semibold text-fg transition-colors hover:text-primary">Contact page</Link>,
-        which explains what to include so most issues are solved in one
-        reply. If you believe content reachable through this site infringes
-        your copyright, use the formal process on the{" "}
-        <Link href="/dmca" className="font-semibold text-fg transition-colors hover:text-primary">DMCA page</Link>{" "}
-        instead — complete notices there are reviewed within 48–72 hours.
-      </p>
-    </LegalPage>
+      <LegalPage title="About Downloadit" updated="November 2026" crumbPath="/about">
+        <p>
+          Downloadit is an independent, browser-based media downloader at{" "}
+          <a
+            href={SITE_URL}
+            className={linkClass}
+            aria-label="Visit the Downloadit homepage"
+          >
+            downloadit.pro
+          </a>
+          . It helps people save publicly accessible videos, photos and audio for
+          offline personal viewing. There is no account to create, no app to
+          install, and no social-media login to hand over.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">What Downloadit is</h2>
+        <p>
+          Downloadit is a small online utility with a focused purpose: take a
+          public link from a supported platform, find the media attached to it,
+          show a preview, and let you save the file to your device. The project
+          is maintained under the Downloadit name and is intended for personal
+          archiving, research, creative reference and offline access.
+        </p>
+        <p>
+          The site does not host a media library and is not a social network. It
+          works only with individual public links that a visitor pastes into the
+          input box on the homepage or on one of the dedicated platform pages.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">Why Downloadit was created</h2>
+        <p>
+          Saving a public video or photo is often more awkward than it should
+          be. Many download sites bury the file behind redirect chains,
+          pop-ups, fake buttons or browser extensions. Some ask for a
+          social-media password, which should never be necessary for a public
+          post.
+        </p>
+        <p>
+          Downloadit was built around a simpler idea: paste a public link,
+          preview what the platform already serves publicly, and download the
+          file you actually want. The interface is deliberately plain, the
+          wording explains failures instead of hiding them, and the same flow
+          works on a phone, tablet or desktop browser.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">What problems it aims to solve</h2>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>
+            <strong>Too many steps:</strong> one input accepts links from all
+            five supported platforms and detects the source automatically.
+          </li>
+          <li>
+            <strong>Unclear results:</strong> a preview shows the media that was
+            found before you commit to a download.
+          </li>
+          <li>
+            <strong>Intrusive download flows:</strong> no fake download buttons,
+            no installable extension, and no requirement to create an account.
+          </li>
+          <li>
+            <strong>Privacy concerns:</strong> the service does not ask for
+            passwords, cookies or social-media credentials.
+          </li>
+          <li>
+            <strong>Unsupported links:</strong> private, expired and login-walled
+            content returns a clear message rather than a misleading file.
+          </li>
+        </ul>
+
+        <h2 className="text-[20px] font-bold text-fg">Platforms Downloadit supports</h2>
+        <p>
+          Downloadit currently supports five platforms. Each link below opens the
+          dedicated downloader for that platform.
+        </p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>
+            <Link href="/instagram-video-downloader" className={linkClass}>
+              Instagram Downloader
+            </Link>{" "}
+            — Reels, videos, photos, carousels, stories and audio.
+          </li>
+          <li>
+            <Link href="/pinterest-video-downloader" className={linkClass}>
+              Pinterest Downloader
+            </Link>{" "}
+            — public video pins and high-resolution images.
+          </li>
+          <li>
+            <Link href="/facebook-video-downloader" className={linkClass}>
+              Facebook Downloader
+            </Link>{" "}
+            — publicly accessible Facebook videos.
+          </li>
+          <li>
+            <Link href="/twitter-video-downloader" className={linkClass}>
+              Twitter/X Downloader
+            </Link>{" "}
+            — public post videos and animated GIFs.
+          </li>
+          <li>
+            <Link href="/threads-video-downloader" className={linkClass}>
+              Threads Downloader
+            </Link>{" "}
+            — videos and images from public Threads posts.
+          </li>
+        </ul>
+
+        <h2 className="text-[20px] font-bold text-fg">Features available</h2>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>Preview the available media before downloading it.</li>
+          <li>
+            Save public videos as MP4 where the platform provides a progressive
+            stream.
+          </li>
+          <li>
+            Save public photos and carousel slides in the image format the
+            platform provides, such as JPG, PNG or WebP.
+          </li>
+          <li>
+            Extract audio from supported public Instagram Reels and videos as an
+            MP3 file.
+          </li>
+          <li>
+            Use the service without an account, app, browser extension or social
+            login.
+          </li>
+          <li>
+            Work in modern mobile and desktop browsers on iPhone, iPad, Android,
+            Windows, macOS and Linux.
+          </li>
+          <li>
+            Process one public link at a time, without bulk profile or channel
+            scraping.
+          </li>
+          <li>
+            Show a plain explanation when a link is private, expired,
+            unsupported or temporarily unavailable.
+          </li>
+        </ul>
+
+        <h2 className="text-[20px] font-bold text-fg">How to use Downloadit</h2>
+        <ol className="list-decimal space-y-1 pl-6">
+          <li>
+            Open the public post, Reel, Pin or video on the original platform and
+            copy its link.
+          </li>
+          <li>
+            Paste the link into the Downloadit input on the{" "}
+            <Link href="/" className={linkClass}>
+              homepage
+            </Link>{" "}
+            or on the relevant platform page.
+          </li>
+          <li>Review the preview and the available file format.</li>
+          <li>
+            Download the file to your device. On mobile, the file is saved to
+            your browser&apos;s Downloads location; on desktop, it goes to your
+            normal download folder.
+          </li>
+        </ol>
+        <p>
+          The{" "}
+          <Link href="/help" className={linkClass}>
+            Help page
+          </Link>{" "}
+          explains each flow in more detail and includes troubleshooting for
+          common failures.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">What Downloadit cannot do</h2>
+        <p>
+          The service is intentionally limited to public content. It cannot and
+          does not bypass platform access controls. In practice, that means it
+          cannot:
+        </p>
+        <ul className="list-disc space-y-1 pl-6">
+          <li>
+            Open private accounts, followers-only posts, secret boards or Close
+            Friends stories.
+          </li>
+          <li>
+            Recover deleted posts, expired stories or media that the platform has
+            already removed.
+          </li>
+          <li>
+            Bypass a login wall, paywall, password, DRM protection or other
+            security mechanism.
+          </li>
+          <li>
+            Scrape an entire profile, channel or board in bulk.
+          </li>
+          <li>
+            Guarantee that a link will work forever. Platforms change their
+            pages and media URLs regularly, and a saved link can expire quickly.
+          </li>
+          <li>
+            Grant copyright permission or transfer ownership of any media.
+          </li>
+        </ul>
+        <p>
+          Audio extraction depends on server-side processing, so it can take
+          longer than a direct video or image download and may be temporarily
+          busy. Long videos are large files and need enough storage space and a
+          stable connection.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">
+          Copyright and responsible use
+        </h2>
+        <p>
+          All intellectual property rights remain with the original creators and
+          copyright holders. Downloadit does not claim ownership of any media
+          processed through the service and does not grant permission to reuse
+          it.
+        </p>
+        <p>
+          Use downloaded media only where you have the right to do so — for
+          example, your own posts, content you have permission to save, or
+          material covered by an applicable exception such as fair use or fair
+          dealing. Do not re-upload, redistribute, broadcast or monetise
+          third-party media without authorisation, and respect the terms of
+          service of the platform you are using.
+        </p>
+        <p>
+          For copyright concerns, use the formal process on the{" "}
+          <Link href="/dmca" className={linkClass}>
+            DMCA / Copyright Policy
+          </Link>{" "}
+          page. The{" "}
+          <Link href="/terms" className={linkClass}>
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/disclaimer" className={linkClass}>
+            Disclaimer
+          </Link>{" "}
+          set out the full rules.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">Contact Downloadit</h2>
+        <p>
+          Questions, bug reports and feature suggestions are welcome through the{" "}
+          <Link href="/contact" className={linkClass}>
+            Contact page
+          </Link>
+          . You can also email{" "}
+          <a
+            href={supportMailto()}
+            className={linkClass}
+            aria-label="Email Downloadit support"
+            style={{ overflowWrap: "anywhere" }}
+          >
+            {SUPPORT_EMAIL}
+          </a>
+          .
+        </p>
+        <p>
+          When reporting a broken download, include the public link and a short
+          description of what happened. Never send a social-media password,
+          cookie or account credential.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">Who maintains Downloadit</h2>
+        <p>
+          Downloadit is maintained under the project name <strong>Downloadit</strong>.
+          The maintainer display name used across the site, metadata and support
+          channels is <strong>Downloadit</strong>. The project is independent and
+          is not presented as a registered company, agency, staffed team or
+          physical office.
+        </p>
+        <p>
+          If formal legal or ownership information is required, please request it
+          through the{" "}
+          <Link href="/contact" className={linkClass}>
+            Contact page
+          </Link>{" "}
+          rather than inferring it from this page.
+        </p>
+
+        <h2 className="text-[20px] font-bold text-fg">An independent service</h2>
+        <p>
+          Downloadit is an independent service and is not affiliated with,
+          endorsed by, or sponsored by Instagram, Meta, Pinterest, X Corp., or
+          Threads. Platform names and logos belong to their respective owners and
+          are used only to describe the links the service can process.
+        </p>
+      </LegalPage>
     </>
   );
 }

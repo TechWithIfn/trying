@@ -144,25 +144,28 @@ export default function ToolCategoryDropdown() {
           boxShadow: "0 18px 50px rgba(60, 40, 120, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06)",
         }}
       >
-        <div className="mb-3 flex items-center justify-between border-b border-border/60 pb-2.5 px-1">
-          <div>
+        <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-1 pb-2.5">
+          <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary-strong">
               Downloadit Hub
             </p>
-            <h3 className="text-[15px] font-bold text-fg">Explore All Downloaders by Platform</h3>
+            <h3 className="text-[15px] font-bold leading-snug text-fg">
+              Explore All Downloaders by Platform
+            </h3>
           </div>
-          <span className="text-[12px] font-medium text-fg-subtle">
-            6 Platforms · Fast & Free
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-bg/60 px-2.5 py-1 text-[11px] font-semibold text-fg-muted">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+            {PLATFORM_CATEGORIES.length} Platforms · Fast &amp; Free
           </span>
         </div>
 
-        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[75vh] overflow-y-auto p-1">
+        <div className="grid max-h-[75vh] grid-cols-1 items-start gap-2.5 overflow-y-auto p-1 sm:grid-cols-2 lg:grid-cols-3">
           {PLATFORM_CATEGORIES.map((cat) => {
             const CatIcon = cat.icon;
             return (
               <div
                 key={cat.id}
-                className="group/card flex flex-col h-fit rounded-xl border border-border/70 p-2.5 sm:p-3 transition-colors hover:border-primary/30 hover:bg-bg/50"
+                className="group/card flex h-fit flex-col rounded-xl border border-border/70 p-2.5 transition-colors hover:border-primary/30 hover:bg-bg/50 sm:p-3"
                 style={{ background: "var(--card)" }}
               >
                 {/* Platform Header */}
@@ -171,24 +174,24 @@ export default function ToolCategoryDropdown() {
                   role="menuitem"
                   tabIndex={open ? 0 : -1}
                   onClick={() => close()}
-                  className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-border/40 group-hover/card:text-primary transition-colors"
+                  className="mb-1 flex items-start justify-between gap-2 border-b border-border/40 pb-1.5 transition-colors group-hover/card:text-primary"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span
-                      className="flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
                       style={{ background: cat.badgeBg, color: cat.color }}
                     >
                       <CatIcon size={15} />
                     </span>
-                    <span className="font-bold text-[13px] sm:text-[13.5px] text-fg group-hover/card:text-primary truncate">
+                    <span className="break-words text-[13px] font-bold leading-snug text-fg transition-colors group-hover/card:text-primary sm:text-[13.5px]">
                       {cat.name}
                     </span>
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-40 group-hover/card:opacity-100 group-hover/card:translate-x-0.5 transition-all text-primary" />
+                  <ArrowRight className="mt-1 h-3.5 w-3.5 shrink-0 text-primary opacity-40 transition-all group-hover/card:translate-x-0.5 group-hover/card:opacity-100" />
                 </Link>
 
                 {/* Sub items */}
-                <div className="space-y-0.5">
+                <div className="space-y-0">
                   {cat.items.map((sub) => {
                     const SubIcon = sub.icon;
                     const isSubSelected = pathname === sub.href;
@@ -199,19 +202,23 @@ export default function ToolCategoryDropdown() {
                         role="menuitem"
                         tabIndex={open ? 0 : -1}
                         onClick={() => close()}
-                        className={`flex flex-col rounded-lg px-2 py-1 transition-colors ${
+                        className={`flex flex-col rounded-lg px-1.5 py-1.5 transition-colors ${
                           isSubSelected
                             ? "bg-primary-light text-primary-strong"
-                            : "hover:bg-primary-light/60 text-fg"
+                            : "text-fg hover:bg-primary-light/60"
                         }`}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <SubIcon size={12.5} className="shrink-0 text-primary opacity-80" strokeWidth={2.2} />
-                          <span className="text-[12px] font-semibold text-fg leading-tight">
+                        <div className="flex items-start gap-1.5">
+                          <SubIcon
+                            size={12.5}
+                            className="mt-0.5 shrink-0 text-primary opacity-80"
+                            strokeWidth={2.2}
+                          />
+                          <span className="min-w-0 break-words text-[12px] font-semibold leading-snug text-fg">
                             {sub.name}
                           </span>
                         </div>
-                        <span className="text-[10.5px] leading-tight text-fg-subtle line-clamp-1 pl-4">
+                        <span className="pl-[18px] text-[10.5px] leading-snug text-fg-subtle">
                           {sub.desc}
                         </span>
                       </Link>

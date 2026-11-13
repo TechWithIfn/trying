@@ -7,12 +7,20 @@ import {
   HOME_OG_IMAGE_ALT,
   SITE_URL,
   SUPPORT_EMAIL,
+  SOCIAL_PROFILES,
 } from "@/config/site";
 
 export const metadata: Metadata = {
   title: { absolute: BRAND_TITLE },
   description: BRAND_DESCRIPTION,
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: `${SITE_URL}/`,
+    languages: {
+      en: SITE_URL,
+      hi: `${SITE_URL}/hi`,
+      "x-default": SITE_URL,
+    },
+  },
   openGraph: {
     title: { absolute: BRAND_TITLE },
     description: BRAND_DESCRIPTION,
@@ -58,22 +66,11 @@ export default function Home() {
               "@type": "ContactPoint",
               contactType: "customer support",
               email: SUPPORT_EMAIL,
-              availableLanguage: "English",
+              availableLanguage: ["English", "Hindi"],
             },
-          }),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "@id": `${SITE_URL}/#website`,
-            url: SITE_URL,
-            name: BRAND_NAME,
-            description: BRAND_DESCRIPTION,
-            inLanguage: "en-US",
+            ...(SOCIAL_PROFILES.length
+              ? { sameAs: SOCIAL_PROFILES.map((profile) => profile.href) }
+              : {}),
           }),
         }}
       />

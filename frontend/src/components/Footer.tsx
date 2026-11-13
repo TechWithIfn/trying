@@ -11,6 +11,7 @@ import {
   ThreadsIcon,
   TwitterIcon,
 } from "@/components/ToolCategoryDropdown";
+import { PLATFORM_CATEGORIES } from "@/config/categories";
 
 const POPULAR_DOWNLOADERS = [
   { label: "Instagram Downloader", href: "/instagram-video-downloader", Icon: InstagramIcon, color: "#ec5fa8" },
@@ -25,6 +26,8 @@ const COMPANY_LINKS = [
   { label: "Contact Us", href: "/contact" },
   { label: "Blog", href: "/blog" },
   { label: "Help Center", href: "/help" },
+  { label: "Report Content", href: "/report" },
+  { label: "हिन्दी गाइड", href: "/hi" },
 ] as const;
 
 const LEGAL_LINKS = [
@@ -71,7 +74,9 @@ export default function Footer() {
             </Link>
 
             <p className="text-[13px] leading-[1.7] text-fg-muted max-w-[280px]">
-              Fast, free, and secure multi-platform media downloader. Save public videos, photos, reels, and audio from your favorite platforms in original quality with zero login.
+              Free, browser-based media downloader for Instagram, Pinterest,
+              Facebook, Twitter/X and Threads. Save public videos, photos and
+              audio without an account.
             </p>
 
             {/* Supported platform icons */}
@@ -155,11 +160,40 @@ export default function Footer() {
 
             <div className="pt-2">
               <p className="text-[11.5px] leading-relaxed text-fg-subtle">
-                Downloadit is an independent utility and is not affiliated with Instagram, Meta, Pinterest, or X Corp.
+                Downloadit is an independent utility and is not affiliated with Instagram, Meta, Pinterest, X Corp., or Threads.
               </p>
             </div>
           </nav>
         </div>
+
+        {/* Full tool inventory: every downloader is reachable from every page. */}
+        <nav aria-label="All Downloaders" className="mt-10 border-t border-border pt-8">
+          <h2 className={FOOTER_HEADING}>All Downloaders</h2>
+          <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
+            {PLATFORM_CATEGORIES.map((category) => (
+              <div key={category.id}>
+                <Link
+                  href={category.mainHref}
+                  className="text-[13px] font-bold text-fg transition-colors hover:text-primary"
+                >
+                  {category.shortName}
+                </Link>
+                <ul className="mt-2 space-y-1.5">
+                  {category.items.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className="text-[12.5px] leading-snug text-fg-muted transition-colors hover:text-primary"
+                      >
+                        {item.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </nav>
 
         {/* Bottom Section */}
         <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 text-[12.5px] text-fg-subtle sm:flex-row sm:items-center sm:justify-between">

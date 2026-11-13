@@ -29,10 +29,10 @@ import {
   FileVideo,
   FileImage,
   FileAudio,
-  Lock,
   Scale,
-  HelpCircle,
 } from "lucide-react";
+import { PLATFORM_CATEGORIES } from "@/config/categories";
+import { SUPPORT_EMAIL } from "@/config/site";
 
 const SUPPORTED_PLATFORMS = [
   {
@@ -90,6 +90,14 @@ const SUPPORTED_PLATFORMS = [
     mediaTypes: ["Threads Video (MP4)", "Original Photos", "Multi-Image Posts"],
     supportedUrls: "threads.net/@user/post/",
   },
+] as const;
+
+const PLATFORM_CARD_DESKTOP_PLACEMENT = [
+  "lg:col-start-1 lg:row-start-1 lg:row-span-2",
+  "lg:col-start-2 lg:row-start-1",
+  "lg:col-start-3 lg:row-start-1",
+  "lg:col-start-2 lg:row-start-2",
+  "lg:col-start-3 lg:row-start-2",
 ] as const;
 
 const WHY_CHOOSE_ITEMS = [
@@ -201,7 +209,7 @@ const FAQS = [
   },
   {
     q: "How can I contact support or report an issue?",
-    a: "If you encounter an issue or have a question, visit our Help Center or Contact Us page. You can reach our support team directly via email at supportdownloadit.pro@gmail.com.",
+    a: `If you encounter an issue or have a question, visit our Help Center or Contact Us page. You can reach our support team directly via email at ${SUPPORT_EMAIL}.`,
   },
 ] as const;
 
@@ -249,8 +257,8 @@ export default function HomeClient() {
             onActiveTabChange={setActiveTab}
             badge="FAST • FREE • NO LOGIN REQUIRED"
             titleA="Download Videos, Photos & Audio "
-            titleB="from 5 Platforms"
-            subtitle="One simple, privacy-conscious downloader for Instagram, Pinterest, Facebook, Twitter/X and Threads."
+            titleB="Online with Downloadit"
+            subtitle="One simple media downloader for Instagram, Pinterest, Facebook, Twitter/X and Threads."
             placeholder="Paste link"
           />
         </div>
@@ -258,7 +266,7 @@ export default function HomeClient() {
         {/* ── Section 2: Trust Badges & Supported Networks Bar ── */}
         <section
           id="supported-platforms"
-          className="mx-auto max-w-[1240px] px-4 pt-10 pb-12 sm:px-6 sm:pt-14 sm:pb-16 lg:px-8 xl:px-12"
+          className="mx-auto max-w-[1240px] px-4 pt-6 pb-10 sm:px-6 sm:pt-8 sm:pb-12 lg:px-8 xl:px-12"
           aria-label="Supported Platforms and Trust Overview"
         >
           {/* Trust indicators */}
@@ -373,91 +381,95 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* ── Section 4: Detailed 5 Platform Cards ── */}
+        {/* ── Section 4: Explore All Downloaders by Platform ── */}
         <section
           id="platform-guide"
           className="mx-auto max-w-[1240px] px-4 py-10 sm:px-6 sm:py-14 lg:px-8 xl:px-12"
           aria-labelledby="platform-guide-heading"
         >
-          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+          <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10">
             <p className="text-[11.5px] font-bold uppercase tracking-[0.14em] text-primary-strong">
-              Supported Networks
+              Downloadit Hub
             </p>
             <h2
               id="platform-guide-heading"
-              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[32px]"
+              className="mt-1.5 text-[24px] font-extrabold tracking-tight text-fg sm:text-[30px]"
             >
-              Comprehensive 5-Platform Coverage
+              Explore All Downloaders by Platform
             </h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-fg-muted sm:text-[16px]">
-              Explore the exact media types and link formats supported across each platform tool.
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[12px] font-semibold text-fg-muted">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+                {PLATFORM_CATEGORIES.length} Platforms · Fast &amp; Free
+              </span>
+            </div>
+            <p className="mt-2.5 text-[14px] leading-relaxed text-fg-muted sm:text-[15px]">
+              Choose a platform to open every supported downloader, feature and public media type.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
-            {SUPPORTED_PLATFORMS.map((platform) => {
-              const Icon = platform.Icon;
+          <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+            {PLATFORM_CATEGORIES.map((platform, index) => {
+              const Icon = platform.icon;
               return (
-                <div
-                  key={platform.shortName}
-                  className="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-xs transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                <article
+                  key={platform.id}
+                  className={`group flex flex-col rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 hover:border-primary/40 hover:shadow-sm sm:p-5 ${PLATFORM_CARD_DESKTOP_PLACEMENT[index] ?? ""}`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                          style={{ background: platform.badgeBg, color: platform.color }}
-                        >
-                          <Icon size={22} />
-                        </span>
-                        <div>
-                          <h3 className="text-[17px] font-bold text-fg">{platform.name}</h3>
-                          <span className="text-[11px] font-semibold text-fg-subtle uppercase tracking-wider">Public Media</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <p className="text-[13.5px] leading-relaxed text-fg-muted mb-4">
-                      {platform.desc}
-                    </p>
-
-                    <div className="space-y-2 pt-3 border-t border-border-light text-[12.5px]">
-                      <div>
-                        <span className="font-semibold text-fg">Supported formats:</span>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {platform.mediaTypes.map((type) => (
-                            <span
-                              key={type}
-                              className="inline-block px-2 py-0.5 rounded-md bg-bg text-fg-muted text-[11.5px]"
-                            >
-                              {type}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="pt-1">
-                        <span className="font-semibold text-fg">Accepted links:</span>
-                        <p className="text-[11.5px] text-fg-subtle font-mono mt-0.5">{platform.supportedUrls}</p>
-                      </div>
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                      style={{ background: platform.badgeBg, color: platform.color }}
+                    >
+                      <Icon size={20} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-[15.5px] font-bold leading-snug text-fg">
+                        {platform.name}
+                      </h3>
+                      <p className="mt-1 text-[12px] leading-snug text-fg-muted">
+                        {platform.desc}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-border-light flex items-center justify-between">
-                    <span className="text-[11.5px] font-bold text-primary-strong uppercase tracking-wider">
-                      Verified Tool
-                    </span>
+                  <ul className="mt-3.5 space-y-1 border-t border-border-light pt-3">
+                    {platform.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className="group/item -mx-1.5 flex items-start gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-primary-light/50"
+                          >
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary-light text-primary">
+                              <ItemIcon size={12.5} strokeWidth={2.2} aria-hidden="true" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-words text-[12.5px] font-semibold leading-snug text-fg transition-colors group-hover/item:text-primary">
+                                {item.name}
+                              </span>
+                              <span className="mt-0.5 block break-words text-[11.5px] leading-snug text-fg-muted">
+                                {item.desc}
+                              </span>
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <div className="mt-auto pt-3.5">
                     <Link
-                      href={platform.href}
-                      aria-label={`Open dedicated ${platform.name}`}
-                      className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-primary hover:underline group"
+                      href={platform.mainHref}
+                      aria-label={`Open ${platform.name}`}
+                      className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-primary hover:underline"
                     >
-                      <span>Open Tool</span>
-                      <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                      <span>Open {platform.shortName} Downloader</span>
+                      <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                     </Link>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>

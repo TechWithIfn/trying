@@ -1734,18 +1734,17 @@ html:not(.js) .readmore-toggle {
    ───────────────────────────────────────────── */
 .home-hero {
   margin-bottom: 0 !important;
-  min-height: calc(100vh - 68px);
-  min-height: calc(100dvh - 68px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
   width: 100% !important;
   margin-inline: auto !important;
-  /* padding-top pushes content off the navbar; padding-bottom fills remaining
-     space so the section still occupies the full viewport height cleanly. */
-  padding-top: clamp(2.5rem, 7vh, 5rem);
-  padding-bottom: clamp(3rem, 10vh, 7rem);
+  /* Compact, content-led hero: the heading and downloader define the height,
+     so no viewport-sized empty gap is forced above the next section. */
+  padding-top: clamp(2.25rem, 5vh, 3.5rem);
+  padding-bottom: clamp(1.5rem, 3vh, 2.25rem);
   box-sizing: border-box;
 }
 
@@ -1830,8 +1829,8 @@ html:not(.js) .readmore-toggle {
 
 @media (min-width: 640px) {
   .home-hero {
-    padding-top: clamp(3rem, 8vh, 5.5rem);
-    padding-bottom: clamp(3.5rem, 11vh, 7.5rem);
+    padding-top: clamp(2.5rem, 6vh, 4rem);
+    padding-bottom: clamp(1.75rem, 4vh, 2.75rem);
   }
   .media-chip-scroll {
     overflow: visible;
@@ -1840,11 +1839,10 @@ html:not(.js) .readmore-toggle {
 
 @media (max-width: 639.98px) {
   .home-hero {
-    min-height: calc(100vh - 64px);
-    min-height: calc(100dvh - 64px);
-    /* On mobile, start content closer to the top — 1.75rem off the navbar */
-    padding-top: 1.75rem !important;
-    padding-bottom: 2.5rem !important;
+    min-height: 0;
+    /* Start content close to the navbar and keep the section compact. */
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
     margin-bottom: 0 !important;
   }
 

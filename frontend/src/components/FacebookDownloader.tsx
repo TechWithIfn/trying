@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Clipboard, Download as DownloadIcon, Link as LinkIcon, Loader2, Sparkles, X } from "lucide-react";
 import { resolveFacebookUrl, type ResolveData, type ResolveResponse } from "@/services/api";
+import { trackEvent } from "@/lib/analytics";
 import { useAutoScrollFlow, type FlowStatus } from "@/hooks/useAutoScrollFlow";
 
 const MediaResult = dynamic(() => import("./ResultPanel").then((module) => module.MediaResult), {
@@ -96,6 +97,7 @@ export default function FacebookDownloader({
         setUrl(value);
         setResult(null);
         setError(null);
+        trackEvent("paste_link", { platform: platformName });
       }
     } catch {
       inputRef.current?.focus();
@@ -122,14 +124,17 @@ export default function FacebookDownloader({
       if (response.success) {
         setResult(response.data);
         setFlowStatus("success");
+        trackEvent("get_media", { platform: platformName });
       } else {
         setError(response.error.message);
         setFlowStatus("error");
+        trackEvent("error_shown", { platform: platformName });
       }
     } catch (requestError) {
       if (requestError instanceof DOMException && requestError.name === "AbortError") return;
       setError("We could not reach the downloader. Please try again.");
       setFlowStatus("error");
+      trackEvent("error_shown", { platform: platformName });
     } finally {
       if (requestRef.current === controller) setBusy(false);
     }

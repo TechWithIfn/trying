@@ -12,6 +12,8 @@ interface BreadcrumbProps {
   containerClassName?: string;
   /** Alignment of breadcrumb items ("center" | "left"). Defaults to "center". */
   align?: "center" | "left";
+  /** Set false when the host page already emits BreadcrumbList JSON-LD. */
+  showSchema?: boolean;
 }
 
 /**
@@ -26,6 +28,7 @@ export default function Breadcrumb({
   items,
   containerClassName = "mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12 text-center",
   align = "center",
+  showSchema = true,
 }: BreadcrumbProps) {
   // Filter out any items with missing or whitespace-only names to prevent GSC "N/A" errors
   const validItems = items.filter((item) => item && typeof item.name === "string" && item.name.trim().length > 0);
@@ -51,10 +54,12 @@ export default function Breadcrumb({
 
   return (
     <div className={containerClassName} style={{ marginInline: "auto" }}>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {showSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <nav
         aria-label="Breadcrumb"
         className={`py-2.5 text-[13px] sm:text-[14px] leading-tight text-fg-muted flex ${

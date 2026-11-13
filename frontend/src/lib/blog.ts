@@ -20,7 +20,19 @@ export interface BlogFaq {
   a: string;
 }
 
-const BLOG_DIR = path.join(process.cwd(), "content", "blog");
+export type BlogLocale = "en" | "hi";
+
+/**
+ * Resolve a locale to a literal directory. Keeping the two paths as separate
+ * literals (instead of indexing a map with a dynamic key) lets the bundler
+ * trace only the blog folders rather than the whole project.
+ */
+function blogDir(locale: BlogLocale): string {
+  if (locale === "hi") {
+    return path.join(process.cwd(), "content", "blog", "hi");
+  }
+  return path.join(process.cwd(), "content", "blog");
+}
 
 function parseFrontmatter(raw: string): { data: Record<string, string>; body: string } {
   const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
@@ -42,11 +54,12 @@ function countWords(body: string): number {
     .filter(Boolean).length;
 }
 
-export function getAllPosts(): BlogPost[] {
-  if (!fs.existsSync(BLOG_DIR)) return [];
-  const files = fs.readdirSync(BLOG_DIR).filter((f) => f.endsWith(".md")).sort();
+export function getPosts(locale: BlogLocale = "en"): BlogPost[] {
+  const dir = blogDir(locale);
+  if (!fs.existsSync(dir)) return [];
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md")).sort();
   return files.map((file) => {
-    const raw = fs.readFileSync(path.join(BLOG_DIR, file), "utf8");
+    const raw = fs.readFileSync(path.join(dir, file), "utf8");
     const { data, body } = parseFrontmatter(raw);
     const slug = data.slug || file.replace(/\.md$/, "");
     return {
@@ -63,12 +76,24 @@ export function getAllPosts(): BlogPost[] {
   });
 }
 
+export function getAllPosts(): BlogPost[] {
+  return getPosts("en");
+}
+
+export function getHindiPosts(): BlogPost[] {
+  return getPosts("hi");
+}
+
 export function getPostSlugs(): string[] {
   return getAllPosts().map((p) => p.slug);
 }
 
 export function getPostBySlug(slug: string): BlogPost | null {
   return getAllPosts().find((p) => p.slug === slug) ?? null;
+}
+
+export function getHindiPostBySlug(slug: string): BlogPost | null {
+  return getHindiPosts().find((p) => p.slug === slug) ?? null;
 }
 
 /** Split the `## FAQ` section off the body. Returns article blocks + FAQs. */

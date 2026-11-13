@@ -22,6 +22,12 @@ const isProduction = process.env.NODE_ENV === "production";
 const SCRIPT_SRC_EVAL = isProduction ? "" : " 'unsafe-eval'";
 
 const nextConfig: NextConfig = {
+  // The repo has a second lockfile at its root (for the dev runner), which
+  // makes Turbopack infer the parent folder as the project root. Pin it to
+  // this app so only frontend files are watched and traced.
+  turbopack: {
+    root: process.cwd(),
+  },
   devIndicators: false,
   // No X-Powered-By fingerprint.
   poweredByHeader: false,
@@ -68,8 +74,8 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/facebook-reels-downloader",
-        destination: "/facebook-video-downloader",
+        source: "/facebook-reel-downloader",
+        destination: "/facebook-reels-downloader",
         permanent: true,
       },
       {
@@ -78,8 +84,18 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/twitter-gif-downloader",
+        source: "/x-video-downloader",
         destination: "/twitter-video-downloader",
+        permanent: true,
+      },
+      {
+        source: "/x-gif-downloader",
+        destination: "/twitter-gif-downloader",
+        permanent: true,
+      },
+      {
+        source: "/pinterest-mp4-downloader",
+        destination: "/pinterest-to-mp4",
         permanent: true,
       },
       {

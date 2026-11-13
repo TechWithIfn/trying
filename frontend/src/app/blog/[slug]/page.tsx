@@ -8,10 +8,19 @@ import { renderArticleBlocks } from "@/components/BlogArticle";
 import ProseSection from "@/components/ProseSection";
 import ReadMore from "@/components/ReadMore";
 import { SITE_URL } from "@/config/site";
-import { getAllPosts, getPostBySlug, splitFaq } from "@/lib/blog";
+import { getAllPosts, getHindiPostBySlug, getPostBySlug, splitFaq } from "@/lib/blog";
 
 export function generateStaticParams() {
   return getAllPosts().map((p) => ({ slug: p.slug }));
+}
+
+/**
+ * Keep the SERP title inside ~60 characters: append the brand only when it
+ * still fits, otherwise let the article headline stand alone.
+ */
+function serpTitle(title: string): string {
+  const suffix = " | Downloadit";
+  return title.length + suffix.length <= 60 ? `${title}${suffix}` : title;
 }
 
 export async function generateMetadata({
@@ -22,12 +31,21 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) return {};
+  const hindiPost = getHindiPostBySlug(post.slug);
+  const title = serpTitle(post.title);
   return {
-    title: { absolute: `${post.title} | Downloadit Blog` },
+    title: { absolute: title },
     description: post.description,
-    alternates: { canonical: `/blog/${post.slug}` },
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+      languages: {
+        en: `${SITE_URL}/blog/${post.slug}`,
+        ...(hindiPost ? { hi: `${SITE_URL}/hi/blog/${post.slug}` } : {}),
+        "x-default": `${SITE_URL}/blog/${post.slug}`,
+      },
+    },
     openGraph: {
-      title: { absolute: `${post.title} | Downloadit Blog` },
+      title: { absolute: title },
       description: post.description,
       url: `${SITE_URL}/blog/${post.slug}`,
       type: "article",
@@ -35,7 +53,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: { absolute: `${post.title} | Downloadit Blog` },
+      title: { absolute: title },
       description: post.description,
       images: ["/og-downloadit.png"],
     },
@@ -69,7 +87,7 @@ export default async function BlogPostPage({
 
   return (
     <>
-      <Header />
+      <Header showBreadcrumbs={false} />
       <main id="main-content" className="flex-1">
         <Breadcrumb
           items={[

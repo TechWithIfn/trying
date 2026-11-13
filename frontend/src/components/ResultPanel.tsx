@@ -43,6 +43,7 @@ import {
   type MediaItem,
   type ResolveData,
 } from "@/services/api";
+import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n";
 import type { Strings } from "@/i18n/types";
 
@@ -1084,6 +1085,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      trackEvent("download", { platform: platformLabel, media: currentMedia.type, format: ext });
     } catch {
       setDownloading("error");
       return;
@@ -1121,6 +1123,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      trackEvent("download", { platform: platformLabel, media: "zip", format: "zip" });
     } catch {
       setZipState("error");
       return;
@@ -1145,6 +1148,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    trackEvent("download", { platform: platformLabel, media: "audio", format: "mp3" });
   }, [audioUrl, result.title, platformLabel]);
 
   // Media stream URL through our proxy (source allows stale-URL recovery)

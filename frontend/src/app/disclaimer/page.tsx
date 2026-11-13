@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const DISCLAIMER_TITLE = "Disclaimer | Downloadit";
+const DISCLAIMER_TITLE = "Disclaimer – Downloadit Public Media Notice";
 const DISCLAIMER_DESCRIPTION =
-  "Read the Downloadit disclaimer covering third-party content, Instagram, Pinterest, Facebook and Twitter/X links, and responsible use.";
+  "Read the Downloadit disclaimer covering third-party public media, platform affiliation, copyright responsibility and the limits of the service.";
 
 export const metadata: Metadata = {
   title: { absolute: DISCLAIMER_TITLE },
@@ -35,7 +35,7 @@ export default function DisclaimerPage() {
     <LegalPage title="Disclaimer" updated="October 2026" crumbPath="/disclaimer">
       <p>
         Downloadit is an independent service and is not affiliated with,
-        endorsed by, or sponsored by Instagram, Meta, Pinterest, Facebook or YouTube/Google.
+        endorsed by, or sponsored by Instagram, Meta, Pinterest, X Corp. or Threads.
       </p>
       <p>
         The tool only works with publicly available content and does not bypass logins,
@@ -43,7 +43,7 @@ export default function DisclaimerPage() {
         have the right to download and use any media you save.
       </p>
       <p>
-        The service depends on Instagram, Pinterest, Facebook and X&apos;s own availability and behavior, which change
+        The service depends on Instagram, Pinterest, Facebook, X and Threads&apos; own availability and behavior, which change
         without notice. Availability, results and accuracy are therefore not guaranteed, and
         the service may be interrupted or modified at any time. The service is provided
         as-is, without warranties of any kind.

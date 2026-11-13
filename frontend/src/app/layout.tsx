@@ -6,12 +6,14 @@ import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/BackToTop";
 import AdsenseLoader from "@/components/AdsenseLoader";
 import CookieConsent from "@/components/CookieConsent";
+import Analytics from "@/components/Analytics";
 import {
   BRAND_DESCRIPTION,
   BRAND_NAME,
   BRAND_TITLE,
   HOME_OG_IMAGE_ALT,
   SITE_URL,
+  SOCIAL_PROFILES,
 } from "@/config/site";
 import "./globals.css";
 
@@ -33,13 +35,30 @@ const lora = Lora({
   display: "swap",
 });
 
+const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+const bingVerification = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
+const verification =
+  googleVerification || bingVerification
+    ? {
+        ...(googleVerification ? { google: googleVerification } : {}),
+        ...(bingVerification
+          ? { other: { "msvalidate.01": bingVerification } }
+          : {}),
+      }
+    : undefined;
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  ...(verification ? { verification } : {}),
   title: {
     default: BRAND_TITLE,
     template: `%s | ${BRAND_NAME}`,
   },
   description: BRAND_DESCRIPTION,
+  applicationName: BRAND_NAME,
+  authors: [{ name: BRAND_NAME, url: SITE_URL }],
+  creator: BRAND_NAME,
+  publisher: BRAND_NAME,
   alternates: {
     canonical: "/",
   },
@@ -155,7 +174,17 @@ export default function RootLayout({
               applicationCategory: "MultimediaApplication",
               operatingSystem: "Web",
               inLanguage: "en",
+              isAccessibleForFree: true,
+              browserRequirements: "Requires JavaScript. Requires HTML5.",
               description: BRAND_DESCRIPTION,
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+              ...(SOCIAL_PROFILES.length
+                ? { sameAs: SOCIAL_PROFILES.map((profile) => profile.href) }
+                : {}),
             }),
           }}
         />
@@ -181,6 +210,7 @@ export default function RootLayout({
           {children}
           <BackToTop />
           <AdsenseLoader />
+          <Analytics />
           <CookieConsent />
         </LanguageProvider>
       </body>

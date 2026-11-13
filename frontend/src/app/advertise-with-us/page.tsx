@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 export default function AdvertiseWithUsPage() {
   return (
     <>
-      <Header />
+      <Header showBreadcrumbs={false} />
       <main id="main-content" className="flex-1">
         <Breadcrumb
           items={[

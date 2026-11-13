@@ -46,7 +46,7 @@ function MailLink({ subject, children }: { subject: string; children: React.Reac
 export default function ContactPage() {
   return (
     <>
-      <Header />
+      <Header showBreadcrumbs={false} />
       <main id="main-content" className="flex-1">
         <Breadcrumb
           items={[

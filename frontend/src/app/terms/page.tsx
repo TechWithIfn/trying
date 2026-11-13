@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const TERMS_TITLE = "Terms of Service | Downloadit";
+const TERMS_TITLE = "Terms of Service – Rules for Using Downloadit";
 const TERMS_DESCRIPTION =
-  "Read the Downloadit Terms of Service covering acceptable use and limitations of the service.";
+  "Read the Downloadit Terms of Service covering acceptable use, public-media limits, copyright responsibility, availability and liability.";
 
 export const metadata: Metadata = {
   title: { absolute: TERMS_TITLE },

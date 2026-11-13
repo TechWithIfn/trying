@@ -30,6 +30,7 @@ import {
   type ResolveStreamHandle,
   type MediaItem,
 } from "@/services/api";
+import { trackEvent } from "@/lib/analytics";
 import { useLanguage } from "@/i18n";
 import {
   FacebookIcon,
@@ -350,6 +351,23 @@ export default function HeroDownloader({
   // duplicate error events can never turn one user action into a retry loop.
   const fallbackTriedRef = useRef(false);
 
+  // Lightweight funnel telemetry. Derived from state instead of sprinkled
+  // through every code branch, so no resolve path can silently skip an event.
+  useEffect(() => {
+    if (!result) return;
+    trackEvent("get_media", {
+      platform: detectPlatformFromUrl(result.sourceUrl ?? url) ?? "unknown",
+      variant: resolvedVariant ?? "default",
+    });
+  }, [result, resolvedVariant, url]);
+
+  useEffect(() => {
+    if (!error) return;
+    trackEvent("error_shown", {
+      platform: detectPlatformFromUrl(url) ?? "unknown",
+    });
+  }, [error, url]);
+
   // Request-lifecycle tracing for the Network-tab audit (one click = one
   // request). Development only: compiled out of production behaviour — the
   // guard is a NODE_ENV check around console.debug, so prod emits nothing.
@@ -425,6 +443,8 @@ export default function HeroDownloader({
       const text = await navigator.clipboard.readText();
       setUrl(text);
       setError("");
+      const platform = detectPlatformFromUrl(text);
+      trackEvent("paste_link", { platform: platform ?? "unknown" });
     } catch {
       /* clipboard denied */
     }
@@ -825,7 +845,7 @@ export default function HeroDownloader({
           <TitleTag className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
             <span
               className={`hero-title-a ${
-                isHome ? "inline text-[28px] sm:text-[42px]" : "block text-[32px] sm:text-[42px]"
+                isHome ? "inline text-[26px] sm:text-[38px]" : "block text-[32px] sm:text-[42px]"
               } text-balance break-words font-extrabold text-fg tracking-tight`}
               style={{ fontFamily: "var(--font-sans)" }}
             >
@@ -833,7 +853,7 @@ export default function HeroDownloader({
             </span>
             <span
               className={`hero-title-b ${
-                isHome ? "inline text-[26px] sm:text-[38px]" : "block text-[28px] sm:text-[38px]"
+                isHome ? "inline text-[24px] sm:text-[34px]" : "block text-[28px] sm:text-[38px]"
               } text-balance break-words font-semibold italic`}
               style={{
                 fontFamily: "var(--font-accent)",

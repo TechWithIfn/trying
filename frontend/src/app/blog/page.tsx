@@ -6,14 +6,21 @@ import Breadcrumb from "@/components/Breadcrumb";
 import { SITE_URL } from "@/config/site";
 import { getAllPosts } from "@/lib/blog";
 
-const BLOG_TITLE = "Downloadit Blog – Media Saving Guides & Fixes";
+const BLOG_TITLE = "Downloadit Blog – Media Saving Guides, Fixes & Tips";
 const BLOG_DESCRIPTION =
   "Practical guides for saving public Instagram, Pinterest, Facebook, X and Threads media, fixing download issues, and understanding copyright.";
 
 export const metadata: Metadata = {
   title: { absolute: BLOG_TITLE },
   description: BLOG_DESCRIPTION,
-  alternates: { canonical: "/blog" },
+  alternates: {
+    canonical: "/blog",
+    languages: {
+      en: `${SITE_URL}/blog`,
+      hi: `${SITE_URL}/hi/blog`,
+      "x-default": `${SITE_URL}/blog`,
+    },
+  },
   openGraph: {
     title: { absolute: BLOG_TITLE },
     description: BLOG_DESCRIPTION,
@@ -33,7 +40,7 @@ export default function BlogIndexPage() {
   const posts = getAllPosts();
   return (
     <>
-      <Header />
+      <Header showBreadcrumbs={false} />
       <main id="main-content" className="flex-1">
         <Breadcrumb
           items={[

@@ -65,7 +65,7 @@ export default function HelpClient() {
 
   return (
     <>
-      <Header />
+      <Header showBreadcrumbs={false} />
       <main id="main-content" className="flex-1">
         <Breadcrumb
           items={[

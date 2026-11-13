@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL } from "@/config/site";
 
-const PRIVACY_TITLE = "Privacy Policy | Downloadit";
+const PRIVACY_TITLE = "Privacy Policy – How Downloadit Handles Your Data";
 const PRIVACY_DESCRIPTION =
-  "Read the Downloadit Privacy Policy to understand how information is handled when you use our Instagram, Pinterest, Facebook or Twitter/X downloader.";
+  "Read how Downloadit handles links, logs, cookies and optional advertising data when you use the Instagram, Pinterest, Facebook, X or Threads downloader.";
 
 export const metadata: Metadata = {
   title: { absolute: PRIVACY_TITLE },

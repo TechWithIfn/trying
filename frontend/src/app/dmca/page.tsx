@@ -161,7 +161,7 @@ export default function DmcaPage() {
       <h2 className="text-[20px] font-bold text-fg">A final note</h2>
       <p>
         Downloadit is an independent service and is not affiliated with,
-        endorsed by, or sponsored by Instagram, Meta, Pinterest, Facebook or YouTube/Google. Users must only
+        endorsed by, or sponsored by Instagram, Meta, Pinterest, X Corp. or Threads. Users must only
         download content they own or have permission to reuse — see the{" "}
         <Link href="/terms" className="font-semibold text-fg transition-colors hover:text-primary">Terms</Link>{" "}
         and{" "}

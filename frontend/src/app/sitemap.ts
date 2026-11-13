@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/config/site";
-import { getAllPosts } from "@/lib/blog";
+import { getAllPosts, getHindiPosts } from "@/lib/blog";
+import { KEYWORD_PAGES } from "@/config/keywordPages";
 
 /**
  * Production sitemap for Downloadit.pro.
@@ -13,8 +14,8 @@ import { getAllPosts } from "@/lib/blog";
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: { path: string; lastModified: Date }[] = [
-    // Homepage and primary downloaders (metadata and content refreshed 11 Nov 2026)
-    { path: "/", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    // Homepage and primary downloaders (metadata and content refreshed 12 Nov 2026)
+    { path: "/", lastModified: new Date("2026-11-12T00:00:00.000Z") },
     { path: "/instagram-reels-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
     { path: "/instagram-video-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
     { path: "/instagram-photo-downloader", lastModified: new Date("2026-11-11T00:00:00.000Z") },
@@ -29,8 +30,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Blog index
     { path: "/blog", lastModified: new Date("2026-11-11T00:00:00.000Z") },
 
+    // Report / takedown form
+    { path: "/report", lastModified: new Date("2026-11-12T00:00:00.000Z") },
+
     // Information and legal pages with verified update dates
-    { path: "/about", lastModified: new Date("2026-11-11T00:00:00.000Z") },
+    { path: "/about", lastModified: new Date("2026-11-12T00:00:00.000Z") },
     { path: "/help", lastModified: new Date("2026-11-11T00:00:00.000Z") },
     { path: "/contact", lastModified: new Date("2026-10-01T00:00:00.000Z") },
     { path: "/advertise-with-us", lastModified: new Date("2026-09-15T00:00:00.000Z") },
@@ -59,5 +63,40 @@ export default function sitemap(): MetadataRoute.Sitemap {
     lastModified,
   }));
 
-  return [...staticEntries, ...blogPosts];
+  // Dedicated keyword pages (one URL per exact search intent).
+  const keywordEntries = KEYWORD_PAGES.map((page) => ({
+    url: `${SITE_URL}/${page.slug}`,
+    lastModified: new Date("2026-11-12T00:00:00.000Z"),
+  }));
+
+  // Indexable Hindi URLs with real translations.
+  const hindiPaths = [
+    "/hi",
+    "/hi/instagram-video-downloader",
+    "/hi/pinterest-video-downloader",
+    "/hi/facebook-video-downloader",
+    "/hi/twitter-video-downloader",
+    "/hi/threads-video-downloader",
+    "/hi/blog",
+  ];
+  const hindiEntries = hindiPaths.map((path) => ({
+    url: `${SITE_URL}${path}`,
+    lastModified: new Date("2026-11-12T00:00:00.000Z"),
+  }));
+
+  const hindiBlogPosts = getHindiPosts().map((post) => ({
+    url: `${SITE_URL}/hi/blog/${post.slug}`,
+    lastModified:
+      post.date && /^\d{4}-\d{2}-\d{2}$/.test(post.date)
+        ? new Date(`${post.date}T00:00:00.000Z`)
+        : new Date("2026-11-12T00:00:00.000Z"),
+  }));
+
+  return [
+    ...staticEntries,
+    ...keywordEntries,
+    ...hindiEntries,
+    ...blogPosts,
+    ...hindiBlogPosts,
+  ];
 }
