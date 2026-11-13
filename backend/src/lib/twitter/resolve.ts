@@ -5,8 +5,13 @@ import { validateTwitterUrl } from "../validators/twitter-url.js";
 import {
   runYtDlp,
   YtDlpAbortedError,
+  YtDlpNotAvailableError,
   YtDlpProcessError,
+  getYtDlpRetryAfterMs,
+  isRetryableYtDlpError,
 } from "../ytdlp.js";
+import { readUpstreamSignal } from "../upstream.js";
+import { withRetry } from "../retry.js";
 
 /**
  * Twitter/X extraction with yt-dlp.
@@ -61,6 +66,7 @@ export type TwitterResolveErrorCode =
   | "TWITTER_HLS_ONLY"
   | "TWITTER_MEDIA_UNAVAILABLE"
   | "TWITTER_RATE_LIMITED"
+  | "TWITTER_PLATFORM_BLOCKED"
   | "TWITTER_RESOLVE_TIMEOUT"
   | "TWITTER_RESOLVE_FAILED";
 
@@ -370,11 +376,26 @@ export function mapYtDlpFailure(error: unknown): TwitterResolveError {
         : "unknown";
   const lower = text.toLowerCase();
 
-  if (/http error 429|too many requests|rate.?limit/.test(lower)) {
+  if (error instanceof YtDlpNotAvailableError) {
+    return new TwitterResolveError(
+      "TWITTER_RESOLVE_FAILED",
+      "Service issue on our side. Please try again in a minute.",
+      503
+    );
+  }
+  const upstream = readUpstreamSignal(text, null);
+  if (upstream.rateLimited || /http error 429|too many requests|rate.?limit/.test(lower)) {
     return new TwitterResolveError(
       "TWITTER_RATE_LIMITED",
-      "Twitter/X is rate limiting requests right now. Please try again shortly.",
+      "Twitter/X is temporarily limiting download requests. Please try again in a few minutes.",
       429
+    );
+  }
+  if (upstream.blocked) {
+    return new TwitterResolveError(
+      "TWITTER_PLATFORM_BLOCKED",
+      "Twitter/X is refusing download requests from this server right now. This is usually temporary — please try again in a few minutes.",
+      503
     );
   }
   if (/login required|log in|private|protected|not available|does not exist|suspended/.test(lower)) {
@@ -454,16 +475,26 @@ export async function resolveTwitterPost(
   const extractorStart = Date.now();
   let stdout: string;
   try {
-    const run = await runYtDlp(
-      [
-        "--skip-download",
-        "--dump-single-json",
-        "--no-warnings",
-        "--no-playlist",
-        "--socket-timeout", "10",
-        normalized,
-      ],
-      { timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS, signal: options.signal }
+    const run = await withRetry(
+      () =>
+        runYtDlp(
+          [
+            "--skip-download",
+            "--dump-single-json",
+            "--no-warnings",
+            "--no-playlist",
+            "--socket-timeout", "10",
+            normalized,
+          ],
+          { timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS, signal: options.signal }
+        ),
+      {
+        attempts: 2,
+        signal: options.signal,
+        isRetryable: isRetryableYtDlpError,
+        retryAfterMs: getYtDlpRetryAfterMs,
+        logContext: { platform: "twitter", requestId, host: checked.parsed.hostname },
+      }
     );
     stdout = run.stdout;
   } catch (error) {

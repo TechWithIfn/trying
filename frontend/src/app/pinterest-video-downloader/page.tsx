@@ -304,8 +304,7 @@ export default function PinterestVideoDownloaderPage() {
                   <h3 className="font-bold text-fg text-[16px]">Paste into Downloadit</h3>
                 </div>
                 <p className="text-[14px] text-fg-muted leading-relaxed">
-                  Paste the copied link into the input field above. On mobile devices, tap the built-in <strong>Paste</strong> button
-                  to populate the field with a single tap.
+                  Paste the copied link into the input field above. On a phone, use the clipboard button beside the box.
                 </p>
               </div>
 

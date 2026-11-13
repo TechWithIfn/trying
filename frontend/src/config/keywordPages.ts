@@ -43,9 +43,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Instagram Carousel Downloader — Free & Fast",
     subtitle:
       "Paste a public Instagram carousel link, preview every slide and save the images or videos in the post.",
-    title: "Instagram Carousel Downloader – Save All Slides Free",
+    title: "Instagram Carousel Downloader – All Slides Free | Downloadit",
     description:
-      "Download every slide from a public Instagram carousel. Preview photos and videos, then save them individually or together. Free, no login required.",
+      "Download every slide from a public Instagram carousel as JPEG or MP4. Free, no login. Paste the link and save the set. Only public media is supported.",
     h1: "Instagram Carousel Downloader",
     intro: [
       "An Instagram carousel is a single post that contains more than one photo or video. Creators use carousels for step-by-step tutorials, product galleries, before-and-after comparisons and multi-page stories. Instagram lets you swipe through the slides, but it does not offer a simple button that saves the whole set to your device. Screenshots lose resolution and cannot capture video slides at all.",
@@ -160,9 +160,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Instagram Highlights Downloader — Free & Fast",
     subtitle:
       "Save photos and videos from public Instagram Highlights before they change or disappear.",
-    title: "Instagram Highlights Downloader – Save Public Stories",
+    title: "Instagram Highlights Downloader – Save in HD | Downloadit",
     description:
-      "Download public Instagram Highlights as photos or MP4 videos. Paste a Highlight link, preview the available media and save it free without logging in.",
+      "Download public Instagram Highlights as photos or MP4 video. Free, no login. Paste the Highlight link and save the items. Public media only.",
     h1: "Instagram Highlights Downloader",
     intro: [
       "Instagram Highlights are saved Stories that stay on a profile after the original 24-hour window. They are useful for tutorials, travel diaries, product details and announcements, but they are still awkward to keep offline: the app has no bulk export button, and screenshots flatten video, remove audio and reduce quality.",
@@ -276,9 +276,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Facebook Reels Downloader — Free & Easy",
     subtitle:
       "Save public Facebook Reels as MP4 with the audio track Instagram and Facebook provide.",
-    title: "Facebook Reels Downloader – Save Reels as MP4 Free",
+    title: "Facebook Reels Downloader – Save FB Reels in HD | Downloadit",
     description:
-      "Download public Facebook Reels as MP4. Paste a Reel link, preview the available video and save it to your device free, with no Facebook login.",
+      "Download public Facebook Reels as MP4. Free, no login. Paste the Reel link and save the video to your device. Only public media is supported.",
     h1: "Facebook Reels Downloader",
     intro: [
       "Facebook Reels are short vertical videos that appear in the Reels tab, the main feed and shared links. They are popular for recipes, comedy, fitness clips and quick tutorials. Facebook does not provide a save-to-gallery button for every Reel, especially on desktop, and screen recording lowers quality and captures interface elements.",
@@ -392,9 +392,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Facebook Watch Downloader — Free & Easy",
     subtitle:
       "Download public Facebook Watch videos as MP4 for offline viewing.",
-    title: "Facebook Watch Downloader – Save Public Videos Free",
+    title: "Facebook Watch Downloader – Save Watch Videos | Downloadit",
     description:
-      "Download public Facebook Watch videos as MP4. Paste a Watch or video link, preview the available media and save it free without a Facebook login.",
+      "Download public Facebook Watch videos as MP4. Free, no login. Paste the video link and save the file to your device. Only public media is supported.",
     h1: "Facebook Watch Downloader",
     intro: [
       "Facebook Watch hosts longer videos: episodes, interviews, livestream replays, sports clips and creator shows. These videos behave differently from short Reels, and the share link may use a watch, video or fb.watch address. Keeping a copy for offline viewing is useful when travelling or when a video may later be removed.",
@@ -508,9 +508,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Twitter/X GIF Downloader — Free & Easy",
     subtitle:
       "Save GIFs from public X posts as playable MP4 files, with no login required.",
-    title: "Twitter/X GIF Downloader – Save GIFs as MP4 Free",
+    title: "Twitter GIF Downloader – Save X GIFs as MP4 | Downloadit",
     description:
-      "Download GIFs from public Twitter/X posts as MP4 files. Paste a post link, preview the animation and save it free without an account.",
+      "Save a public X or Twitter GIF as an MP4 file. Free, no login. Paste the post link and save the loop to your device. Only public media is supported.",
     h1: "Twitter/X GIF Downloader",
     intro: [
       "X, formerly Twitter, converts most uploaded GIFs into short looping MP4 videos. That is why a saved file may have an .mp4 extension even though the post looks like a GIF. The animation, timing and audio are preserved, and MP4 is smaller and more compatible than a traditional GIF on modern phones.",
@@ -624,9 +624,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "X Video to MP4 — Free & Easy",
     subtitle:
       "Convert a public X video post into a downloadable MP4 file in your browser.",
-    title: "X Video to MP4 – Download Twitter Videos Free",
+    title: "X Video to MP4 – Twitter Video Converter Free | Downloadit",
     description:
-      "Convert public X and Twitter videos to MP4 online. Paste a post link, preview the available video and download it free without a login.",
+      "Save a public X or Twitter video as an MP4 file. Free, no login. Paste the post link and save the video to your device. Only public media is supported.",
     h1: "X Video to MP4",
     intro: [
       "X videos are delivered in several renditions, and the file you receive from a browser download is usually an MP4. The challenge is finding the direct media file behind a post rather than recording the screen. Screen recordings include interface elements, reduce quality and can desynchronise audio.",
@@ -740,9 +740,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Pinterest to MP4 — Free & Easy",
     subtitle:
       "Save a public Pinterest video Pin as an MP4 file for offline viewing.",
-    title: "Pinterest to MP4 – Download Video Pins Free",
+    title: "Pinterest to MP4 – Convert Video Pins Free | Downloadit",
     description:
-      "Convert public Pinterest video Pins to MP4. Paste a Pin or pin.it link, preview the video and download it free without an account or extension.",
+      "Save a public Pinterest video Pin as an MP4 file. Free, no login. Paste the Pin link and save the video to your device. Only public media is supported.",
     h1: "Pinterest to MP4",
     intro: [
       "Pinterest is a visual discovery platform, and many Pins are short videos rather than still images. Recipe demos, DIY tutorials, workout clips and travel guides are often published only as video Pins. Pinterest does not offer a universal download button, and screen recording captures the interface and lowers quality.",
@@ -856,9 +856,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Pinterest Idea Pin Downloader — Free & Easy",
     subtitle:
       "Save the public photos and videos inside a Pinterest Idea Pin for offline reference.",
-    title: "Pinterest Idea Pin Downloader – Save Public Pins",
+    title: "Pinterest Idea Pin Downloader – Save Idea Pins | Downloadit",
     description:
-      "Download public Pinterest Idea Pins as images or MP4 video. Paste a Pin link, preview every available page and save it free without an account.",
+      "Download public Pinterest Idea Pin pages as images or MP4. Free, no login. Paste the Pin link and save the pages. Only public media is supported.",
     h1: "Pinterest Idea Pin Downloader",
     intro: [
       "Idea Pins are Pinterest's multi-page format. A single Idea Pin can combine several video clips, photos, text overlays and links, which makes it different from a standard image or video Pin. Creators use them for recipes, routines, crafts and step-by-step guides. Saving the whole story is difficult because each page is a separate media item.",
@@ -972,9 +972,9 @@ export const KEYWORD_PAGES: KeywordPage[] = [
     badge: "Threads Photo Downloader — Free & Easy",
     subtitle:
       "Save photos from public Threads posts without screenshots or an app.",
-    title: "Threads Photo Downloader – Save Public Images Free",
+    title: "Threads Photo Downloader – Save Images in HD | Downloadit",
     description:
-      "Download photos from public Threads posts in the resolution Threads provides. Paste a post link, preview the images and save them free without login.",
+      "Download photos from public Threads posts as JPEG. Free, no login. Paste the post link and save the images to your device. Public media only.",
     h1: "Threads Photo Downloader",
     intro: [
       "Threads posts can contain a single photo, several images, or a mix of text, images and video. Saving a photo with a screenshot captures the interface, reduces sharpness and may cut off part of a tall image. A direct download keeps the file that Threads serves to the browser.",

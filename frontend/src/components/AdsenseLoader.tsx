@@ -2,8 +2,10 @@
 
 import { useEffect, useRef } from "react";
 
+import { ADSENSE_CLIENT } from "@/config/site";
+
 const ADSENSE_SRC =
-  "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX";
+  `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
 const STORAGE_KEY = "downloadit-cookie-consent";
 
 /**

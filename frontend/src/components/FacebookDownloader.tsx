@@ -227,9 +227,8 @@ export default function FacebookDownloader({
                     </button>
                   )}
                 </div>
-                <button type="button" onClick={() => void paste()} disabled={busy} className="flex h-13 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50" style={{ background: "var(--bg)" }}>
-                  <Clipboard className="h-3.5 w-3.5" />
-                  Paste
+                <button type="button" onClick={() => void paste()} disabled={busy} className="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl border border-border text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50" style={{ background: "var(--bg)" }} aria-label="Insert copied link">
+                  <Clipboard className="h-4 w-4" />
                 </button>
                 <button type="submit" disabled={busy || !url.trim()} className="gradient-btn h-13 shrink-0 px-7 text-[16px]">
                   {busy ? <><Loader2 className="h-5 w-5 animate-spin" />Processing…</> : <><DownloadIcon className="h-5 w-5" /><span>{buttonLabel || "Get Video"}</span></>}
@@ -263,9 +262,8 @@ export default function FacebookDownloader({
                   )}
                 </div>
                 <div className="url-actions flex min-w-0 flex-col gap-2 w-full">
-                  <button type="button" onClick={() => void paste()} disabled={busy} className="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50" style={{ background: "var(--bg)" }} aria-label="Paste">
+                  <button type="button" onClick={() => void paste()} disabled={busy} className="flex h-12 min-h-[48px] w-12 shrink-0 items-center justify-center rounded-xl border border-border text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50" style={{ background: "var(--bg)" }} aria-label="Insert copied link">
                     <Clipboard className="h-4 w-4 shrink-0" />
-                    <span className="btn-label truncate">Paste</span>
                   </button>
                   <button type="submit" disabled={busy || !url.trim()} className="gradient-btn flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-2 px-4 text-[16px]">
                     {busy ? <><Loader2 className="h-5 w-5 animate-spin" />Processing…</> : <><DownloadIcon className="h-5 w-5" /><span>{buttonLabel || "Get Video"}</span></>}
@@ -274,6 +272,16 @@ export default function FacebookDownloader({
               </div>
             </div>
           </form>
+          {benefits.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-fg-subtle sm:gap-x-5 sm:text-[13px]">
+              {benefits.map((benefit) => (
+                <span key={benefit} className="flex items-center gap-1.5">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                  {benefit}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
           {flowStatus && (
@@ -303,18 +311,6 @@ export default function FacebookDownloader({
         </div>
       </div>
     </section>
-
-    {/* Trust indicators rendered outside the hero so they appear below the fold */}
-    <div className="mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12">
-      <div className="mx-auto flex max-w-[840px] flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 pb-6 pt-3 text-[12px] text-fg-subtle sm:gap-x-5 sm:pb-8 sm:pt-4 sm:text-[14px]">
-        {benefits.map((benefit) => (
-          <span key={benefit} className="flex items-center gap-1.5">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-            {benefit}
-          </span>
-        ))}
-      </div>
-    </div>
     </>
   );
 }

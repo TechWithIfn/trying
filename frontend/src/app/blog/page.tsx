@@ -60,10 +60,9 @@ export default function BlogIndexPage() {
             Downloadit Blog
           </h1>
           <p className="mt-4 text-[18px] leading-[1.7] text-fg-muted">
-            Practical guides to saving public Instagram, Pinterest 
-            media, fixing what goes wrong, and using other people&apos;s work
-            the right way. No filler —
-            every article answers its question first.
+            Practical guides for saving public Instagram, Pinterest, Facebook, X and Threads
+            media, fixing a download that failed, and using someone else&apos;s work
+            only when you have the right to. Every article answers its question first.
           </p>
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
             {posts.map((p) => (

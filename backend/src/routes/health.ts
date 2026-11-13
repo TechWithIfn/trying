@@ -54,6 +54,10 @@ router.get("/", (_req: Request, res: Response) => {
     status: "ok",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    // Point an external uptime check at this URL. Alert when status is not
+    // "ok" or the HTTP status is not 200 — that is the same failure that
+    // makes every downloader show a generic fetch error.
+    monitor: { path: "/api/health", expectStatus: 200, expectBodyStatus: "ok" },
   });
 });
 

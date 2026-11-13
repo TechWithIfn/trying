@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: { absolute: BRAND_TITLE },
   description: BRAND_DESCRIPTION,
   alternates: {
-    canonical: `${SITE_URL}/`,
+    canonical: SITE_URL,
     languages: {
       en: SITE_URL,
       hi: `${SITE_URL}/hi`,

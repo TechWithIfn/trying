@@ -107,12 +107,12 @@ const STEPS = [
   {
     step: "4",
     title: "Open Downloadit Twitter Video Downloader",
-    desc: "Navigate to downloadit.pro/twitter-video-downloader on any device or browser.",
+    desc: "Open the Twitter/X Downloader on any device or browser.",
   },
   {
     step: "5",
     title: "Paste the link",
-    desc: "Paste the copied tweet URL into the input field above or click the 'Paste' button.",
+    desc: "Paste the copied post link into the box above.",
   },
   {
     step: "6",

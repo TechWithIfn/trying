@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SUPPORT_EMAIL } from "@/config/site";
 
 type ReportType = "copyright" | "privacy" | "broken-link" | "other";
@@ -134,9 +135,9 @@ export default function ReportForm() {
         This form opens your email app with the report pre-filled and sends it to{" "}
         {SUPPORT_EMAIL}. Nothing is uploaded to this website. For formal DMCA
         notices, include the elements listed on the{" "}
-        <a href="/dmca" className="font-semibold text-primary-strong hover:underline">
+        <Link href="/dmca" className="font-semibold text-primary-strong hover:underline">
           DMCA page
-        </a>
+        </Link>
         .
       </p>
 

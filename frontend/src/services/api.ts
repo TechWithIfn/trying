@@ -79,6 +79,77 @@ export interface ResolveError {
 
 export type ResolveResponse = ResolveSuccess | ResolveError;
 
+/** Aborts are control flow, not failures: callers ignore them deliberately. */
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
+/**
+ * The request never reached the API (DNS, offline, CORS, platform 5xx without
+ * CORS headers). Shown to the user as OUR problem, not a bad link — the old
+ * generic "check the link" message blamed the visitor for a server outage.
+ */
+function unreachableFailure(
+  requestType: ApiRequestType,
+  requestUrl: string,
+  error: unknown
+): ResolveResponse {
+  logApiFailure({ requestType, requestUrl, status: null, error });
+  return {
+    success: false,
+    error: {
+      code: "SERVICE_UNREACHABLE",
+      message:
+        "We could not reach our downloader service. This is usually temporary — please try again in a minute.",
+    },
+  };
+}
+
+/** Map a non-JSON / malformed HTTP response to an honest, actionable message. */
+function httpFailure(status: number): ResolveResponse {
+  if (status === 429 || status === 503) {
+    return {
+      success: false,
+      error: {
+        code: "PLATFORM_BUSY",
+        message:
+          "The platform is temporarily limiting download requests. Please wait a few minutes and try again.",
+      },
+    };
+  }
+  if (status >= 500) {
+    return {
+      success: false,
+      error: {
+        code: "SERVICE_ERROR",
+        message:
+          "Our downloader hit a temporary server problem. Please try again in a minute.",
+      },
+    };
+  }
+  if (status === 404) {
+    return {
+      success: false,
+      error: {
+        code: "CONTENT_UNAVAILABLE",
+        message:
+          "That post could not be found. It may have been deleted, or the link may be incomplete.",
+      },
+    };
+  }
+  return {
+    success: false,
+    error: {
+      code: "TEMPORARY_ERROR",
+      message: "The downloader returned an unexpected response. Please try again.",
+    },
+  };
+}
+
 export async function resolveFacebookUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
   const requestUrl = `${getApiBase()}/api/facebook/resolve`;
   let response: Response;
@@ -91,19 +162,13 @@ export async function resolveFacebookUrl(url: string, signal?: AbortSignal): Pro
       signal,
     });
   } catch (error) {
-    logApiFailure({ requestType: "pinterest-resolve", requestUrl, status: null, error });
-    throw error;
+    if (isAbortError(error)) throw error;
+    return unreachableFailure("facebook-resolve", requestUrl, error);
   }
 
   const body = await response.json().catch(() => null);
   if (isResolveResponse(body)) return body;
-  return {
-    success: false,
-    error: {
-      code: response.ok ? "TEMPORARY_ERROR" : "FACEBOOK_RESOLVE_FAILED",
-      message: "The server returned an unexpected response.",
-    },
-  };
+  return httpFailure(response.status);
 }
 
 export async function resolveTwitterUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
@@ -118,19 +183,13 @@ export async function resolveTwitterUrl(url: string, signal?: AbortSignal): Prom
       signal,
     });
   } catch (error) {
-    logApiFailure({ requestType: "twitter-resolve", requestUrl, status: null, error });
-    throw error;
+    if (isAbortError(error)) throw error;
+    return unreachableFailure("twitter-resolve", requestUrl, error);
   }
 
   const body = await response.json().catch(() => null);
   if (isResolveResponse(body)) return body;
-  return {
-    success: false,
-    error: {
-      code: response.ok ? "TEMPORARY_ERROR" : "TWITTER_RESOLVE_FAILED",
-      message: "The server returned an unexpected response.",
-    },
-  };
+  return httpFailure(response.status);
 }
 
 export async function resolveThreadsUrl(url: string, signal?: AbortSignal): Promise<ResolveResponse> {
@@ -145,18 +204,12 @@ export async function resolveThreadsUrl(url: string, signal?: AbortSignal): Prom
       signal,
     });
   } catch (error) {
-    logApiFailure({ requestType: "threads-resolve", requestUrl, status: null, error });
-    throw error;
+    if (isAbortError(error)) throw error;
+    return unreachableFailure("threads-resolve", requestUrl, error);
   }
   const body = await response.json().catch(() => null);
   if (isResolveResponse(body)) return body;
-  return {
-    success: false,
-    error: {
-      code: response.ok ? "TEMPORARY_ERROR" : "THREADS_RESOLVE_FAILED",
-      message: "The server returned an unexpected response.",
-    },
-  };
+  return httpFailure(response.status);
 }
 
 export type ApiRequestType =
@@ -337,8 +390,8 @@ export async function resolveInstagramUrl(
       signal,
     });
   } catch (error) {
-    logApiFailure({ requestType: "resolve-post", requestUrl, status: null, error });
-    throw error;
+    if (isAbortError(error)) throw error;
+    return unreachableFailure("resolve-post", requestUrl, error);
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
@@ -358,7 +411,7 @@ export async function resolveInstagramUrl(
       error: new Error("resolve-post-malformed-response"),
       category: "malformed-response",
     });
-    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+    return httpFailure(response.status);
   }
   let body: unknown;
   try {
@@ -644,8 +697,8 @@ export async function resolvePinterestUrl(
       signal,
     });
   } catch (error) {
-    logApiFailure({ requestType: "facebook-resolve", requestUrl, status: null, error });
-    throw error;
+    if (isAbortError(error)) throw error;
+    return unreachableFailure("pinterest-resolve", requestUrl, error);
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
@@ -665,7 +718,7 @@ export async function resolvePinterestUrl(
       error: new Error("pinterest-resolve-malformed-response"),
       category: "malformed-response",
     });
-    return { success: false, error: { code: "TEMPORARY_ERROR", message: "The server returned an unexpected response." } };
+    return httpFailure(response.status);
   }
   let body: unknown;
   try {

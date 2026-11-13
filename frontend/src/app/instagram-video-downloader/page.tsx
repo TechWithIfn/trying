@@ -81,12 +81,12 @@ const STEPS = [
   {
     step: "3",
     title: "Open Downloadit Instagram Downloader",
-    desc: "Navigate to downloadit.pro/instagram-video-downloader on your mobile phone, tablet, or desktop computer.",
+    desc: "Open the Instagram Downloader on your phone, tablet, or computer.",
   },
   {
     step: "4",
     title: "Paste the copied link",
-    desc: "Paste the Instagram link into the URL input box above or tap the 'Paste' button.",
+    desc: "Paste the Instagram link into the box above.",
   },
   {
     step: "5",

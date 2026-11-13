@@ -32,12 +32,8 @@ const PLATFORM_PATHS: Record<string, string> = {
   threads: "/threads-video-downloader",
 };
 
-function toolPlaceholder(page: KeywordPage): string {
-  if (page.platform === "instagram") return "Paste an Instagram post link";
-  if (page.platform === "facebook") return "Paste a Facebook Reel or video link";
-  if (page.platform === "twitter") return "Paste an X / Twitter post link";
-  if (page.platform === "pinterest") return "Paste a Pinterest Pin or pin.it link";
-  return "Paste a Threads post link";
+function toolPlaceholder(_page: KeywordPage): string {
+  return "Paste";
 }
 
 function toolLabel(page: KeywordPage): string {
@@ -97,13 +93,7 @@ export default function KeywordToolPage({ page }: { page: KeywordPage }) {
     "@id": `${canonical}/#breadcrumbs`,
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: `${platformLabel} Downloader`,
-        item: `${SITE_URL}${platformPath}`,
-      },
-      { "@type": "ListItem", position: 3, name: page.name, item: canonical },
+      { "@type": "ListItem", position: 2, name: page.name, item: canonical },
     ],
   };
 
@@ -141,7 +131,6 @@ export default function KeywordToolPage({ page }: { page: KeywordPage }) {
         <Breadcrumb
           items={[
             { name: "Home", path: "/" },
-            { name: `${platformLabel} Downloader`, path: platformPath },
             { name: page.name, path: `/${page.slug}` },
           ]}
           showSchema={false}

@@ -248,8 +248,7 @@ export default function AudioDownloaderPage() {
                   <h3 className="font-bold text-fg text-[16px]">Paste into Downloadit</h3>
                 </div>
                 <p className="text-[14px] text-fg-muted leading-relaxed">
-                  Paste the copied link into the input box above. On mobile devices, tap the built-in <strong>Paste</strong> button
-                  for instant entry.
+                  Paste the copied link into the input box above. On a phone, use the clipboard button beside the box.
                 </p>
               </div>
 
@@ -305,8 +304,8 @@ export default function AudioDownloaderPage() {
             </h2>
             <p className="text-[15.5px] sm:text-[16.5px] text-fg-muted leading-relaxed">
               Trending sounds and viral audio clips are the heartbeat of short-form content. Creators frequently create
-              mashups, sped-up edits, slowed-and-reverbed tracks, and motivational dialogues that cannot be found on Spotify,
-              Apple Music, or YouTube.
+              mashups, sped-up edits, slowed-and-reverbed tracks, and motivational dialogues that are not sold as a
+              standalone track.
             </p>
             <p className="text-[15.5px] sm:text-[16.5px] text-fg-muted leading-relaxed">
               With Downloadit, you can save any trending Reel audio in seconds. Use it as reference audio for your own

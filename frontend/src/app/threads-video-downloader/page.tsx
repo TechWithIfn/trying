@@ -104,12 +104,12 @@ const STEPS = [
   {
     step: "4",
     title: "Visit Downloadit Threads Video Downloader",
-    desc: "Open downloadit.pro/threads-video-downloader in any mobile or desktop web browser.",
+    desc: "Open the Threads Downloader in any mobile or desktop web browser.",
   },
   {
     step: "5",
     title: "Paste the copied Threads link",
-    desc: "Paste the copied URL into the input field above, or click the convenient 'Paste' button.",
+    desc: "Paste the copied post link into the box above.",
   },
   {
     step: "6",

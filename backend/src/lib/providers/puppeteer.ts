@@ -429,13 +429,13 @@ const EXTRACT_VIDEO_GRAPH_FN = `
         if (sSrc && sSrc.indexOf('http') === 0) out.domVideos.push(sSrc);
       }
     }
-    var ogVideo = document.querySelector('meta[property="og:video"]');
-    if (ogVideo) {
-      var c = ogVideo.getAttribute('content');
+    var metaVideos = document.querySelectorAll('meta[property="og:video"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"], link[as="video"]');
+    for (var m = 0; m < metaVideos.length; m++) {
+      var c = metaVideos[m].getAttribute('content') || metaVideos[m].getAttribute('href');
       if (c && c.indexOf('http') === 0) out.domVideos.push(c);
     }
     var scripts = document.querySelectorAll('script');
-    for (var k = 0; k < scripts.length && out.scripts.length < 10; k++) {
+    for (var k = 0; k < scripts.length && out.scripts.length < 15; k++) {
       var text = scripts[k].textContent || '';
       if (
         text.indexOf('video_versions') !== -1 ||
@@ -443,6 +443,8 @@ const EXTRACT_VIDEO_GRAPH_FN = `
         text.indexOf('playback_url') !== -1 ||
         text.indexOf('playable_url') !== -1 ||
         text.indexOf('video_url') !== -1 ||
+        text.indexOf('progressive_download_url') !== -1 ||
+        text.indexOf('contentUrl') !== -1 ||
         (text.indexOf('.mp4') !== -1 && (text.indexOf('fbcdn') !== -1 || text.indexOf('cdninstagram') !== -1))
       ) {
         out.scripts.push(text);
@@ -483,6 +485,12 @@ export function extractMediaFromJson(text: string): ExtractedMedia[] {
   // to the patterns below.
   const scan = normalizeEmbeddedJson(text);
 
+  for (const m of scan.matchAll(/"progressive_download_url"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "playable-url");
+  }
+  for (const m of scan.matchAll(/"contentUrl"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "playable-url");
+  }
   for (const m of scan.matchAll(/"video_url"\s*:\s*"([^"]+)"/g)) {
     add(m[1], "video", "playable-url");
   }
@@ -841,6 +849,12 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
     /name=["']twitter:image["'][^>]*content=["']([^"']+)["']/gi
   )) {
     add(m[1], "image");
+  }
+  for (const m of scan.matchAll(/"progressive_download_url"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "playable-url");
+  }
+  for (const m of scan.matchAll(/"contentUrl"\s*:\s*"([^"]+)"/g)) {
+    add(m[1], "video", "playable-url");
   }
   for (const m of scan.matchAll(/"video_url"\s*:\s*"([^"]+)"/g)) {
     add(m[1], "video", "playable-url");

@@ -246,7 +246,7 @@ export default function PinterestImageDownloaderPage() {
                   <h3 className="font-bold text-fg text-[16px]">Paste into Downloadit</h3>
                 </div>
                 <p className="text-[14px] text-fg-muted leading-relaxed">
-                  Paste the URL into the input box above. On mobile devices, tap the handy <strong>Paste</strong> button for one-touch insertion.
+                  Paste the URL into the input box above. On a phone, use the clipboard button beside the box.
                 </p>
               </div>
 

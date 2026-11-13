@@ -84,12 +84,12 @@ const STEPS = [
   {
     step: "3",
     title: "Open Downloadit Facebook Downloader",
-    desc: "Navigate to downloadit.pro/facebook-video-downloader in any web browser on your device.",
+    desc: "Open the Facebook Downloader in any web browser on your device.",
   },
   {
     step: "4",
     title: "Paste the link into the input field",
-    desc: "Paste the copied Facebook link into the search box above or tap the 'Paste' button.",
+    desc: "Paste the copied Facebook link into the box above.",
   },
   {
     step: "5",

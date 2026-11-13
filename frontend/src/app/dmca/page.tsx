@@ -3,9 +3,9 @@ import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 import { SITE_URL, SUPPORT_EMAIL, supportMailto } from "@/config/site";
 
-const DMCA_TITLE = "DMCA Policy | Downloadit";
+const DMCA_TITLE = "DMCA Policy – Send a Copyright Takedown | Downloadit";
 const DMCA_DESCRIPTION =
-  "How to submit a copyright takedown notice to Downloadit, what to include, response times, counter-notices, and our repeat infringer policy.";
+  "How to submit a copyright takedown notice to Downloadit, what to include, response times, counter-notices, and our repeat infringer policy. Email the notice.";
 
 export const metadata: Metadata = {
   title: { absolute: DMCA_TITLE },

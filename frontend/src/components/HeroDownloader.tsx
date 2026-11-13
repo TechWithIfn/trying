@@ -306,7 +306,7 @@ export default function HeroDownloader({
   titleB = "Downloader",
   subtitle = DEFAULT_SUBTITLE,
   titleAs = "h1",
-  placeholder = "Paste link",
+  placeholder = "Paste",
   badge,
   buttonLabel,
   tabs,
@@ -575,7 +575,7 @@ export default function HeroDownloader({
             if (requestSeqRef.current !== seq) return;
             inFlightUrlRef.current = null;
             if (controller.signal.aborted) return;
-            setError(`Could not fetch media from ${platform}. Please check the link and try again.`);
+            setError("Service issue on our side. Please try again in a minute.");
             setState("ERROR");
           });
         return;
@@ -832,7 +832,7 @@ export default function HeroDownloader({
               animation or delay here — animating the LCP element (or holding
               it at opacity 0 during a delay) directly inflates LCP. */}
           <div
-            className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-fg-muted sm:gap-2 sm:px-4 sm:text-xs ${
+            className={`hero-badge inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-fg-muted sm:gap-2 sm:px-4 sm:text-xs ${
               isHome ? "mb-3 sm:mb-4" : "mb-4 sm:mb-5"
             }`}
             style={{ background: "var(--card)", boxShadow: "var(--shadow-card)", border: "1px solid var(--border)" }}
@@ -842,7 +842,7 @@ export default function HeroDownloader({
             <span className="truncate">{badge || t.hero.badge}</span>
           </div>
 
-          <TitleTag className="max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
+          <TitleTag className="hero-title max-w-full text-balance break-words" style={{ lineHeight: 1.12 }}>
             <span
               className={`hero-title-a ${
                 isHome ? "inline text-[26px] sm:text-[38px]" : "block text-[32px] sm:text-[42px]"
@@ -868,7 +868,7 @@ export default function HeroDownloader({
           </TitleTag>
 
           <p
-            className={`hero-subtitle mx-auto text-[16px] leading-[1.65] text-fg-muted ${
+            className={`hero-subtitle hero-sub mx-auto text-[16px] leading-[1.65] text-fg-muted ${
               isHome ? "mt-2.5 max-w-[520px] text-[15px] sm:mt-3 sm:text-[17px]" : "mt-4 max-w-2xl"
             }`}
           >
@@ -965,7 +965,7 @@ export default function HeroDownloader({
             )}
             <form onSubmit={handleSubmit} className="relative w-full min-w-0" noValidate>
               <div
-                className={`url-card rounded-[20px] p-2.5 transition-shadow ${isHome ? "url-card--home" : ""}`}
+                className={`url-card rounded-[20px] p-2.5 transition-shadow ${isHome ? "url-card--home paste-card" : ""}`}
                 style={{
                   background: "var(--card)",
                   boxShadow: "var(--shadow-card), 0 0 40px rgba(124,77,245,0.06)",
@@ -1011,12 +1011,11 @@ export default function HeroDownloader({
                     type="button"
                     onClick={handlePaste}
                     disabled={state === "PREPARING"}
-                    className="flex h-13 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3.5 text-xs font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
+                    className="flex h-13 w-13 shrink-0 items-center justify-center rounded-xl border border-border text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
                     style={{ background: "var(--bg)" }}
-                    aria-label={t.common.paste}
+                    aria-label="Insert copied link"
                   >
-                    <Clipboard className="h-3.5 w-3.5" />
-                    {t.common.paste}
+                    <Clipboard className="h-4 w-4" />
                   </button>
 
                   <button
@@ -1042,10 +1041,10 @@ export default function HeroDownloader({
                   </button>
                 </div>
 
-                {/* Mobile: stacked */}
-                <div className="flex flex-col gap-2 sm:hidden">
-                  <div className="relative">
-                    <LinkIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-fg-subtle" />
+                {/* Mobile: same single row as desktop, scaled down */}
+                <div className="url-row-mobile paste-row flex sm:hidden">
+                  <div className="url-field paste-input-wrap relative">
+                    <LinkIcon className="url-field-icon pointer-events-none shrink-0 text-fg-subtle" />
                     <input
                       id="downloadit-url-input-mobile"
                       name="instagram-url"
@@ -1055,8 +1054,8 @@ export default function HeroDownloader({
                         setUrl(e.target.value);
                         if (error) setError("");
                       }}
-                      placeholder={placeholder}
-                      className="h-12 w-full rounded-xl border-0 bg-transparent pl-11 pr-11 text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
+                      placeholder="Paste link here"
+                      className="paste-input min-w-0 border-0 bg-transparent text-[16px] text-fg placeholder:text-fg-subtle focus:outline-none"
                       style={{ fontFamily: "var(--font-sans)", fontWeight: 500 }}
                       aria-label={t.hero.inputLabel}
                       aria-invalid={error ? true : undefined}
@@ -1069,57 +1068,85 @@ export default function HeroDownloader({
                       <button
                         type="button"
                         onClick={handleClear}
-                        className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-primary-light hover:text-primary"
+                        className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-fg-subtle transition-colors hover:bg-primary-light hover:text-primary"
                         aria-label={t.common.clear}
                       >
                         <X className="h-4 w-4" />
                       </button>
                     )}
                   </div>
-                  <div className="url-actions flex min-w-0 flex-col gap-2 w-full">
-                    <button
-                      type="button"
-                      onClick={handlePaste}
-                      disabled={state === "PREPARING"}
-                      className="flex h-12 min-h-[48px] w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-[14px] font-semibold text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
-                      style={{ background: "var(--bg)" }}
-                      aria-label={t.common.paste}
-                    >
-                      <Clipboard className="h-4 w-4 shrink-0" />
-                      <span className="btn-label truncate">{t.common.paste}</span>
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={state === "PREPARING" || !url.trim()}
-                      aria-busy={state === "PREPARING"}
-                      className="gradient-btn h-12 min-h-[48px] w-full min-w-0 px-4 text-[16px]"
-                    >
-                      {state === "PREPARING" ? (
-                        <>
-                          <svg className="h-5 w-5 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                            <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
-                          </svg>
-                          <span className="btn-label truncate whitespace-nowrap">{t.common.resolving}</span>
-                        </>
-                      ) : (
-                        <>
-                          <DownloadIcon className="h-5 w-5 shrink-0" />
-                          <span className="btn-label truncate whitespace-nowrap">{buttonLabel || t.common.getMedia}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePaste}
+                    disabled={state === "PREPARING"}
+                    className="url-paste-btn clipboard-btn flex shrink-0 items-center justify-center rounded-xl border border-border text-fg transition-colors hover:bg-primary-light hover:text-primary disabled:opacity-50"
+                    style={{ background: "var(--bg)" }}
+                    aria-label="Paste link from clipboard"
+                  >
+                    <Clipboard className="shrink-0" />
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={state === "PREPARING" || !url.trim()}
+                    aria-busy={state === "PREPARING"}
+                    className="gradient-btn url-submit-btn get-media-btn shrink-0"
+                  >
+                    {state === "PREPARING" ? (
+                      <>
+                        <svg className="shrink-0 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                          <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
+                        </svg>
+                        <span className="url-submit-label whitespace-nowrap">{t.common.resolving}</span>
+                      </>
+                    ) : (
+                      <>
+                        <DownloadIcon className="shrink-0" />
+                        <span className="url-submit-label whitespace-nowrap">{buttonLabel || t.common.getMedia}</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </form>
+
+            {isHome && (
+              <div className="home-trust trust mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] font-medium text-fg-muted sm:text-[14px]">
+                {[
+                  ["100% Free & Unlimited", "Free & Unlimited"],
+                  ["No Account Required", "No Account"],
+                  ["Public Media Only", "Public Media Only"],
+                ].map(([full, short]) => (
+                  <span key={full} className="trust-item flex items-center gap-2">
+                    <span className="trust-dot inline-block h-2 w-2 shrink-0 rounded-full bg-success" />
+                    <span className="trust-full">{full}</span>
+                    <span className="trust-short">{short}</span>
+                  </span>
+                ))}
+                <span className="trust-item trust-logs flex items-center gap-2">
+                  <span className="trust-dot inline-block h-2 w-2 shrink-0 rounded-full bg-success" />
+                  Zero Download Logs
+                </span>
+              </div>
+            )}
+
+            {!isHome && trustItems.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[12px] text-fg-subtle sm:gap-x-5 sm:text-[13px]">
+                {trustItems.map((item) => (
+                  <span key={item} className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Homepage: compact media-type chips directly under the card */}
             {isHome && mediaCategories.length > 1 && (
               <div
                 role="tablist"
                 aria-label="Supported media types"
-                className="media-chip-scroll mt-4 w-full justify-start sm:flex-wrap sm:justify-center sm:overflow-visible"
+                className="media-chip-scroll chips mt-4 w-full justify-start sm:flex-wrap sm:justify-center sm:overflow-visible"
               >
                 {mediaCategories.map((cat) => {
                   const active = activeTab === cat.id;
@@ -1131,7 +1158,7 @@ export default function HeroDownloader({
                       role="tab"
                       aria-selected={active}
                       onClick={() => onActiveTabChange(cat.id)}
-                      className={`flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                      className={`chip flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
                         active
                           ? "border-primary/40 bg-primary-light text-primary-strong"
                           : "border-border bg-card text-fg-muted hover:border-primary/30 hover:bg-primary-light/50 hover:text-primary"
@@ -1188,22 +1215,6 @@ export default function HeroDownloader({
         </div>
       </div>
     </section>
-
-    {/* Trust indicators – rendered outside the hero section so they appear
-        below the fold on first load. Homepage does not use this block; it
-        moves trust indicators into the #supported-platforms section. */}
-    {!isHome && (
-      <div className="mx-auto w-full max-w-[840px] px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="mx-auto flex max-w-[840px] flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 pb-6 pt-3 text-[12px] text-fg-subtle sm:gap-x-5 sm:pb-8 sm:pt-4 sm:text-[14px]">
-          {trustItems.map((item) => (
-            <span key={item} className="flex items-center gap-1.5">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
-              {item}
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
   </>
 );
 }
