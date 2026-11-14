@@ -1,9 +1,8 @@
 "use client";
 
-<<<<<<< HEAD
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 
-const emptySubscribe = () => () => {};
+const emptySubscribe = () => () => { };
 function useMounted() {
   return useSyncExternalStore(
     emptySubscribe,
@@ -11,9 +10,6 @@ function useMounted() {
     () => false
   );
 }
-=======
-import { useState, useEffect, useRef, useCallback } from "react";
->>>>>>> 7af8e7c2f76ca902becb3fa10de74b7177ad8bee
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -67,11 +63,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
 export default function ToolCategoryDropdown() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-<<<<<<< HEAD
   const mounted = useMounted();
-=======
-  const [mounted, setMounted] = useState(false);
->>>>>>> 7af8e7c2f76ca902becb3fa10de74b7177ad8bee
   const [openPlatform, setOpenPlatform] = useState<string | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -86,13 +78,6 @@ export default function ToolCategoryDropdown() {
     if (refocus) toggleRef.current?.focus({ preventScroll: true });
   }, []);
 
-<<<<<<< HEAD
-
-=======
-  useEffect(() => {
-    setMounted(true);
-  }, []);
->>>>>>> 7af8e7c2f76ca902becb3fa10de74b7177ad8bee
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -171,8 +156,8 @@ export default function ToolCategoryDropdown() {
         aria-controls={dialogId}
         aria-label="Categories"
         className={`site-categories-btn flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:px-3.5 ${open
-            ? "bg-primary-light text-primary-strong shadow-xs"
-            : "text-fg-muted hover:bg-primary-light hover:text-primary"
+          ? "bg-primary-light text-primary-strong shadow-xs"
+          : "text-fg-muted hover:bg-primary-light hover:text-primary"
           }`}
       >
         <span>Categories</span>
