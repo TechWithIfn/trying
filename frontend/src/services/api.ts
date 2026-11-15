@@ -982,9 +982,20 @@ export function refreshMediaItemUrl(
   return next;
 }
 
-export function getDownloadUrl(mediaUrl: string, filename: string, sourceUrl?: string): string {
+export function getDownloadUrl(
+  mediaUrl: string,
+  filename: string,
+  sourceUrl?: string,
+  audioUrl?: string | null
+): string {
   const base = `${getApiBase()}/api/download?url=${encodeURIComponent(mediaUrl)}&filename=${encodeURIComponent(filename)}`;
-  return sourceUrl ? `${base}&source=${encodeURIComponent(sourceUrl)}` : base;
+  const withSource = sourceUrl ? `${base}&source=${encodeURIComponent(sourceUrl)}` : base;
+  // Split-track Reels: the backend downloads both renditions and muxes them
+  // into a single MP4. The audio URL is only attached when the resolver
+  // actually paired one with this video.
+  return typeof audioUrl === "string" && audioUrl.length > 0
+    ? `${withSource}&audio=${encodeURIComponent(audioUrl)}`
+    : withSource;
 }
 
 /**

@@ -17,13 +17,26 @@ const TRACKING_PARAMS = new Set([
   "feature",
   "stkn",
   "srtk",
+  "psln",
   "ig_rid",
   "ig_mid",
   "share_id",
+  "share_from",
+  "si",
   "src",
   "context",
   "sk",
 ]);
+
+/**
+ * Post/reel/tv links carry no meaningful query state. Their share links append
+ * rotating tracking params (`igsh`, `psln`, `srtk`, …) plus session/view state;
+ * dropping the ENTIRE query string gives every share of one post a single
+ * canonical identity (and therefore one cache entry) before any request.
+ * Story/highlight/audio URLs keep their non-tracking params because those
+ * routes may need them.
+ */
+const QUERYLESS_CONTENT_TYPES = new Set(["REEL", "POST", "CAROUSEL", "VIDEO"]);
 
 export interface ParsedInstagramUrl {
   normalized: string;
@@ -120,7 +133,7 @@ export function validateInstagramUrl(raw: string): {
     logger.info("[STORY] Resolver selected", { resolver: "resolveStoryUrl" });
   }
 
-  const cleaned = cleanUrl(parsed);
+  const cleaned = cleanUrl(parsed, contentType);
 
   return {
     valid: true,
@@ -182,6 +195,15 @@ function detectContentTypeFromPath(pathname: string): string | null {
   const rawSegments = pathname.split("/").filter(Boolean);
   const segments = rawSegments.map((segment) => segment.toLowerCase());
 
+  // Instagram share sheets produce /share/reel/<code>/ (and /share/p/<code>/).
+  // Accept them as the underlying content type instead of rejecting a perfectly
+  // valid shared link.
+  if (segments[0] === "share" && segments.length >= 3) {
+    if (segments[1] === "reel" || segments[1] === "reels") return "REEL";
+    if (segments[1] === "p") return "POST";
+    if (segments[1] === "tv") return "VIDEO";
+  }
+
   // Public sound/audio pages (e.g. /reels/audio/<id>/) resolve to AUDIO so
   // the result UI switches to audio mode instead of treating them as Reels.
   if (segments[0] === "reels" && segments[1] === "audio") return "AUDIO";
@@ -230,6 +252,9 @@ function extractShortcode(pathname: string): string | null {
     segments[1]
   ) {
     return segments[1].split("/")[0];
+  }
+  if (segments[0] === "share" && segments.length >= 3 && segments[2]) {
+    return segments[2].split("/")[0];
   }
   return null;
 }
@@ -299,8 +324,47 @@ function extractSlideIndex(params: URLSearchParams): number | null {
   return n - 1;
 }
 
-function cleanUrl(url: URL): URL {
-  const cleaned = new URL(url.origin + url.pathname);
+/** Canonical host: mobile links are the same content as www links. */
+function cleanHost(hostname: string): string {
+  const lower = hostname.toLowerCase();
+  return lower === "m.instagram.com" ? "www.instagram.com" : lower;
+}
+
+/**
+ * Canonical path for post-like content. `/reels/<code>/` and share-sheet
+ * `/share/reel/<code>/` are the same Reel as `/reel/<code>/`; `/p/` and `/tv/`
+ * keep their route. Extra route suffixes (`/carousel/`) are view state and are
+ * dropped. Audio/reels-audio/story paths are left untouched.
+ */
+function canonicalContentPath(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  const first = segments[0]?.toLowerCase();
+  if (!first) return pathname;
+
+  if (first === "share" && segments.length >= 3) {
+    const kind = segments[1]?.toLowerCase();
+    if (kind === "reel" || kind === "reels") return `/reel/${segments[2]}/`;
+    if (kind === "p" || kind === "tv") return `/${kind}/${segments[2]}/`;
+  }
+  if (first === "reels" && segments[1] && segments[1].toLowerCase() !== "audio") {
+    return `/reel/${segments[1]}/`;
+  }
+  if (first === "reel" && segments[1]) return `/reel/${segments[1]}/`;
+  if (first === "p" && segments[1]) return `/p/${segments[1]}/`;
+  if (first === "tv" && segments[1]) return `/tv/${segments[1]}/`;
+  return pathname;
+}
+
+function cleanUrl(url: URL, contentType: string): URL {
+  const canonicalPath = QUERYLESS_CONTENT_TYPES.has(contentType)
+    ? canonicalContentPath(url.pathname)
+    : url.pathname;
+  const cleaned = new URL(`${url.protocol}//${cleanHost(url.hostname)}${canonicalPath}`);
+
+  // Content URLs are canonical without ANY query string. Keeping an unknown
+  // param here would fragment the cache (and leak view/share state); only the
+  // parsed slideIndex is retained separately.
+  if (QUERYLESS_CONTENT_TYPES.has(contentType)) return cleaned;
 
   url.searchParams.forEach((value, key) => {
     const lower = key.toLowerCase();

@@ -104,6 +104,42 @@ describe("validateInstagramUrl", () => {
       expect(result.parsed?.normalized).not.toContain("igshid");
     });
 
+    it("canonicalizes m.instagram.com to www and /reels/ to /reel/", () => {
+      const result = validateInstagramUrl("https://m.instagram.com/reels/ABC123def/");
+      expect(result.valid).toBe(true);
+      expect(result.parsed?.normalized).toBe("https://www.instagram.com/reel/ABC123def/");
+      expect(result.parsed?.contentType).toBe("REEL");
+      expect(result.parsed?.shortcode).toBe("ABC123def");
+    });
+
+    it("canonicalizes a share-sheet reel link and drops its tracking query", () => {
+      const result = validateInstagramUrl(
+        "https://www.instagram.com/share/reel/ABC123def/?igsh=tracking&psln=xyz&srtk=abc"
+      );
+      expect(result.valid).toBe(true);
+      expect(result.parsed?.normalized).toBe("https://www.instagram.com/reel/ABC123def/");
+      expect(result.parsed?.contentType).toBe("REEL");
+      expect(result.parsed?.shortcode).toBe("ABC123def");
+    });
+
+    it("drops the whole query from a reel link with real share parameters", () => {
+      const result = validateInstagramUrl(
+        "https://www.instagram.com/reel/ABC123def/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA%3D%3D&psln=1"
+      );
+      expect(result.valid).toBe(true);
+      expect(result.parsed?.normalized).toBe("https://www.instagram.com/reel/ABC123def/");
+      expect(result.parsed?.normalized).not.toContain("?");
+    });
+
+    it("drops the whole query from a /p/ post with tracking parameters", () => {
+      const result = validateInstagramUrl(
+        "https://www.instagram.com/p/ABC123def/?igsh=tracking&srtk=abc&img_index=3"
+      );
+      expect(result.valid).toBe(true);
+      expect(result.parsed?.normalized).toBe("https://www.instagram.com/p/ABC123def/");
+      expect(result.parsed?.slideIndex).toBe(2);
+    });
+
     it("extracts shortcode from post URL", () => {
       const result = validateInstagramUrl("https://www.instagram.com/p/ABC123def/");
       expect(result.valid).toBe(true);

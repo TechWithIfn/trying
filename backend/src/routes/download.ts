@@ -1,3 +1,5 @@
+import { createReadStream } from "fs";
+import { pipeline } from "stream/promises";
 import { Router, Request, Response as ExpressResponse } from "express";
 import { logger } from "../lib/logger.js";
 import { AppError, createError, createErrorResponse, toMediaAppError } from "../lib/errors.js";
@@ -15,6 +17,7 @@ import {
   upstreamRetryAfterValue,
 } from "../lib/media-proxy.js";
 import { withoutEmbeddedByteSlice } from "../lib/providers/puppeteer.js";
+import { mergeDashStreams, isMediaMergeError } from "../lib/av-merge.js";
 import {
   sanitizeDownloadFilename,
   sanitizeFilenameBase,
@@ -128,6 +131,63 @@ async function readUpstreamBytes(response: Response, maxBytes: number): Promise<
 function zipEntryName(base: string, index: number, ext: string): string {
   const trimmed = base.slice(0, 80).replace(/[\s.\-]+$/, "") || "image";
   return `${trimmed}-${index}${ext}`;
+}
+
+function safeHost(url: string): string | null {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Split-track download: Instagram delivers high-resolution Reels as a separate
+ * DASH video and audio rendition. The frontend sends both URLs, the backend
+ * downloads each to a bounded temp file, muxes them with ffmpeg (stream copy)
+ * and streams the single MP4 back. Temp files are always removed.
+ */
+async function handleMergedDownload(
+  req: Request,
+  res: ExpressResponse,
+  requestId: string,
+  routeStart: number,
+  videoUrl: string,
+  audioUrl: string,
+  signal: AbortSignal
+): Promise<void> {
+  const filename = sanitizeDownloadFilename(req.query.filename, "video/mp4");
+  logger.info("[DOWNLOAD] DASH merge requested", {
+    requestId,
+    videoHost: safeHost(videoUrl),
+    audioHost: safeHost(audioUrl),
+  });
+
+  const merged = await getGate("ffmpeg").run(
+    () => mergeDashStreams({ videoUrl, audioUrl, signal, requestId }),
+    { signal }
+  );
+  try {
+    if (signal.aborted) return;
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Disposition", contentDispositionAttachment(filename));
+    res.setHeader("Content-Length", String(merged.sizeBytes));
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Request-Id", requestId);
+    logger.info("[DOWNLOAD] merged file ready", {
+      requestId,
+      bytes: merged.sizeBytes,
+      readyMs: Date.now() - routeStart,
+    });
+    await pipeline(createReadStream(merged.filePath), res);
+    logger.info("[DOWNLOAD] merged stream completed", {
+      requestId,
+      bytes: merged.sizeBytes,
+      totalMs: Date.now() - routeStart,
+    });
+  } finally {
+    await merged.cleanup();
+  }
 }
 
 /**
@@ -342,6 +402,33 @@ async function handleDownload(
     // signed param is preserved byte-identically — and URLs without a window
     // pass through untouched. Expiry recovery below still applies.
     const fullObjectUrl = withoutEmbeddedByteSlice(validation.value.url);
+
+    // A paired audio rendition means this video is split-track (DASH). The
+    // frontend only sends this for a video item whose resolver paired a real
+    // audio-only URL; it goes through the same allowlist as the video.
+    const rawAudio = req.query.audio;
+    if (typeof rawAudio === "string" && rawAudio.length > 0) {
+      const audioValidation = validateProxyUrl(rawAudio);
+      if (!audioValidation.ok) {
+        logger.info("[DOWNLOAD] audio URL validation failed", {
+          requestId,
+          error: audioValidation.error,
+        });
+        const code = audioValidation.error === "MISSING" ? "VALIDATION_ERROR" : "INVALID_URL";
+        res
+          .status(
+            audioValidation.error === "DISALLOWED_HOST" || audioValidation.error === "PRIVATE_HOST"
+              ? 403
+              : 400
+          )
+          .json(createErrorResponse(code));
+        return;
+      }
+      const audioUrl = withoutEmbeddedByteSlice(audioValidation.value.url);
+      await handleMergedDownload(req, res, requestId, routeStart, fullObjectUrl, audioUrl, signal);
+      return;
+    }
+
     // Use the already-resolved media URL directly. On expired/invalid CDN
     // URLs the helper re-resolves once from `source` (when supplied) and
     // retries against the fresh URL — never a blind Puppeteer relaunch.
@@ -471,6 +558,20 @@ async function handleDownload(
       bytes: result.bytes,
     });
   } catch (error) {
+    if (isMediaMergeError(error)) {
+      logger.warn("[DOWNLOAD] merge failed", {
+        requestId,
+        errorCode: error.code,
+        error: error.message,
+      });
+      const mergeError = createError(error.code);
+      if (!res.headersSent) {
+        res.status(mergeError.statusCode).json(mergeError.toResponse());
+      } else {
+        res.destroy();
+      }
+      return;
+    }
     const mapped = toMediaAppError(error);
     logger.error("[DOWNLOAD] proxy error", {
       requestId,

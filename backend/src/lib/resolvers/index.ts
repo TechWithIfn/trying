@@ -10,6 +10,8 @@ import { getGate } from "../capacity.js";
 import { getResolverPool } from "../resolver-pool.js";
 import { readBoundedInt } from "../env.js";
 import { inc, observe } from "../metrics.js";
+import { tryInstagramPublicExtraction } from "../instagram-public.js";
+import { AppError, ERRORS } from "../errors.js";
 
 let resolverInstance: InstagramResolver | null = null;
 let lastProviderName: string | null = null;
@@ -53,6 +55,28 @@ export function normalizeResultType(result: ResolverResult): ResolverResult {
     return { ...result, type: "CAROUSEL" };
   }
   return result;
+}
+
+/**
+ * Post/reel/video pages are eligible for the public (logged-out) extractor.
+ * Story, highlight and audio routes have dedicated resolvers and must never be
+ * sent through the post extractor.
+ */
+export function isPublicContentUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname;
+    if (/^\/reels\/audio\//i.test(path)) return false;
+    return /^\/(?:reel|reels|p|tv)\//i.test(path);
+  } catch {
+    return false;
+  }
+}
+
+/** Stable AbortError when a signal carries no reason of its own. */
+function abortReason(): Error {
+  const error = new Error("Resolution aborted");
+  error.name = "AbortError";
+  return error;
 }
 
 /**
@@ -268,7 +292,70 @@ export async function resolveUrl(
       return result;
     }
 
+    // Public content: try yt-dlp + public page/embed before the browser
+    // provider. yt-dlp's public extractor returns playable Reel media even when
+    // Instagram serves the browser an empty page shell. A confident restriction
+    // verdict (age gate, private, deleted, region, login wall) is surfaced as a
+    // specific non-retryable error instead of the generic empty-shell error;
+    // every other outcome falls through to the configured provider.
+    // Instantiate the provider before the public attempt so its real name is
+    // available for the mock guard below. Tests swap in a "test-mock" provider
+    // while RESOLVER_PROVIDER may still read "placeholder", so the env value
+    // alone cannot be trusted to detect mock-like providers.
     const resolver = getResolver();
+    const mockLike =
+      providerName.toLowerCase().includes("mock") ||
+      resolver.name.toLowerCase().includes("mock");
+    if (!mockLike && isPublicContentUrl(url)) {
+      onProgress?.(20, "Checking public media");
+      const outcome = await providerGate.run(
+        () => tryInstagramPublicExtraction(url, { signal, requestId: opts?.requestId }),
+        { signal }
+      );
+      if (signal?.aborted) throw signal.reason ?? abortReason();
+      if (outcome.result) {
+        const normalizedPublic = normalizeResultType(outcome.result);
+        const uniquePublic = dedupeExactUrls(normalizedPublic.media);
+        const enrichedPublic = await enrichMediaItems(uniquePublic, { signal });
+        const mediaPublic = dedupeMediaItems(enrichedPublic);
+        const result: ResolverResult = { ...normalizedPublic, media: mediaPublic };
+        logger.info("Public extraction normalized", {
+          method: outcome.diagnostics.publicMethod ?? null,
+          type: result.type,
+          discovered: normalizedPublic.media.length,
+          finalCount: mediaPublic.length,
+          resolveMs: Date.now() - resolveStart,
+          url: url.slice(0, 80),
+        });
+        setCachedResult(url, result);
+        return result;
+      }
+      if (outcome.verdict) {
+        logger.warn("Public extraction returned a restriction verdict", {
+          requestId: opts?.requestId,
+          code: outcome.verdict,
+          restriction: outcome.diagnostics.publicRestriction ?? null,
+          failureReason: outcome.diagnostics.publicFailureReason ?? null,
+          restrictedAge: outcome.diagnostics.publicRestrictedAge ?? null,
+          url: url.slice(0, 80),
+        });
+        throw new AppError(
+          outcome.verdict,
+          ERRORS[outcome.verdict].message,
+          ERRORS[outcome.verdict].status,
+          outcome.diagnostics
+        );
+      }
+      logger.info("Public extraction found no media; falling back to provider", {
+        requestId: opts?.requestId,
+        provider: providerName,
+        method: outcome.diagnostics.publicMethod ?? null,
+        pageStatus: outcome.diagnostics.publicPageStatus ?? null,
+        restriction: outcome.diagnostics.publicRestriction ?? null,
+        url: url.slice(0, 80),
+      });
+    }
+
     logger.info("Resolving via provider", {
       provider: resolver.name,
       url: url.slice(0, 80),
