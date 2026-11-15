@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 const STORAGE_KEY = "downloadit-cookie-consent";
 
@@ -58,9 +57,9 @@ export default function CookieConsent() {
     >
       <p className="text-[13px] leading-[1.4] text-fg-muted">
         We use essential storage for functionality and optional advertising cookies with your consent.
-        See our <Link href="/privacy" className="font-semibold text-primary-strong hover:underline">
+        See our <a href="/privacy" className="font-semibold text-primary-strong hover:underline">
           Privacy Policy
-        </Link>.
+        </a>.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button

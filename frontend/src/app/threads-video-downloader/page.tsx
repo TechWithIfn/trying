@@ -230,9 +230,8 @@ export default function ThreadsVideoDownloaderPage() {
         "@type": "WebPage",
         "@id": "https://www.downloadit.pro/threads-video-downloader/#webpage",
         url: "https://www.downloadit.pro/threads-video-downloader",
-        name: "Threads Video Downloader – Download Threads Videos in HD | Downloadit",
-        description:
-          "Download Threads videos online for free with Downloadit. Paste a public Threads post link, preview available media and save videos in supported MP4 quality. No login required.",
+        name: PAGE.seoTitle,
+        description: PAGE.seoDescription,
         inLanguage: "en",
         isPartOf: {
           "@id": "https://www.downloadit.pro/#website",

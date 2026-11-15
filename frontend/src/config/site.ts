@@ -1,8 +1,8 @@
 export const SITE_URL = "https://www.downloadit.pro";
 export const BRAND_NAME = "Downloadit";
-export const BRAND_TITLE = "Downloadit: Instagram, Facebook, X & Pinterest Downloader";
+export const BRAND_TITLE = "Downloadit - Instagram, Pinterest, Facebook & X Downloader";
 export const BRAND_DESCRIPTION =
-  "Free online downloader for Instagram Reels, Stories & photos, Pinterest videos, Facebook videos, X GIFs and Threads. HD MP4, no login. Paste a link and save.";
+  "Download Instagram Reels, Pinterest videos, Facebook & X posts and Threads media free in HD. No login, no watermark, no app needed.";
 export const HOME_OG_IMAGE_ALT =
   "Downloadit — public-media downloader for Instagram, Pinterest, Facebook, Twitter/X and Threads";
 export const SUPPORT_EMAIL = "support@downloadit.pro";

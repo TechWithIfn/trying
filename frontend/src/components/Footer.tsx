@@ -14,7 +14,7 @@ import {
 import { PLATFORM_CATEGORIES } from "@/config/categories";
 
 const POPULAR_DOWNLOADERS = [
-  { label: "Instagram Downloader", href: "/instagram-video-downloader", Icon: InstagramIcon, color: "#ec5fa8" },
+  { label: "Instagram Video Downloader", href: "/instagram-video-downloader", Icon: InstagramIcon, color: "#ec5fa8" },
   { label: "Pinterest Downloader", href: "/pinterest-video-downloader", Icon: PinterestIcon, color: "#e60023" },
   { label: "Facebook Downloader", href: "/facebook-video-downloader", Icon: FacebookIcon, color: "#1877f2" },
   { label: "Twitter/X Downloader", href: "/twitter-video-downloader", Icon: TwitterIcon, color: "#0f172a" },

@@ -80,7 +80,7 @@ const OTHER_TOOLS = [
     badge: "All Formats",
   },
   {
-    title: "Instagram Photo & Carousel",
+    title: "Instagram Photo Downloader",
     href: "/instagram-photo-downloader",
     desc: "Download single pictures and all slides from multi-image album posts in original JPEG.",
     icon: ImageIcon,
@@ -106,9 +106,8 @@ export default function ReelsDownloaderPage() {
   const jsonLdWebPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Instagram Reels Downloader – Download Reels Videos in HD",
-    description:
-      "Download Instagram Reels videos with audio using Downloadit. Free online Instagram Reels downloader for public posts, with no account required.",
+    name: PAGE.seoTitle,
+    description: PAGE.seoDescription,
     url: "https://www.downloadit.pro/instagram-reels-downloader",
     inLanguage: "en-US",
     isPartOf: {
@@ -153,7 +152,7 @@ export default function ReelsDownloaderPage() {
       {
         "@type": "ListItem",
         position: 2,
-        name: "Instagram Downloader",
+        name: "Instagram Video Downloader",
         item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {

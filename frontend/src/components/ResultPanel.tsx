@@ -1077,12 +1077,7 @@ export function MediaResult({ result, mode, onReset, variant = "default" }: Medi
         extension: ext,
         fallback: `${platformLabel} ${currentMedia.type === "video" ? "Video" : "Image"}`,
       });
-      const downloadUrl = getDownloadUrl(
-        currentMedia.url,
-        filename,
-        result.sourceUrl,
-        currentMedia.type === "video" ? currentMedia.audioUrl : null
-      );
+      const downloadUrl = getDownloadUrl(currentMedia.url, filename, result.sourceUrl, currentMedia.audioUrl);
       const a = document.createElement("a");
       a.href = downloadUrl;
       a.rel = "noopener";

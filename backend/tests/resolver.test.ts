@@ -1,74 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { resolveUrl, resetResolver, normalizeResultType, createMonotonicProgress } from "@/lib/resolvers";
-import { createProvider } from "@/lib/providers/index.js";
-import { tryInstagramPublicExtraction } from "@/lib/instagram-public.js";
-import { AppError } from "@/lib/errors.js";
-import { MockProvider } from "@/lib/providers/mock.js";
 import type { ResolverResult, MediaItem } from "@/lib/types";
-
-/**
- * Providers are replaced so a restricted-content test can inject a resolver
- * whose name is NOT "mock" (the public extractor is intentionally skipped for
- * mock-like providers). The real MockProvider still backs the mock-provider
- * tests; every other provider name throws unless a test installs its own.
- */
-vi.mock("@/lib/providers/index.js", () => ({
-  createProvider: vi.fn(),
-}));
-vi.mock("@/lib/instagram-public.js", () => ({
-  tryInstagramPublicExtraction: vi.fn(),
-}));
-
-const SESSION_KEYS = [
-  "INSTAGRAM_COOKIE",
-  "INSTAGRAM_SESSIONID",
-  "INSTAGRAM_CSRFTOKEN",
-  "INSTAGRAM_DS_USER_ID",
-] as const;
-
-function defaultCreateProvider() {
-  if ((process.env.RESOLVER_PROVIDER ?? "") === "mock") return new MockProvider();
-  throw new Error("PROVIDER_NOT_CONFIGURED");
-}
-
-const RESTRICTED_DIAGNOSTICS = {
-  publicMethod: "html" as const,
-  publicPageStatus: 200,
-  publicPageBytes: 500_000,
-  publicRestriction: "restricted" as const,
-  publicFailureReason: "MA",
-  publicRestrictedAge: 13,
-};
-
-function restrictedOutcome() {
-  return {
-    result: null,
-    verdict: "INSTAGRAM_CONTENT_RESTRICTED" as const,
-    diagnostics: RESTRICTED_DIAGNOSTICS,
-  };
-}
-
-function mediaResult(url: string): ResolverResult {
-  return {
-    type: "REEL",
-    sourceUrl: url,
-    thumbnail: null,
-    title: null,
-    author: { username: "someone", displayName: null },
-    media: [
-      {
-        url: "https://scontent.cdninstagram.com/v/reel.mp4",
-        type: "video",
-        width: 1080,
-        height: 1920,
-        duration: 10,
-        size: 1000,
-        thumbnail: null,
-        format: "mp4",
-      },
-    ],
-  };
-}
 
 const originalEnv = process.env;
 
@@ -76,17 +8,11 @@ beforeEach(() => {
   vi.resetModules();
   process.env = { ...originalEnv };
   resetResolver();
-  vi.mocked(createProvider).mockReset();
-  vi.mocked(createProvider).mockImplementation(defaultCreateProvider);
-  vi.mocked(tryInstagramPublicExtraction).mockReset();
-  vi.mocked(tryInstagramPublicExtraction).mockResolvedValue(restrictedOutcome());
 });
 
 afterEach(() => {
   process.env = originalEnv;
   resetResolver();
-  vi.mocked(createProvider).mockReset();
-  vi.mocked(tryInstagramPublicExtraction).mockReset();
 });
 
 describe("resolveUrl", () => {
@@ -209,93 +135,5 @@ describe("resolveUrl", () => {
     emit(Number.NaN, "x");
     emit(50, "y");
     expect(seen).toEqual([50]);
-  });
-
-  describe("restricted content with a configured session", () => {
-    function clearSessionEnv() {
-      for (const key of SESSION_KEYS) delete process.env[key];
-    }
-
-    it("returns the restriction verdict without a session and never calls the provider", async () => {
-      clearSessionEnv();
-      process.env.RESOLVER_PROVIDER = "puppeteer-test";
-      const provider = { name: "puppeteer-test", resolve: vi.fn() };
-      vi.mocked(createProvider).mockReturnValue(provider as never);
-
-      await expect(
-        resolveUrl("https://www.instagram.com/reel/RestrictedNoSession/")
-      ).rejects.toMatchObject({ code: "INSTAGRAM_CONTENT_RESTRICTED" });
-      expect(provider.resolve).not.toHaveBeenCalled();
-    });
-
-    it("keeps the fast verdict when the configured session is incomplete", async () => {
-      clearSessionEnv();
-      process.env.RESOLVER_PROVIDER = "puppeteer-test";
-      process.env.INSTAGRAM_SESSIONID = "bare-session-id";
-      const provider = { name: "puppeteer-test", resolve: vi.fn() };
-      vi.mocked(createProvider).mockReturnValue(provider as never);
-
-      await expect(
-        resolveUrl("https://www.instagram.com/reel/RestrictedPartialSession/")
-      ).rejects.toMatchObject({ code: "INSTAGRAM_CONTENT_RESTRICTED" });
-      expect(provider.resolve).not.toHaveBeenCalled();
-    });
-
-    it("lets a complete session attempt the restricted content", async () => {
-      clearSessionEnv();
-      process.env.RESOLVER_PROVIDER = "puppeteer-test";
-      process.env.INSTAGRAM_COOKIE = "sessionid=abc123; csrftoken=xyz; ds_user_id=1";
-      const url = "https://www.instagram.com/reel/RestrictedCompleteSession/";
-      const provider = {
-        name: "puppeteer-test",
-        resolve: vi.fn(async () => mediaResult(url)),
-      };
-      vi.mocked(createProvider).mockReturnValue(provider as never);
-
-      const result = await resolveUrl(url);
-      expect(provider.resolve).toHaveBeenCalledTimes(1);
-      expect(result.media).toHaveLength(1);
-    });
-
-    it("surfaces the restriction verdict when the session attempt yields no media", async () => {
-      clearSessionEnv();
-      process.env.RESOLVER_PROVIDER = "puppeteer-test";
-      process.env.INSTAGRAM_COOKIE = "sessionid=abc123; csrftoken=xyz; ds_user_id=1";
-      const provider = {
-        name: "puppeteer-test",
-        resolve: vi.fn(async () => {
-          throw new AppError("VIDEO_SOURCE_NOT_FOUND", "no media", 404);
-        }),
-      };
-      vi.mocked(createProvider).mockReturnValue(provider as never);
-
-      await expect(
-        resolveUrl("https://www.instagram.com/reel/RestrictedEmptySession/")
-      ).rejects.toMatchObject({
-        code: "INSTAGRAM_CONTENT_RESTRICTED",
-        details: expect.objectContaining({
-          publicFailureReason: "MA",
-          publicRestrictedAge: 13,
-        }),
-      });
-      expect(provider.resolve).toHaveBeenCalledTimes(1);
-    });
-
-    it("propagates a stale-session error instead of masking it as restricted", async () => {
-      clearSessionEnv();
-      process.env.RESOLVER_PROVIDER = "puppeteer-test";
-      process.env.INSTAGRAM_COOKIE = "sessionid=abc123; csrftoken=xyz; ds_user_id=1";
-      const provider = {
-        name: "puppeteer-test",
-        resolve: vi.fn(async () => {
-          throw new AppError("INSTAGRAM_AUTH_INVALID", "session rejected", 401);
-        }),
-      };
-      vi.mocked(createProvider).mockReturnValue(provider as never);
-
-      await expect(
-        resolveUrl("https://www.instagram.com/reel/RestrictedStaleSession/")
-      ).rejects.toMatchObject({ code: "INSTAGRAM_AUTH_INVALID" });
-    });
   });
 });

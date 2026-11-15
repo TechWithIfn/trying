@@ -387,42 +387,6 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
     status: 503,
     retryable: true,
   },
-  /**
-   * Positive evidence from Instagram itself (age gate, private/restricted
-   * verdict, login/consent wall). This is a CONTENT verdict, not a transient
-   * empty shell: retrying cannot help and the server never attempts to bypass
-   * the gate.
-   */
-  INSTAGRAM_CONTENT_RESTRICTED: {
-    message:
-      "This Instagram post is restricted by the account, so it can't be downloaded anonymously. The account may only allow signed-in viewers, or the post may be private or age-gated.",
-    status: 403,
-    retryable: false,
-  },
-  INSTAGRAM_CONTENT_NOT_FOUND: {
-    message:
-      "This Instagram post no longer exists. It may have been deleted, or the link may be incomplete.",
-    status: 404,
-    retryable: false,
-  },
-  INSTAGRAM_REGION_BLOCKED: {
-    message:
-      "This Instagram post isn't available in this region, so it can't be downloaded.",
-    status: 403,
-    retryable: false,
-  },
-  MEDIA_MERGE_UNAVAILABLE: {
-    message:
-      "This video uses separate audio and video streams, but the media processor needed to combine them is unavailable. Please try again later.",
-    status: 503,
-    retryable: true,
-  },
-  MEDIA_MERGE_FAILED: {
-    message:
-      "The video's separate audio and video tracks could not be combined. Please try again shortly.",
-    status: 502,
-    retryable: true,
-  },
   STREAM_TIMEOUT: {
     message: "The media stream took too long to start. Please try again.",
     status: 504,

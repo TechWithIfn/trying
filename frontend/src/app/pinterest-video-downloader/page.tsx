@@ -97,9 +97,8 @@ export default function PinterestVideoDownloaderPage() {
   const jsonLdWebPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Pinterest Video Downloader – Download Pinterest Videos & Images",
-    description:
-      "Download Pinterest videos and images online for free with Downloadit. Save public Pinterest Pins as MP4 videos or images, including supported carousel media. No login required.",
+    name: PAGE.seoTitle,
+    description: PAGE.seoDescription,
     url: "https://www.downloadit.pro/pinterest-video-downloader",
     inLanguage: "en-US",
     isPartOf: {
@@ -602,7 +601,7 @@ export default function PinterestVideoDownloaderPage() {
                         <Film className="h-5 w-5" />
                       </div>
                       <span className="font-bold text-fg text-[16px] group-hover:text-primary transition-colors">
-                        Instagram Downloader
+                        Instagram Video Downloader
                       </span>
                     </div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary">

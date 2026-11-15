@@ -462,10 +462,7 @@ export function storyErrorMessage(code: string, backendMessage?: string | null):
     case "SESSION_EXPIRED":
     case "INSTAGRAM_AUTH_INVALID":
     case "INSTAGRAM_LOGIN_REQUIRED":
-      // The backend only surfaces these after attempting public resolution
-      // without the dead session, so the message says so: the failure is the
-      // session's, and the public path was already tried. (The exact
-      // Instagram response stays in server logs + diagnostics.)
+      if (backend && !/story/i.test(backend)) return backend;
       return "The configured Instagram session has expired. Public Story access was attempted without it — if this persists, the Story may be private or gone.";
     case "PRIVATE_ACCOUNT":
     case "STORY_PRIVATE":
@@ -990,12 +987,7 @@ export function getDownloadUrl(
 ): string {
   const base = `${getApiBase()}/api/download?url=${encodeURIComponent(mediaUrl)}&filename=${encodeURIComponent(filename)}`;
   const withSource = sourceUrl ? `${base}&source=${encodeURIComponent(sourceUrl)}` : base;
-  // Split-track Reels: the backend downloads both renditions and muxes them
-  // into a single MP4. The audio URL is only attached when the resolver
-  // actually paired one with this video.
-  return typeof audioUrl === "string" && audioUrl.length > 0
-    ? `${withSource}&audio=${encodeURIComponent(audioUrl)}`
-    : withSource;
+  return audioUrl ? `${withSource}&audio=${encodeURIComponent(audioUrl)}` : withSource;
 }
 
 /**

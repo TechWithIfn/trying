@@ -1,15 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
-
-const emptySubscribe = () => () => { };
-function useMounted() {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
-}
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -63,7 +54,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
 export default function ToolCategoryDropdown() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const mounted = useMounted();
+  const [mounted, setMounted] = useState(false);
   const [openPlatform, setOpenPlatform] = useState<string | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -78,6 +69,9 @@ export default function ToolCategoryDropdown() {
     if (refocus) toggleRef.current?.focus({ preventScroll: true });
   }, []);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -156,8 +150,8 @@ export default function ToolCategoryDropdown() {
         aria-controls={dialogId}
         aria-label="Categories"
         className={`site-categories-btn flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-[14px] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:px-3.5 ${open
-          ? "bg-primary-light text-primary-strong shadow-xs"
-          : "text-fg-muted hover:bg-primary-light hover:text-primary"
+            ? "bg-primary-light text-primary-strong shadow-xs"
+            : "text-fg-muted hover:bg-primary-light hover:text-primary"
           }`}
       >
         <span>Categories</span>

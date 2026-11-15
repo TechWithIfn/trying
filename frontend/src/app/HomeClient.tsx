@@ -185,9 +185,9 @@ export default function HomeClient() {
             activeTab={activeTab}
             onActiveTabChange={setActiveTab}
             badge="FAST • FREE • NO LOGIN REQUIRED"
-            titleA="Download Videos, Photos & Audio "
-            titleB="Online with Downloadit"
-            subtitle="Downloadit saves public Instagram, Pinterest, Facebook, X and Threads media in your browser. No account is required."
+            titleA="Instagram, Pinterest, Facebook, X & Threads Downloader "
+            titleB="- Downloadit"
+            subtitle="Download Instagram Reels, Pinterest videos, Facebook & X posts, and Threads media for free in HD. No login, no watermark, no app needed."
             placeholder="Paste"
           />
         </div>

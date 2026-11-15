@@ -21,6 +21,7 @@ import {
   isYtDlpAvailable,
   isYtDlpVersionOutdated,
 } from "./lib/ytdlp.js";
+import { checkInstagramCookies } from "./lib/instagram-reel-ytdlp.js";
 
 // Local development / traditional hosting entry point.
 // On Vercel serverless, api/index.ts serves the exported app instead and
@@ -83,6 +84,7 @@ const server = app.listen(PORT, () => {
         ffmpegPath: getFfmpegPath(),
         ffmpegVersion: getFfmpegVersionSync(),
       });
+      if (ytDlpAvailable) void checkInstagramCookies();
     },
     (error) => {
       logger.error("YouTube media engine startup check failed", {

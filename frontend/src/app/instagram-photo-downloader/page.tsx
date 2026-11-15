@@ -102,9 +102,8 @@ export default function PhotoDownloaderPage() {
   const jsonLdWebPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Instagram Photo & Carousel Downloader – Save Images & Slides",
-    description:
-      "Download Instagram photos and carousel albums in full resolution with Downloadit. Save single pictures or all slides from multi-image posts for free online.",
+    name: PAGE.seoTitle,
+    description: PAGE.seoDescription,
     url: "https://www.downloadit.pro/instagram-photo-downloader",
     inLanguage: "en-US",
     isPartOf: {
@@ -117,7 +116,7 @@ export default function PhotoDownloaderPage() {
   const jsonLdWebApp = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "Downloadit Instagram Photo & Carousel Downloader",
+    name: "Downloadit Instagram Photo Downloader",
     url: "https://www.downloadit.pro/instagram-photo-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",
@@ -149,7 +148,7 @@ export default function PhotoDownloaderPage() {
       {
         "@type": "ListItem",
         position: 2,
-        name: "Instagram Downloader",
+        name: "Instagram Video Downloader",
         item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {
@@ -369,7 +368,7 @@ export default function PhotoDownloaderPage() {
           <section className="space-y-6">
             <div className="border-b border-border pb-3">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-fg tracking-tight">
-                Features of Downloadit Photo &amp; Carousel Downloader
+                Features of the Instagram Photo Downloader
               </h2>
               <p className="text-[14.5px] sm:text-[15.5px] text-fg-muted mt-1">
                 Optimized for visual perfection, reliability, and security.

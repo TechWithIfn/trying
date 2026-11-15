@@ -78,7 +78,7 @@ const OTHER_TOOLS = [
     badge: "All Formats",
   },
   {
-    title: "Instagram Photo & Carousel",
+    title: "Instagram Photo Downloader",
     href: "/instagram-photo-downloader",
     desc: "Download single pictures and all slides from multi-image album posts in original JPEG.",
     icon: ImageIcon,
@@ -97,9 +97,8 @@ export default function AudioDownloaderPage() {
   const jsonLdWebPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Instagram Audio Downloader – Extract Reels & Video Audio to MP3",
-    description:
-      "Extract and download audio from Instagram Reels and videos as MP3 with Downloadit. Free online Instagram to MP3 converter with high quality audio.",
+    name: PAGE.seoTitle,
+    description: PAGE.seoDescription,
     url: "https://www.downloadit.pro/instagram-audio-downloader",
     inLanguage: "en-US",
     isPartOf: {
@@ -144,7 +143,7 @@ export default function AudioDownloaderPage() {
       {
         "@type": "ListItem",
         position: 2,
-        name: "Instagram Downloader",
+        name: "Instagram Video Downloader",
         item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {

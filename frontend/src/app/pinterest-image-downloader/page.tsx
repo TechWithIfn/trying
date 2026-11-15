@@ -69,9 +69,8 @@ export default function PinterestImageDownloaderPage() {
   const jsonLdWebPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Pinterest Image & Carousel Downloader – Save Pins & Slides",
-    description:
-      "Download Pinterest images and multi-photo carousel Pins online with Downloadit. Save high-resolution JPEG pictures directly from public Pins for free. No login needed.",
+    name: PAGE.seoTitle,
+    description: PAGE.seoDescription,
     url: "https://www.downloadit.pro/pinterest-image-downloader",
     inLanguage: "en-US",
     isPartOf: {
@@ -84,7 +83,7 @@ export default function PinterestImageDownloaderPage() {
   const jsonLdWebApp = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "Downloadit Pinterest Image & Carousel Downloader",
+    name: "Downloadit Pinterest Image Downloader",
     url: "https://www.downloadit.pro/pinterest-image-downloader",
     applicationCategory: "MultimediaApplication",
     operatingSystem: "All",

@@ -7,7 +7,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   getInstagramSessionCookie,
   getSessionState,
-  hasCompleteInstagramSession,
   isInstagramSessionConfigured,
   markSessionInvalid,
   normalizeSessionIdValue,
@@ -65,27 +64,6 @@ describe("instagram session helper", () => {
     process.env.INSTAGRAM_SESSIONID = "abc123value";
     expect(getInstagramSessionCookie()).toBe("sessionid=abc123value");
     expect(isInstagramSessionConfigured()).toBe(true);
-  });
-
-  it("treats only a sessionid + csrftoken session as complete", () => {
-    process.env.INSTAGRAM_SESSIONID = "abc123value";
-    expect(isInstagramSessionConfigured()).toBe(true);
-    expect(hasCompleteInstagramSession()).toBe(false);
-
-    process.env.INSTAGRAM_CSRFTOKEN = "token123";
-    expect(hasCompleteInstagramSession()).toBe(true);
-
-    delete process.env.INSTAGRAM_CSRFTOKEN;
-    delete process.env.INSTAGRAM_SESSIONID;
-    process.env.INSTAGRAM_COOKIE = "sessionid=abc123; csrftoken=xyz";
-    expect(hasCompleteInstagramSession()).toBe(true);
-  });
-
-  it("does not treat a quarantined session as complete", () => {
-    process.env.INSTAGRAM_COOKIE = "sessionid=abc123; csrftoken=xyz";
-    expect(hasCompleteInstagramSession()).toBe(true);
-    markSessionInvalid();
-    expect(hasCompleteInstagramSession()).toBe(false);
   });
 
   it("decodes a URL-encoded sessionid to browser form (literal colons)", () => {

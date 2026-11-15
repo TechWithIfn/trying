@@ -83,7 +83,7 @@ const OTHER_TOOLS = [
     badge: "All Formats",
   },
   {
-    title: "Instagram Photo & Carousel",
+    title: "Instagram Photo Downloader",
     href: "/instagram-photo-downloader",
     desc: "Download single pictures and all slides from multi-image album posts in original JPEG.",
     icon: ImageIcon,
@@ -102,9 +102,8 @@ export default function StoryDownloaderPage() {
   const jsonLdWebPage = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "Instagram Story Downloader – Save Stories Online",
-    description:
-      "Download Instagram Stories online with Downloadit. Save active public story videos and photos in high quality before they expire. Anonymous and free.",
+    name: PAGE.seoTitle,
+    description: PAGE.seoDescription,
     url: "https://www.downloadit.pro/instagram-story-downloader",
     inLanguage: "en-US",
     isPartOf: {
@@ -149,7 +148,7 @@ export default function StoryDownloaderPage() {
       {
         "@type": "ListItem",
         position: 2,
-        name: "Instagram Downloader",
+        name: "Instagram Video Downloader",
         item: "https://www.downloadit.pro/instagram-video-downloader",
       },
       {

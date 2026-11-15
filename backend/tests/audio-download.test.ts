@@ -24,11 +24,10 @@ import type { Server } from "http";
 
 const { resolveMock } = vi.hoisted(() => ({ resolveMock: vi.fn() }));
 
-// A factory-only mock (no importOriginal): importing the real resolvers module
-// pulls in the public extraction chain (yt-dlp/ffmpeg probes) and, through the
-// media-enrich -> media-proxy -> resolvers import cycle, can leave media-proxy
-// bound to the real resolveUrl instead of this stub.
-vi.mock("@/lib/resolvers/index", () => ({ resolveUrl: resolveMock }));
+vi.mock("@/lib/resolvers/index", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, resolveUrl: resolveMock };
+});
 
 import app from "@/app";
 import { selectAudioSource } from "@/routes/audio";

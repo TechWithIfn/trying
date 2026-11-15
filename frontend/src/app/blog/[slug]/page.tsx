@@ -63,7 +63,7 @@ export async function generateMetadata({
 const TOOL_LABELS: Record<string, string> = {
   "/instagram-reels-downloader": "Instagram Reels Downloader",
   "/instagram-video-downloader": "Instagram Video Downloader",
-  "/instagram-photo-downloader": "Instagram Photo & Carousel Downloader",
+  "/instagram-photo-downloader": "Instagram Photo Downloader",
   "/instagram-story-downloader": "Instagram Story Downloader",
   "/instagram-audio-downloader": "Instagram Audio Downloader",
   "/pinterest-video-downloader": "Pinterest Video Downloader",

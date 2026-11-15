@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import HomeClient from "./HomeClient";
 import {
-  BRAND_DESCRIPTION,
   BRAND_NAME,
-  BRAND_TITLE,
   HOME_OG_IMAGE_ALT,
   SITE_URL,
   SUPPORT_EMAIL,
   SOCIAL_PROFILES,
 } from "@/config/site";
 
+const HOME_TITLE = "Instagram, Pinterest, Facebook, X & Threads Downloader";
+const HOME_DESCRIPTION =
+  "Download Instagram Reels, Pinterest videos, Facebook & X posts, and Threads media for free in HD. No login, no watermark, no app needed.";
+
 export const metadata: Metadata = {
-  title: { absolute: BRAND_TITLE },
-  description: BRAND_DESCRIPTION,
+  title: { absolute: HOME_TITLE },
+  description: HOME_DESCRIPTION,
   alternates: {
     canonical: SITE_URL,
     languages: {
@@ -22,8 +24,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: { absolute: BRAND_TITLE },
-    description: BRAND_DESCRIPTION,
+    title: { absolute: HOME_TITLE },
+    description: HOME_DESCRIPTION,
     type: "website",
     siteName: BRAND_NAME,
     url: SITE_URL,
@@ -32,8 +34,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: { absolute: BRAND_TITLE },
-    description: BRAND_DESCRIPTION,
+    title: { absolute: HOME_TITLE },
+    description: HOME_DESCRIPTION,
     images: ["/og-downloadit.png"],
   },
   robots: {

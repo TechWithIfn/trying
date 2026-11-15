@@ -110,7 +110,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
         icon: Layers,
       },
       {
-        name: "Pinterest to MP4",
+        name: "MP4 Converter",
         href: "/pinterest-to-mp4",
         desc: "Convert a Pin to MP4",
         icon: Video,
@@ -176,7 +176,7 @@ export const PLATFORM_CATEGORIES: PlatformCategory[] = [
         icon: Film,
       },
       {
-        name: "X Video to MP4",
+        name: "Video to MP4 Converter",
         href: "/twitter-video-to-mp4",
         desc: "Post video as MP4",
         icon: Video,

@@ -136,23 +136,6 @@ export interface ResolveDiagnostics {
   availableQualities?: number[];
   /** YouTube stage where a failure occurred (e.g. "probe", "download", "merge"). */
   youtubeStage?: string;
-  /** Which public extraction method produced (or last tried for) this result. */
-  publicMethod?: "yt-dlp" | "html" | "embed" | null;
-  /** Public Instagram page probe status / size (no URL, no headers). */
-  publicPageStatus?: number | null;
-  publicPageBytes?: number | null;
-  publicPageContentType?: string | null;
-  /** Media markers observed in the public page HTML. */
-  publicHasVideoVersions?: boolean;
-  publicHasVideoUrl?: boolean;
-  publicHasDashManifest?: boolean;
-  /** Access-wall / restriction verdict observed on the public page. */
-  publicLoginWall?: boolean;
-  publicConsentWall?: boolean;
-  publicChallenge?: boolean;
-  publicRestriction?: "restricted" | "not-found" | "login-required" | "region-blocked" | "unavailable" | null;
-  publicFailureReason?: string | null;
-  publicRestrictedAge?: number | null;
 }
 
 /**
@@ -248,13 +231,8 @@ export type ErrorCode =
   | "INSTAGRAM_LOGIN_REQUIRED"
   | "INSTAGRAM_RATE_LIMITED"
   | "INSTAGRAM_PROVIDER_ERROR"
-  | "INSTAGRAM_CONTENT_RESTRICTED"
-  | "INSTAGRAM_CONTENT_NOT_FOUND"
-  | "INSTAGRAM_REGION_BLOCKED"
   | "STREAM_TIMEOUT"
   | "EMPTY_INSTAGRAM_SHELL"
-  | "MEDIA_MERGE_UNAVAILABLE"
-  | "MEDIA_MERGE_FAILED"
   | "PINTEREST_INVALID_URL"
   | "PINTEREST_PIN_NOT_FOUND"
   | "PINTEREST_PIN_RESTRICTED"

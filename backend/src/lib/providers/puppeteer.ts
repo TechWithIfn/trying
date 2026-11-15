@@ -8,6 +8,7 @@ import type {
   ResolveDiagnostics,
   ResolutionState,
 } from "../types.js";
+import { existsSync } from "node:fs";
 import { BaseProvider, isCdnMediaHost, isPrivateOrReservedHost } from "./base.js";
 import { createError, isConnectionLostError, isTimeoutError, AppError } from "../errors.js";
 import { logger } from "../logger.js";
@@ -15,7 +16,6 @@ import { decodeHtmlEntities } from "../text.js";
 import { readBoundedInt } from "../env.js";
 import {
   getInstagramSessionCookie,
-  hasCompleteInstagramSession,
   isInstagramSessionConfigured,
   parseSessionCookies,
 } from "../instagram-session.js";
@@ -35,6 +35,33 @@ async function getPuppeteer() {
     pptr = await import("puppeteer");
   }
   return pptr;
+}
+
+/**
+ * Puppeteer's downloaded Chrome is often missing on a fresh machine. The
+ * installed Chrome or Edge is enough to open the public reel page, so a
+ * missing browser cache must not become "service unavailable".
+ */
+function localBrowserExecutable(): string | undefined {
+  const fromEnv = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
+  if (fromEnv && existsSync(fromEnv)) return fromEnv;
+  const localApp = process.env.LOCALAPPDATA || "";
+  const candidates =
+    process.platform === "win32"
+      ? [
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+          "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+          localApp ? `${localApp}\\Google\\Chrome\\Application\\chrome.exe` : "",
+          "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+          "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+        ]
+      : process.platform === "darwin"
+        ? [
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+          ]
+        : ["/usr/bin/google-chrome-stable", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"];
+  return candidates.find((candidate) => candidate.length > 0 && existsSync(candidate));
 }
 
 /**
@@ -430,13 +457,13 @@ const EXTRACT_VIDEO_GRAPH_FN = `
         if (sSrc && sSrc.indexOf('http') === 0) out.domVideos.push(sSrc);
       }
     }
-    var metaVideos = document.querySelectorAll('meta[property="og:video"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"], link[as="video"]');
-    for (var m = 0; m < metaVideos.length; m++) {
-      var c = metaVideos[m].getAttribute('content') || metaVideos[m].getAttribute('href');
+    var ogVideo = document.querySelector('meta[property="og:video"]');
+    if (ogVideo) {
+      var c = ogVideo.getAttribute('content');
       if (c && c.indexOf('http') === 0) out.domVideos.push(c);
     }
     var scripts = document.querySelectorAll('script');
-    for (var k = 0; k < scripts.length && out.scripts.length < 15; k++) {
+    for (var k = 0; k < scripts.length && out.scripts.length < 10; k++) {
       var text = scripts[k].textContent || '';
       if (
         text.indexOf('video_versions') !== -1 ||
@@ -444,8 +471,6 @@ const EXTRACT_VIDEO_GRAPH_FN = `
         text.indexOf('playback_url') !== -1 ||
         text.indexOf('playable_url') !== -1 ||
         text.indexOf('video_url') !== -1 ||
-        text.indexOf('progressive_download_url') !== -1 ||
-        text.indexOf('contentUrl') !== -1 ||
         (text.indexOf('.mp4') !== -1 && (text.indexOf('fbcdn') !== -1 || text.indexOf('cdninstagram') !== -1))
       ) {
         out.scripts.push(text);
@@ -486,12 +511,6 @@ export function extractMediaFromJson(text: string): ExtractedMedia[] {
   // to the patterns below.
   const scan = normalizeEmbeddedJson(text);
 
-  for (const m of scan.matchAll(/"progressive_download_url"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video", "playable-url");
-  }
-  for (const m of scan.matchAll(/"contentUrl"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video", "playable-url");
-  }
   for (const m of scan.matchAll(/"video_url"\s*:\s*"([^"]+)"/g)) {
     add(m[1], "video", "playable-url");
   }
@@ -851,12 +870,6 @@ function extractMediaFromHtml(html: string): ExtractedMedia[] {
   )) {
     add(m[1], "image");
   }
-  for (const m of scan.matchAll(/"progressive_download_url"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video", "playable-url");
-  }
-  for (const m of scan.matchAll(/"contentUrl"\s*:\s*"([^"]+)"/g)) {
-    add(m[1], "video", "playable-url");
-  }
   for (const m of scan.matchAll(/"video_url"\s*:\s*"([^"]+)"/g)) {
     add(m[1], "video", "playable-url");
   }
@@ -1188,10 +1201,13 @@ const PAGE_STATE_FN = `
     title: title,
     hasUnavailableMessage:
       title.indexOf('isn\\'t available') !== -1 ||
+      title.indexOf('content is unavailable') !== -1 ||
       title.indexOf('Page Not Found') !== -1 ||
       bodyText.indexOf('isn\\'t available') !== -1 ||
       bodyText.indexOf('This page isn\\'t available') !== -1 ||
-      bodyText.indexOf('The link you followed may be broken') !== -1,
+      bodyText.indexOf('The link you followed may be broken') !== -1 ||
+      bodyText.indexOf("can't see this content") !== -1 ||
+      bodyText.indexOf('set limits on who can see') !== -1,
     hasLoginWall:
       bodyText.indexOf('Log in to Instagram') !== -1 ||
       !!document.querySelector('input[name="username"]'),
@@ -2458,6 +2474,40 @@ export function parseRetryAfterSeconds(raw: string | null | undefined): number |
  * so the browser pass (or its honest fallback) starts sooner. Single-shot,
  * never retried.
  */
+/**
+ * Instagram's public oEmbed answers 400 with an unappealable account gate
+ * when the reel is not offered to anonymous viewers. A normal public reel
+ * answers 200. Network failures return null so the browser path still runs.
+ */
+async function fetchReelAccountGate(shortcode: string): Promise<"account-limited" | null> {
+  if (!/^[A-Za-z0-9_-]{5,30}$/.test(shortcode)) return null;
+  try {
+    const endpoint = `https://www.instagram.com/api/v1/oembed/?url=${encodeURIComponent(`https://www.instagram.com/reel/${shortcode}/`)}`;
+    const res = await fetch(endpoint, {
+      headers: {
+        "User-Agent": DESKTOP_UA,
+        Accept: "application/json",
+        "X-IG-App-ID": IG_APP_ID,
+      },
+      redirect: "manual",
+      signal: AbortSignal.timeout(7_000),
+    });
+    if (res.status !== 400) {
+      await res.body?.cancel().catch(() => {});
+      return null;
+    }
+    const text = await res.text();
+    if (text.length > 8_000) return null;
+    const limited =
+      text.includes("geoblock_required") ||
+      text.includes("People under 13") ||
+      text.includes("set limits on who can see");
+    return limited ? "account-limited" : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPageSnapshot(url: string, timeoutMs = 7_000): Promise<PageFetchResult> {
   try {
     // Instagram serves anonymous clients a video-stripped page (HTTP 200 but
@@ -2938,8 +2988,22 @@ export class PuppeteerProvider extends BaseProvider {
         await this.launchServerless();
       } else {
         const p = await getPuppeteer();
+        let executablePath: string | undefined;
+        try {
+          const bundled = p.default.executablePath();
+          if (typeof bundled === "string" && existsSync(bundled)) executablePath = bundled;
+        } catch {
+          executablePath = undefined;
+        }
+        if (!executablePath) {
+          executablePath = localBrowserExecutable();
+          if (executablePath) {
+            logger.info("Puppeteer using installed browser", { executablePath });
+          }
+        }
         this.browser = await p.default.launch({
           headless: true,
+          ...(executablePath ? { executablePath } : {}),
           args: [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -3316,12 +3380,35 @@ export class PuppeteerProvider extends BaseProvider {
         shortcode
           ? fetchPageSnapshot(`https://www.instagram.com/p/${shortcode}/embed/`).catch(() => null)
           : null;
+      const accountGatePromise = shortcode ? fetchReelAccountGate(shortcode) : Promise.resolve(null);
       const embedHtmlPromise = embedSnapshotPromise
         ? embedSnapshotPromise.then((snap) => snap?.html ?? null)
         : null;
       const fetchMeta = await fetchMetadata(url);
       timings.metadataMs = Date.now() - metaStart;
       onProgress?.(35, "Media source opened");
+
+      const mainHasVideoSignals =
+        Boolean(fetchMeta.ogVideo) || fetchMeta.embeddedMedia.some((item) => item.type === "video");
+      if (shortcode && !mainHasVideoSignals) {
+        const accountGate = await accountGatePromise;
+        if (accountGate === "account-limited") {
+          logger.info("Instagram oEmbed reports this reel is account-limited", { shortcode });
+          const limited = createError("CONTENT_UNAVAILABLE");
+          throw new AppError(
+            limited.code,
+            "Instagram is not offering a public video for this reel. The account limits who can see it.",
+            limited.statusCode,
+            {
+              provider: "puppeteer",
+              runtime: isServerlessRuntime() ? "serverless" : "local",
+              stage: "prefetch-account-gate",
+              pageStatus: fetchMeta.pageStatus,
+              finalResolutionState: "CONTENT_UNAVAILABLE",
+            }
+          );
+        }
+      }
 
       // Stop before spending a Chromium launch (~20s) on a request Instagram has
       // already refused with an explicit 429. Only a 429 is throttling: a
@@ -3404,11 +3491,8 @@ export class PuppeteerProvider extends BaseProvider {
         // Gated, not throttled: never a rate-limit code. With a viewer session
         // the browser pass below (which sets the session cookies) may still
         // succeed, so continue. Without one the browser would only hit the
-        // same wall — skip the launch and fail honestly instead. Only a
-        // COMPLETE session (sessionid + csrftoken) can authenticate; a partial
-        // cookie is rejected with the same hard 302, so it must not buy a
-        // pointless browser launch.
-        if (!hasCompleteInstagramSession()) {
+        // same wall — skip the launch and fail honestly instead.
+        if (!isInstagramSessionConfigured()) {
           logger.warn("Puppeteer page fetch gated by Instagram login (no session)", {
             normalizedUrl: url,
             pageStatus: fetchMeta.pageStatus,

@@ -177,9 +177,8 @@ export default function FacebookVideoDownloaderPage() {
         "@type": "WebPage",
         "@id": "https://www.downloadit.pro/facebook-video-downloader/#webpage",
         url: "https://www.downloadit.pro/facebook-video-downloader",
-        name: "Facebook Video Downloader – Download FB Videos in HD | Downloadit",
-        description:
-          "Download Facebook videos online for free with Downloadit.pro. Paste a public Facebook video or Reel link, preview available media and save supported HD MP4 quality. No login required.",
+        name: PAGE.seoTitle,
+        description: PAGE.seoDescription,
         inLanguage: "en",
         isPartOf: {
           "@id": "https://www.downloadit.pro/#website",

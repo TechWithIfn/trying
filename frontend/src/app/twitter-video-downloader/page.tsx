@@ -228,9 +228,8 @@ export default function TwitterVideoDownloaderPage() {
         "@type": "WebPage",
         "@id": "https://www.downloadit.pro/twitter-video-downloader/#webpage",
         url: "https://www.downloadit.pro/twitter-video-downloader",
-        name: "Twitter Video Downloader – Download X Videos in MP4 HD | Downloadit",
-        description:
-          "Download Twitter (X) videos online for free with Downloadit. Save public X videos as MP4 in available quality. Fast, easy, mobile-friendly and no login required.",
+        name: PAGE.seoTitle,
+        description: PAGE.seoDescription,
         inLanguage: "en",
         isPartOf: {
           "@id": "https://www.downloadit.pro/#website",
@@ -242,7 +241,7 @@ export default function TwitterVideoDownloaderPage() {
       {
         "@type": "WebApplication",
         "@id": "https://www.downloadit.pro/twitter-video-downloader/#app",
-        name: "Downloadit Twitter Video Downloader",
+        name: "Downloadit Twitter/X Video Downloader",
         url: "https://www.downloadit.pro/twitter-video-downloader",
         applicationCategory: "UtilitiesApplication",
         operatingSystem: "Web Browser",
@@ -268,7 +267,7 @@ export default function TwitterVideoDownloaderPage() {
           {
             "@type": "ListItem",
             position: 2,
-            name: "Twitter Video Downloader",
+            name: "Twitter/X Video Downloader",
             item: "https://www.downloadit.pro/twitter-video-downloader",
           },
         ],

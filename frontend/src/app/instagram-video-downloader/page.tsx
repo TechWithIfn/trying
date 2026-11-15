@@ -80,8 +80,8 @@ const STEPS = [
   },
   {
     step: "3",
-    title: "Open Downloadit Instagram Downloader",
-    desc: "Open the Instagram Downloader on your phone, tablet, or computer.",
+    title: "Open the Instagram Video Downloader",
+    desc: "Open this page on your phone, tablet, or computer.",
   },
   {
     step: "4",
@@ -116,7 +116,7 @@ const INSTAGRAM_CATEGORIES = [
     badge: "Videos",
   },
   {
-    name: "Instagram Photo & Carousel Downloader",
+    name: "Instagram Photo Downloader",
     href: "/instagram-photo-downloader",
     icon: ImageIcon,
     desc: "Download high-resolution JPEG photos and swipe-through carousel albums with all slides included.",
@@ -146,9 +146,8 @@ export default function InstagramMainDownloaderPage() {
         "@type": "WebPage",
         "@id": "https://www.downloadit.pro/instagram-video-downloader/#webpage",
         url: "https://www.downloadit.pro/instagram-video-downloader",
-        name: "Instagram Downloader – Reels, Stories, Videos, Photos & Audio | Downloadit",
-        description:
-          "Download Instagram Reels, Stories, Videos, Photos and Carousel posts online with Downloadit. Save supported Instagram media and extract audio as MP3 for free.",
+        name: PAGE.seoTitle,
+        description: PAGE.seoDescription,
         inLanguage: "en",
         isPartOf: {
           "@id": "https://www.downloadit.pro/#website",
@@ -160,13 +159,13 @@ export default function InstagramMainDownloaderPage() {
       {
         "@type": "WebApplication",
         "@id": "https://www.downloadit.pro/instagram-video-downloader/#app",
-        name: "Downloadit Instagram Downloader",
+        name: "Downloadit Instagram Video Downloader",
         url: "https://www.downloadit.pro/instagram-video-downloader",
         applicationCategory: "UtilitiesApplication",
         operatingSystem: "Web Browser",
         inLanguage: "en",
         description:
-          "Free online Instagram media downloader to save public Reels, Stories, Videos, Photos, and Carousels in HD MP4 and JPEG quality without login.",
+          "Free online tool to save a public Instagram feed video as a progressive MP4 without a login.",
         offers: {
           "@type": "Offer",
           price: "0",
@@ -186,7 +185,7 @@ export default function InstagramMainDownloaderPage() {
           {
             "@type": "ListItem",
             position: 2,
-            name: "Instagram Downloader",
+            name: "Instagram Video Downloader",
             item: "https://www.downloadit.pro/instagram-video-downloader",
           },
         ],
@@ -289,7 +288,7 @@ export default function InstagramMainDownloaderPage() {
                 Taking screenshots of Instagram photos often results in cropped borders, compressed detail, and degraded resolution. Our <strong className="text-fg">instagram photo downloader</strong> solves this by fetching the original, uncompressed source JPEG directly from Instagram&apos;s servers.
               </p>
               <p>
-                When you initiate an <strong className="text-fg">instagram photo download</strong>, Downloadit delivers the maximum image dimensions published by the author (up to 1080×1350 for portrait photos). Whether you want to <strong className="text-fg">download instagram photos</strong> for moodboards, wallpaper backgrounds, or creative study, you receive pristine picture clarity. Visit our dedicated <Link href="/instagram-photo-downloader" className="font-semibold text-primary hover:underline">Instagram Photo &amp; Carousel Downloader</Link> for multi-image post features.
+                When you initiate an <strong className="text-fg">instagram photo download</strong>, Downloadit delivers the maximum image dimensions published by the author (up to 1080×1350 for portrait photos). Whether you want to <strong className="text-fg">download instagram photos</strong> for moodboards, wallpaper backgrounds, or creative study, you receive pristine picture clarity. Visit our dedicated <Link href="/instagram-photo-downloader" className="font-semibold text-primary hover:underline">Instagram Photo Downloader</Link> for multi-image post features.
               </p>
             </div>
           </section>
