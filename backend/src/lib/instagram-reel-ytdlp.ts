@@ -179,6 +179,17 @@ export function cookieFilePath(): string | null {
       /* missing file falls through to the session already configured in env */
     }
   }
+  const relativeCandidates = [
+    join(process.cwd(), ".cookies", "instagram.txt"),
+    join(process.cwd(), "backend", ".cookies", "instagram.txt"),
+  ];
+  for (const candidate of relativeCandidates) {
+    try {
+      if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
+    } catch {
+      /* try next */
+    }
+  }
   return materializeCookies();
 }
 
@@ -321,7 +332,7 @@ export function classifyInstagramYtDlpError(
       kind: "private",
       code: "CONTENT_UNAVAILABLE",
       statusCode: 404,
-      message: "This account is private and I don't follow it — no way to download",
+      message: "This reel is private or restricted, so it can't be downloaded",
       retryable: false,
     };
   }
@@ -335,7 +346,7 @@ export function classifyInstagramYtDlpError(
       kind: "unavailable",
       code: "CONTENT_UNAVAILABLE",
       statusCode: 404,
-      message: "Content unavailable (deleted, region-blocked, or restricted) — no way to download",
+      message: "This reel is private or restricted, so it can't be downloaded",
       retryable: false,
     };
   }

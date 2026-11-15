@@ -16,6 +16,15 @@ const TRACKING_PARAMS = new Set([
   "fbclid",
   "feature",
   "stkn",
+  "vrfl",
+  "srtk",
+  "psln",
+  "ig_rid",
+  "ig_mid",
+  "share_id",
+  "src",
+  "context",
+  "sk",
 ]);
 
 export interface ParsedInstagramUrl {
