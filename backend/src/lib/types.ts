@@ -265,6 +265,10 @@ export interface ResolverResult {
   title: string | null;
   author: Author | null;
   media: MediaItem[];
+  /** Upstream media ID when the provider exposes one (metadata only). */
+  mediaId?: string;
+  /** 0-based carousel start slide from `?img_index=` (null when absent). */
+  startIndex?: number | null;
 }
 
 export interface ResolveCallOptions {
