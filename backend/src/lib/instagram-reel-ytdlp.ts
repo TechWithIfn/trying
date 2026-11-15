@@ -502,14 +502,6 @@ function contentTypeFor(pathname: string, items: MediaItem[]): InstagramContentT
   return "POST";
 }
 
-function slideIndexFrom(url: URL): number | null {
-  const raw = url.searchParams.get("img_index");
-  if (!raw) return null;
-  const index = parseInt(raw, 10);
-  if (!Number.isFinite(index) || index < 1 || index > 100) return null;
-  return index - 1;
-}
-
 async function dumpReel(url: string, signal?: AbortSignal): Promise<{ media: MediaItem[]; info: DumpNode }> {
   warnIfCookiesMissing();
   logEngineOnce();
@@ -602,8 +594,6 @@ export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSi
           info.uploader || info.uploader_id
             ? { username: info.uploader_id ?? null, displayName: info.uploader ?? null }
             : null,
-        mediaId: typeof info.id === "string" ? info.id : shortcode,
-        startIndex: slideIndexFrom(parsed),
         media,
       },
     };
