@@ -1,6 +1,7 @@
-import { appendFileSync, existsSync, readFileSync, statSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { getInstagramSessionCookie } from "./instagram-session.js";
 import { canonicalReelUrl } from "./validators/instagram-url.js";
 import { logger } from "./logger.js";
 import { getFfmpegPath, isFfmpegAvailable } from "./ffmpeg.js";
@@ -104,32 +105,97 @@ function logEngineOnce(): void {
 }
 
 /**
- * Netscape cookie file from INSTAGRAM_COOKIES_FILE. The path is checked, the
- * file is never read or logged here — yt-dlp receives only the path.
+ * Netscape rows for yt-dlp from a Cookie header. Names are checked; values
+ * are copied through and never logged.
  */
-export function cookieFilePath(): string | null {
-  const raw = process.env.INSTAGRAM_COOKIES_FILE?.trim() ?? "";
-  if (!raw) return null;
-  if (raw.includes("\r") || raw.includes("\n")) return null;
+export function netscapeFromCookieHeader(header: string): string | null {
+  const lines = ["# Netscape HTTP Cookie File"];
+  for (const part of header.split(";")) {
+    const piece = part.trim();
+    const eq = piece.indexOf("=");
+    if (eq <= 0) continue;
+    const name = piece.slice(0, eq).trim();
+    const value = piece.slice(eq + 1).trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(name) || !value || /[\r\n\t]/.test(value)) continue;
+    lines.push(`.instagram.com\tTRUE\t/\tTRUE\t0\t${name}\t${value}`);
+  }
+  const text = `${lines.join("\n")}\n`;
+  return inspectNetscapeCookieText(text) === "invalid" ? null : text;
+}
+
+let materializedCookiePath: string | null | undefined;
+
+function writeCookieJar(text: string): string | null {
+  if (inspectNetscapeCookieText(text) === "invalid") return null;
+  const path = join(tmpdir(), "downloadit-instagram-cookies.txt");
   try {
-    if (!existsSync(raw)) return null;
-    if (!statSync(raw).isFile()) return null;
+    writeFileSync(path, text.endsWith("\n") ? text : `${text}\n`, { mode: 0o600 });
+    return path;
   } catch {
     return null;
   }
-  return raw;
+}
+
+/** Netscape jar carried in the environment, for hosts with no cookie file. */
+function cookieTextFromEnv(): string | null {
+  const encoded = process.env.INSTAGRAM_COOKIES_B64?.trim() ?? "";
+  if (encoded) {
+    try {
+      const text = Buffer.from(encoded, "base64").toString("utf8");
+      if (text.includes("sessionid")) return text;
+    } catch {
+      return null;
+    }
+  }
+  const raw = process.env.INSTAGRAM_COOKIES ?? "";
+  if (raw.includes("sessionid") && raw.includes("\t")) return raw.replace(/\\n/g, "\n");
+  return null;
+}
+
+function materializeCookies(): string | null {
+  if (materializedCookiePath !== undefined) return materializedCookiePath;
+  const fromEnv = cookieTextFromEnv();
+  if (fromEnv) {
+    materializedCookiePath = writeCookieJar(fromEnv);
+    return materializedCookiePath;
+  }
+  const header = getInstagramSessionCookie();
+  const text = header ? netscapeFromCookieHeader(header) : null;
+  materializedCookiePath = text ? writeCookieJar(text) : null;
+  return materializedCookiePath;
+}
+
+/**
+ * Netscape cookie file for yt-dlp. A real INSTAGRAM_COOKIES_FILE wins.
+ * On a serverless host that path does not exist, so the configured session
+ * (or INSTAGRAM_COOKIES_B64) is written to a temp jar. Values are never logged.
+ */
+export function cookieFilePath(): string | null {
+  const raw = process.env.INSTAGRAM_COOKIES_FILE?.trim() ?? "";
+  if (raw && !raw.includes("\r") && !raw.includes("\n")) {
+    try {
+      if (existsSync(raw) && statSync(raw).isFile()) return raw;
+    } catch {
+      /* missing file falls through to the session already configured in env */
+    }
+  }
+  return materializeCookies();
 }
 
 function warnIfCookiesMissing(): void {
   if (cookieFilePath()) return;
   if (warnedMissingCookies) return;
   warnedMissingCookies = true;
-  const configured = Boolean(process.env.INSTAGRAM_COOKIES_FILE?.trim());
+  const configured = Boolean(
+    process.env.INSTAGRAM_COOKIES_FILE?.trim() ||
+      process.env.INSTAGRAM_COOKIES_B64?.trim() ||
+      process.env.INSTAGRAM_COOKIES?.trim()
+  );
   logger.warn("[INSTAGRAM] no cookies file", {
     configured,
     detail: configured
-      ? "INSTAGRAM_COOKIES_FILE is set but the file is missing. Trying this reel without cookies."
-      : "INSTAGRAM_COOKIES_FILE is not set. Trying this reel without cookies.",
+      ? "Instagram cookies are configured but could not be read. Trying this reel without cookies."
+      : "No Instagram cookie file or session is configured. Trying this reel without cookies.",
   });
 }
 
@@ -502,6 +568,14 @@ function contentTypeFor(pathname: string, items: MediaItem[]): InstagramContentT
   return "POST";
 }
 
+function slideIndexFrom(url: URL): number | null {
+  const raw = url.searchParams.get("img_index");
+  if (!raw) return null;
+  const index = parseInt(raw, 10);
+  if (!Number.isFinite(index) || index < 1 || index > 100) return null;
+  return index - 1;
+}
+
 async function dumpReel(url: string, signal?: AbortSignal): Promise<{ media: MediaItem[]; info: DumpNode }> {
   warnIfCookiesMissing();
   logEngineOnce();
@@ -594,6 +668,8 @@ export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSi
           info.uploader || info.uploader_id
             ? { username: info.uploader_id ?? null, displayName: info.uploader ?? null }
             : null,
+        mediaId: typeof info.id === "string" ? info.id : shortcode,
+        startIndex: slideIndexFrom(parsed),
         media,
       },
     };

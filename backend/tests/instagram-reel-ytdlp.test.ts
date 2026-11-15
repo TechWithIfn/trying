@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyInstagramYtDlpError,
   inspectNetscapeCookieText,
+  netscapeFromCookieHeader,
   selectInstagramReelMedia,
 } from "@/lib/instagram-reel-ytdlp";
 
@@ -62,5 +63,13 @@ describe("instagram reel yt-dlp", () => {
     expect(inspectNetscapeCookieText(expired)).toBe("expired");
     expect(inspectNetscapeCookieText(fresh)).toBe("ok");
     expect(inspectNetscapeCookieText("# Netscape\n")).toBe("invalid");
+  });
+
+  it("turns a session cookie header into a netscape jar", () => {
+    const jar = netscapeFromCookieHeader("sessionid=not-a-real-value; csrftoken=also-fake");
+    expect(jar).toContain("\tsessionid\tnot-a-real-value");
+    expect(jar).toContain("\tcsrftoken\talso-fake");
+    expect(inspectNetscapeCookieText(jar ?? "")).toBe("ok");
+    expect(netscapeFromCookieHeader("theme=dark")).toBeNull();
   });
 });
