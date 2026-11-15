@@ -395,7 +395,7 @@ export const ERRORS: Record<ErrorCode, { message: string; status: number; retrya
    */
   INSTAGRAM_CONTENT_RESTRICTED: {
     message:
-      "This reel is private or restricted, so it can't be downloaded. It may require a logged-in Instagram account or be age-gated in your region.",
+      "This Instagram post is restricted by the account, so it can't be downloaded anonymously. The account may only allow signed-in viewers, or the post may be private or age-gated.",
     status: 403,
     retryable: false,
   },

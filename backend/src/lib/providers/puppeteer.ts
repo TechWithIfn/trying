@@ -15,6 +15,7 @@ import { decodeHtmlEntities } from "../text.js";
 import { readBoundedInt } from "../env.js";
 import {
   getInstagramSessionCookie,
+  hasCompleteInstagramSession,
   isInstagramSessionConfigured,
   parseSessionCookies,
 } from "../instagram-session.js";
@@ -3403,8 +3404,11 @@ export class PuppeteerProvider extends BaseProvider {
         // Gated, not throttled: never a rate-limit code. With a viewer session
         // the browser pass below (which sets the session cookies) may still
         // succeed, so continue. Without one the browser would only hit the
-        // same wall — skip the launch and fail honestly instead.
-        if (!isInstagramSessionConfigured()) {
+        // same wall — skip the launch and fail honestly instead. Only a
+        // COMPLETE session (sessionid + csrftoken) can authenticate; a partial
+        // cookie is rejected with the same hard 302, so it must not buy a
+        // pointless browser launch.
+        if (!hasCompleteInstagramSession()) {
           logger.warn("Puppeteer page fetch gated by Instagram login (no session)", {
             normalizedUrl: url,
             pageStatus: fetchMeta.pageStatus,

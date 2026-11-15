@@ -11,6 +11,7 @@ import { getResolverPool } from "../resolver-pool.js";
 import { readBoundedInt } from "../env.js";
 import { inc, observe } from "../metrics.js";
 import { tryInstagramPublicExtraction } from "../instagram-public.js";
+import { hasCompleteInstagramSession, isInstagramSessionConfigured } from "../instagram-session.js";
 import { AppError, ERRORS } from "../errors.js";
 
 let resolverInstance: InstagramResolver | null = null;
@@ -77,6 +78,21 @@ function abortReason(): Error {
   const error = new Error("Resolution aborted");
   error.name = "AbortError";
   return error;
+}
+
+/**
+ * Failure codes that mean "the provider saw no playable media" rather than
+ * "the content/access verdict is authoritative". When a complete viewer
+ * session was allowed a restricted-content attempt and still produced nothing,
+ * the restriction verdict is the more truthful answer than an empty-shell code.
+ */
+function isGenericNoMediaError(err: unknown): boolean {
+  const code = (err as { code?: unknown } | null)?.code;
+  return (
+    code === "VIDEO_SOURCE_NOT_FOUND" ||
+    code === "EMPTY_INSTAGRAM_SHELL" ||
+    code === "CONTENT_UNAVAILABLE"
+  );
 }
 
 /**
@@ -306,6 +322,14 @@ export async function resolveUrl(
     const mockLike =
       providerName.toLowerCase().includes("mock") ||
       resolver.name.toLowerCase().includes("mock");
+    // A restriction verdict is normally final. The exception is a COMPLETE
+    // configured viewer session (sessionid + csrftoken): that session may
+    // legitimately see content Instagram gates for anonymous visitors
+    // (age-restricted accounts, follower-only posts), and Instagram still
+    // enforces its own access check during the provider pass — an authorized
+    // read, never a bypass. A partial session cannot authenticate, so it must
+    // not buy a pointless provider attempt.
+    let deferredRestriction: AppError | null = null;
     if (!mockLike && isPublicContentUrl(url)) {
       onProgress?.(20, "Checking public media");
       const outcome = await providerGate.run(
@@ -331,29 +355,48 @@ export async function resolveUrl(
         return result;
       }
       if (outcome.verdict) {
+        const sessionConfigured = isInstagramSessionConfigured();
+        const completeSession = hasCompleteInstagramSession();
         logger.warn("Public extraction returned a restriction verdict", {
           requestId: opts?.requestId,
           code: outcome.verdict,
           restriction: outcome.diagnostics.publicRestriction ?? null,
           failureReason: outcome.diagnostics.publicFailureReason ?? null,
           restrictedAge: outcome.diagnostics.publicRestrictedAge ?? null,
+          sessionConfigured,
+          completeSession,
           url: url.slice(0, 80),
         });
-        throw new AppError(
+        const restriction = new AppError(
           outcome.verdict,
           ERRORS[outcome.verdict].message,
           ERRORS[outcome.verdict].status,
           outcome.diagnostics
         );
+        if (outcome.verdict === "INSTAGRAM_CONTENT_RESTRICTED" && completeSession) {
+          deferredRestriction = restriction;
+          logger.info(
+            "Restriction verdict with a complete viewer session; trying the authenticated provider",
+            {
+              requestId: opts?.requestId,
+              code: outcome.verdict,
+              provider: resolver.name,
+              url: url.slice(0, 80),
+            }
+          );
+        } else {
+          throw restriction;
+        }
+      } else {
+        logger.info("Public extraction found no media; falling back to provider", {
+          requestId: opts?.requestId,
+          provider: providerName,
+          method: outcome.diagnostics.publicMethod ?? null,
+          pageStatus: outcome.diagnostics.publicPageStatus ?? null,
+          restriction: outcome.diagnostics.publicRestriction ?? null,
+          url: url.slice(0, 80),
+        });
       }
-      logger.info("Public extraction found no media; falling back to provider", {
-        requestId: opts?.requestId,
-        provider: providerName,
-        method: outcome.diagnostics.publicMethod ?? null,
-        pageStatus: outcome.diagnostics.publicPageStatus ?? null,
-        restriction: outcome.diagnostics.publicRestriction ?? null,
-        url: url.slice(0, 80),
-      });
     }
 
     logger.info("Resolving via provider", {
@@ -370,33 +413,55 @@ export async function resolveUrl(
     // never retries, so it can never duplicate an Instagram request.
     // (Audio/story lookups below stay on the lightweight provider gate: they
     // are pure-fetch work and must not consume browser-sized worker slots.)
-    const raw = await getResolverPool().run((execSignal) => {
-      const providerStart = Date.now();
-      inc("providerResolutions");
-      // The pool hands down its own linked signal (caller cancel + job
-      // timeout); the provider already observes AbortSignal, so a dead client
-      // or an expired budget frees the browser page instead of finishing
-      // unseen. `signal` here is intentionally the pool's, not the caller's.
-      void signal;
-      return resolver.resolve(url, onProgress, { signal: execSignal, requestId: opts?.requestId }).finally(() => {
-        observe("provider", Date.now() - providerStart);
-      });
-    }, {
-      signal,
-      // Per-request pool trace: exactly one admission line per resolve job —
-      // worker, queue wait, and live load. The three legs that prove no
-      // duplicate job was created for one user action.
-      onAdmitted: (admission) => {
-        logger.info("[resolver-pool] job admitted", {
-          url: url.slice(0, 80),
-          workerId: admission.workerId,
-          queueWaitMs: admission.queueWaitMs,
-          activeJobs: admission.active,
-          queuedJobs: admission.queued,
-          loadPercent: admission.loadPct,
+    let raw: ResolverResult;
+    try {
+      raw = await getResolverPool().run((execSignal) => {
+        const providerStart = Date.now();
+        inc("providerResolutions");
+        // The pool hands down its own linked signal (caller cancel + job
+        // timeout); the provider already observes AbortSignal, so a dead client
+        // or an expired budget frees the browser page instead of finishing
+        // unseen. `signal` here is intentionally the pool's, not the caller's.
+        void signal;
+        return resolver.resolve(url, onProgress, { signal: execSignal, requestId: opts?.requestId }).finally(() => {
+          observe("provider", Date.now() - providerStart);
         });
-      },
-    });
+      }, {
+        signal,
+        // Per-request pool trace: exactly one admission line per resolve job —
+        // worker, queue wait, and live load. The three legs that prove no
+        // duplicate job was created for one user action.
+        onAdmitted: (admission) => {
+          logger.info("[resolver-pool] job admitted", {
+            url: url.slice(0, 80),
+            workerId: admission.workerId,
+            queueWaitMs: admission.queueWaitMs,
+            activeJobs: admission.active,
+            queuedJobs: admission.queued,
+            loadPercent: admission.loadPct,
+          });
+        },
+      });
+    } catch (err) {
+      // The public probe established a restriction verdict, the session was
+      // complete, yet the provider still produced no media. The session could
+      // not see the content either, so the restriction verdict is the truthful
+      // answer (a stale session surfaces as INSTAGRAM_AUTH_INVALID above and
+      // is intentionally allowed to propagate).
+      if (deferredRestriction && isGenericNoMediaError(err)) {
+        logger.warn(
+          "Provider produced no media for restricted content; surfacing the restriction verdict",
+          {
+            requestId: opts?.requestId,
+            code: deferredRestriction.code,
+            provider: resolver.name,
+            url: url.slice(0, 80),
+          }
+        );
+        throw deferredRestriction;
+      }
+      throw err;
+    }
     const normalized = normalizeResultType(raw);
     // Collapse exact duplicates before probing so the same bytes are never
     // fetched twice, then fill gaps the provider left (size/format/dims)

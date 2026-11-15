@@ -435,6 +435,18 @@ export function isInstagramSessionConfigured(): boolean {
   return Boolean(cookie && cookie.length > 10 && cookie.includes("sessionid="));
 }
 
+/**
+ * True when the composed session carries BOTH materials Instagram requires for
+ * an authenticated web read: `sessionid` and `csrftoken`. A bare sessionid is
+ * silently rejected by Instagram's web session, so presence alone cannot
+ * justify treating gated content as reachable — callers use this before
+ * spending a provider attempt on content a partial cookie cannot unlock.
+ */
+export function hasCompleteInstagramSession(): boolean {
+  const cookie = getInstagramSessionCookie();
+  return Boolean(cookie && cookie.includes("sessionid=") && cookie.includes("csrftoken="));
+}
+
 export interface SessionCookie {
   name: string;
   value: string;
