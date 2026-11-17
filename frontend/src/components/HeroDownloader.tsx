@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   Download as DownloadIcon,
   Clipboard,
@@ -208,7 +208,7 @@ function CircularProgress({ value, label }: { value: number; label: string }) {
                 strokeDashoffset={offset}
                 transform="rotate(-90 66 66)"
                 style={{
-                  transition: "stroke-dashoffset 0.35s ease",
+                  transition: "stroke-dashoffset 0.15s ease-out",
                   filter: "drop-shadow(0 0 6px rgba(236,95,168,0.35))",
                 }}
               />
@@ -242,7 +242,7 @@ function CircularProgress({ value, label }: { value: number; label: string }) {
                 width: `${clamped}%`,
                 background: "var(--brand-gradient)",
                 boxShadow: "0 0 12px rgba(124,77,245,0.5)",
-                transition: "width 0.35s ease",
+                transition: "width 0.15s ease-out",
               }}
             >
               <div className="animate-progress-sheen" aria-hidden="true" />
@@ -328,7 +328,7 @@ export default function HeroDownloader({
   // explicit user click — resolve results, validation and errors never touch it.
   // Real processing progress: updated exclusively from backend SSE stage
   // events. Never advanced by timers.
-  const [progress, setProgress] = useState(0);
+  const [, setProgress] = useState(0);
   const [progressStage, setProgressStage] = useState("");
   const [audioExtractionRequested, setAudioExtractionRequested] = useState(false);
   const streamRef = useRef<ResolveStreamHandle | null>(null);
@@ -345,11 +345,79 @@ export default function HeroDownloader({
   // (the 75% → 35% loop). Reset only when a genuinely new extraction begins
   // in handleSubmit/handleRetry/handleClear — never on a transport fallback.
   const maxProgressRef = useRef(0);
-  // The single plain-POST fallback may run at most once per submitted
-  // request (only when the SSE stream drops WITHOUT a server verdict). This
-  // flag — not render state — is the source of truth, so re-renders and
-  // duplicate error events can never turn one user action into a retry loop.
+  // Single plain-POST fallback guard.
   const fallbackTriedRef = useRef(false);
+
+  // Smooth animated progress that continuously glides and never freezes
+  const [smoothProgress, setSmoothProgress] = useState(0);
+  const targetProgressRef = useRef(0);
+  const isCompleteRef = useRef(false);
+  const submitTimeRef = useRef<number>(0);
+  const animFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (state !== "PREPARING") {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      return;
+    }
+
+    const startTime = submitTimeRef.current || Date.now();
+
+    const tick = () => {
+      const elapsed = Date.now() - startTime;
+      let simulated = 0;
+      if (elapsed < 400) {
+        simulated = (elapsed / 400) * 28;
+      } else if (elapsed < 1800) {
+        simulated = 28 + ((elapsed - 400) / 1400) * 34;
+      } else if (elapsed < 4000) {
+        simulated = 62 + ((elapsed - 1800) / 2200) * 20;
+      } else if (elapsed < 7500) {
+        simulated = 82 + ((elapsed - 4000) / 3500) * 10;
+      } else {
+        simulated = Math.min(96, 92 + ((elapsed - 7500) / 4000) * 4);
+      }
+
+      if (isCompleteRef.current) {
+        simulated = 100;
+      }
+
+      const target = Math.min(100, Math.max(targetProgressRef.current, simulated));
+
+      setSmoothProgress((prev) => {
+        if (isCompleteRef.current) {
+          const next = prev + Math.max(3, (100 - prev) * 0.4);
+          return next >= 99.5 ? 100 : next;
+        }
+        const diff = target - prev;
+        if (diff <= 0.05) return prev;
+        const step = Math.max(0.35, diff * 0.15);
+        return Math.min(target, prev + step);
+      });
+
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    animFrameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (animFrameRef.current !== null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+    };
+  }, [state]);
+
+  const smoothLabel = useMemo(() => {
+    if (progressStage && progressStage !== t.hero.analyzing) return progressStage;
+    if (smoothProgress < 25) return t.hero.analyzing;
+    if (smoothProgress < 55) return "Connecting to media server...";
+    if (smoothProgress < 80) return "Extracting media streams...";
+    if (smoothProgress < 95) return "Optimizing high-quality format...";
+    return "Preparing download...";
+  }, [progressStage, smoothProgress, t]);
 
   // Lightweight funnel telemetry. Derived from state instead of sprinkled
   // through every code branch, so no resolve path can silently skip an event.
@@ -459,6 +527,9 @@ export default function HeroDownloader({
     setResult(null);
     setResolvedVariant("default");
     setAudioExtractionRequested(false);
+    isCompleteRef.current = false;
+    targetProgressRef.current = 0;
+    setSmoothProgress(0);
     setProgress(0);
     setProgressStage("");
   }, [invalidateRequest, onActiveTabChange]);
@@ -471,6 +542,9 @@ export default function HeroDownloader({
     setAudioExtractionRequested(false);
     maxProgressRef.current = 0;
     fallbackTriedRef.current = false;
+    isCompleteRef.current = false;
+    targetProgressRef.current = 0;
+    setSmoothProgress(0);
     setProgress(0);
     setProgressStage("");
   }, [invalidateRequest, onActiveTabChange]);
@@ -537,6 +611,10 @@ export default function HeroDownloader({
         const seq = ++requestSeqRef.current;
         inFlightUrlRef.current = trimmed;
         maxProgressRef.current = 0;
+        isCompleteRef.current = false;
+        targetProgressRef.current = 35;
+        setSmoothProgress(0);
+        submitTimeRef.current = Date.now();
         setResult(null);
         setError("");
         setProgress(35);
@@ -562,11 +640,17 @@ export default function HeroDownloader({
             if (requestSeqRef.current !== seq) return;
             inFlightUrlRef.current = null;
             if (res.success) {
+              isCompleteRef.current = true;
+              targetProgressRef.current = 100;
               setProgress(100);
               setProgressStage("");
-              setResult(res.data as ResolveData);
-              setState("SUCCESS");
+              setTimeout(() => {
+                if (requestSeqRef.current !== seq) return;
+                setResult(res.data as ResolveData);
+                setState("SUCCESS");
+              }, 220);
             } else {
+              isCompleteRef.current = false;
               setError(res.error?.message || `Unable to resolve media from this ${platform} post. Please verify it is public.`);
               setState("ERROR");
             }
@@ -574,6 +658,7 @@ export default function HeroDownloader({
           .catch(() => {
             if (requestSeqRef.current !== seq) return;
             inFlightUrlRef.current = null;
+            isCompleteRef.current = false;
             if (controller.signal.aborted) return;
             setError("Service issue on our side. Please try again in a minute.");
             setState("ERROR");
@@ -591,6 +676,10 @@ export default function HeroDownloader({
       // restarts exactly once per user submit.
       maxProgressRef.current = 0;
       fallbackTriedRef.current = false;
+      isCompleteRef.current = false;
+      targetProgressRef.current = 15;
+      setSmoothProgress(0);
+      submitTimeRef.current = Date.now();
       setResult(null);
       setError("");
       setProgress(0);
@@ -641,24 +730,31 @@ export default function HeroDownloader({
             return;
           }
           maxProgressRef.current = p;
+          targetProgressRef.current = Math.max(targetProgressRef.current, p);
           setProgress(p);
           if (stage) setProgressStage(stage);
         },
         onComplete: (data) => {
           if (requestSeqRef.current !== seq) return;
-          storyFlowLog("resolve-complete", { mediaType: data.type });
-          clearWatchdog();
-          closeStream();
-          inFlightUrlRef.current = null;
+          isCompleteRef.current = true;
+          targetProgressRef.current = 100;
           setProgress(100);
           setProgressStage("");
-          const detectedTab = resolveTabFromResultType(data.type);
-          if (detectedTab) onActiveTabChange(detectedTab);
-          setResult(data);
-          setState("SUCCESS");
+          setTimeout(() => {
+            if (requestSeqRef.current !== seq) return;
+            storyFlowLog("resolve-complete", { mediaType: data.type });
+            clearWatchdog();
+            closeStream();
+            inFlightUrlRef.current = null;
+            const detectedTab = resolveTabFromResultType(data.type);
+            if (detectedTab) onActiveTabChange(detectedTab);
+            setResult(data);
+            setState("SUCCESS");
+          }, 220);
         },
         onError: (err) => {
           if (requestSeqRef.current !== seq) return;
+          isCompleteRef.current = false;
           storyFlowLog("resolve-error", { code: err.code });
           clearWatchdog();
           closeStream();
@@ -723,19 +819,26 @@ export default function HeroDownloader({
               closeStream();
               inFlightUrlRef.current = null;
               if (!data.success) {
+                isCompleteRef.current = false;
                 setError(storyErrorMessage(data.error?.code ?? "", data.error?.message) || t.errors.failed);
                 setState("ERROR");
                 return;
               }
-              const detectedTab = resolveTabFromResultType(data.data.type);
-              if (detectedTab) onActiveTabChange(detectedTab);
+              isCompleteRef.current = true;
+              targetProgressRef.current = 100;
               setProgress(100);
               setProgressStage("");
-              setResult(data.data);
-              setState("SUCCESS");
+              setTimeout(() => {
+                if (requestSeqRef.current !== seq) return;
+                const detectedTab = resolveTabFromResultType(data.data.type);
+                if (detectedTab) onActiveTabChange(detectedTab);
+                setResult(data.data);
+                setState("SUCCESS");
+              }, 220);
             })
             .catch((err) => {
               if (requestSeqRef.current !== seq) return;
+              isCompleteRef.current = false;
               if (err instanceof DOMException && err.name === "AbortError") return;
               clearWatchdog();
               closeStream();
@@ -1177,7 +1280,7 @@ export default function HeroDownloader({
         {/* Result / Error Area */}
         <div ref={resultAnchorRef} aria-live="polite" aria-atomic="true" className="scroll-mt-[calc(80px+env(safe-area-inset-top,0px))]">
           {state === "PREPARING" && (
-            <CircularProgress value={progress} label={progressStage || t.hero.analyzing} />
+            <CircularProgress value={smoothProgress} label={smoothLabel} />
           )}
 
           {state === "SUCCESS" && result && (

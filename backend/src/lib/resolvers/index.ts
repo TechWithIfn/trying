@@ -277,24 +277,36 @@ export async function resolveUrl(
       providerNameForReel !== "mock" &&
       canonicalReelUrl(new URL(url))
     ) {
-      const reel = await resolveInstagramReelYtDlp(url, signal);
-      if (reel.result) {
-        const enriched = await enrichMediaItems(reel.result.media, { signal });
-        const result: ResolverResult = { ...reel.result, media: dedupeMediaItems(enriched) };
-        logger.info("Reel resolved via yt-dlp", {
-          duration: result.media[0]?.duration ?? null,
-          hasSeparateAudio: Boolean(result.media[0]?.audioUrl),
-          resolveMs: Date.now() - resolveStart,
-          url: result.sourceUrl,
+      try {
+        onProgress?.(20, "Connecting to Instagram...");
+        const reel = await resolveInstagramReelYtDlp(url, signal, onProgress);
+        if (reel.result) {
+          onProgress?.(90, "Preparing media items...");
+          const enriched = await enrichMediaItems(reel.result.media, { signal });
+          const result: ResolverResult = { ...reel.result, media: dedupeMediaItems(enriched) };
+          logger.info("Reel resolved via yt-dlp", {
+            duration: result.media[0]?.duration ?? null,
+            hasSeparateAudio: Boolean(result.media[0]?.audioUrl),
+            resolveMs: Date.now() - resolveStart,
+            url: result.sourceUrl,
+          });
+          setCachedResult(url, result);
+          return result;
+        }
+        if (reel.failure && reel.terminal && reel.failure.kind !== "ip-block") {
+          throw new AppError(reel.failure.code, reel.failure.message, reel.failure.statusCode, {
+            provider: "yt-dlp",
+            stage: `instagram-${reel.failure.kind}`,
+          });
+        }
+        logger.info("[INSTAGRAM] yt-dlp did not resolve media, falling back to provider", {
+          url: url.slice(0, 80),
+          failureKind: reel.failure?.kind,
         });
-        setCachedResult(url, result);
-        return result;
-      }
-      if (reel.failure && reel.terminal) {
-        throw new AppError(reel.failure.code, reel.failure.message, reel.failure.statusCode, {
-          provider: "yt-dlp",
-          stage: `instagram-${reel.failure.kind}`,
-        });
+        onProgress?.(35, "Checking secondary resolver...");
+      } catch (err) {
+        if (err instanceof AppError) throw err;
+        logger.warn("[INSTAGRAM] yt-dlp threw, falling back to provider", { error: err });
       }
     }
 

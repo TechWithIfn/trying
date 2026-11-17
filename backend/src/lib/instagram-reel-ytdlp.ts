@@ -12,7 +12,7 @@ import {
   YtDlpNotAvailableError,
   YtDlpProcessError,
 } from "./ytdlp.js";
-import type { ErrorCode, InstagramContentType, MediaItem, ResolverResult } from "./types.js";
+import type { ErrorCode, InstagramContentType, MediaItem, ResolverResult, ResolveProgressCallback } from "./types.js";
 
 const DESKTOP_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
@@ -356,7 +356,7 @@ export function classifyInstagramYtDlpError(
       kind: "ip-block",
       code: "UPSTREAM_FORBIDDEN",
       statusCode: 403,
-      message: "IP appears blocked",
+      message: "Direct media stream temporarily unavailable",
       retryable: false,
     };
   }
@@ -365,10 +365,7 @@ export function classifyInstagramYtDlpError(
       kind: "ip-block",
       code: "UPSTREAM_FORBIDDEN",
       statusCode: 403,
-      message:
-        host === "cloud"
-          ? "IP appears blocked"
-          : "Instagram returned an empty response for this reel.",
+      message: "Direct media stream temporarily unavailable",
       retryable: host !== "cloud",
     };
   }
@@ -617,7 +614,11 @@ export interface ReelResolveOutcome {
   terminal: boolean;
 }
 
-export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSignal): Promise<ReelResolveOutcome> {
+export async function resolveInstagramReelYtDlp(
+  rawUrl: string,
+  signal?: AbortSignal,
+  onProgress?: ResolveProgressCallback
+): Promise<ReelResolveOutcome> {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -629,10 +630,12 @@ export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSi
   const shortcode = canonical.pathname.split("/").filter(Boolean)[1];
   const host = instagramRuntimeHost();
   try {
+    onProgress?.(25, "Analyzing Instagram post...");
     const dumped = await withDownloadSlot(async () => {
       let lastError: unknown;
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
+          onProgress?.(50, "Extracting media streams...");
           return await dumpReel(canonical.href, signal);
         } catch (error) {
           lastError = error;
@@ -648,7 +651,7 @@ export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSi
             version: getYtDlpVersion(),
             errorLog: ERROR_LOG,
           });
-          if (!failure.retryable || attempt === 2) throw error;
+          if (!failure.retryable || failure.kind === "ip-block" || attempt === 2) throw error;
           await sleep(3000 * (attempt + 1), signal);
         }
       }
@@ -659,6 +662,7 @@ export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSi
     const first = media[0];
     knownGoodOk = true;
     if (canonical.href === KNOWN_PUBLIC_REEL) knownGoodBlocked = false;
+    onProgress?.(80, "Optimizing media format...");
     logger.info("[INSTAGRAM] yt-dlp media resolved", {
       shortcode,
       version: getYtDlpVersion(),
@@ -696,12 +700,12 @@ export async function resolveInstagramReelYtDlp(rawUrl: string, signal?: AbortSi
     if (failure.kind === "unavailable" || failure.kind === "private" || failure.kind === "login") {
       return { failure, terminal: true };
     }
-    if (failure.kind === "ip-block" && (host === "cloud" || knownGoodBlocked || hint === "restricted")) {
-      return { failure, terminal: true };
+    // IP-block / empty response should never terminate resolution — fall back to provider (Puppeteer/embed)
+    if (failure.kind === "ip-block") {
+      return { failure, terminal: false };
     }
-    if (failure.kind === "ip-block" && host === "local" && hint === "public") return { failure, terminal: false };
     if (failure.kind === "other") return { failure, terminal: false };
-    return { failure, terminal: true };
+    return { failure, terminal: false };
   }
 }
 
