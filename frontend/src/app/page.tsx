@@ -8,7 +8,7 @@ import {
   SOCIAL_PROFILES,
 } from "@/config/site";
 
-const HOME_TITLE = "Instagram, Pinterest, Facebook, X & Threads Downloader";
+const HOME_TITLE = "Instagram Reels & Video Downloader – Free | DownloadIt Pro";
 const HOME_DESCRIPTION =
   "Download Instagram Reels, Pinterest videos, Facebook & X posts, and Threads media for free in HD. No login, no watermark, no app needed.";
 
